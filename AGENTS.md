@@ -21,9 +21,17 @@
 
 默认本地数据库 URL：`prisma.config.ts` / `lib/prisma.ts` 中 `DATABASE_URL` 未设置时为 `file:./data.db`（仓库根目录相对路径，已 `.gitignore`）。
 
+## Next.js：动手前读文档，并与 Skills 配合
+
+做任何 **Next.js 相关** 改动前，按下面顺序来，**不要只靠模型内置记忆**（容易与当前版本不一致）：
+
+1. **本仓库 Skills：** 先打开与任务相关的 **`.agents/skills/`** 条目（尤其是 **`next-best-practices`**、**`next-cache-components`**），读 `SKILL.md` 及其中 `references/`、`rules/`，建立目录约定、RSC 边界、缓存等**工作方式**。
+2. **已安装版本的官方说明：** 在 **`node_modules/next/dist/docs/`** 里找到与当前改动对应的说明并阅读，以**当前仓库锁定的 Next 版本**为准核对 API、配置与行为。
+3. **再写代码或给方案：** Skills 负责「本仓库约定 + 实践清单」；**`node_modules/next/dist/docs/`** 负责「与安装版本一致的规范原文」。二者互补；若冲突，以本地文档为准。
+
 ## 本仓库内的 Agent Skills（项目级）
 
-以下技能安装在 **`.agents/skills/`**（随仓库版本控制）。当任务涉及对应技术时，**应先阅读该目录下的 `SKILL.md` 及其中引用的 `references/` / `rules/`**，再改代码或给方案；不要仅凭过时记忆拼 API。
+以下技能安装在 **`.agents/skills/`**（随仓库版本控制）。当任务涉及对应技术时，**应先阅读该目录下的 `SKILL.md` 及其中引用的 `references/` / `rules/`**，再改代码或给方案；不要仅凭过时记忆拼 API。**Next 任务**还须遵守上一节 **「Next.js：动手前读文档，并与 Skills 配合」** 中的顺序（Skills → `node_modules/next/dist/docs/` → 实现）。
 
 在 Cursor 中可通过 `@.agents/skills/<技能名>/SKILL.md` 引用，或用 Read 工具打开同名文件。
 
@@ -41,6 +49,7 @@
 
 ## 仓库约定
 
+- **路径别名：** `tsconfig.json` 中 `@/*` 解析到 **`app/`**（例如 `@/layout` → `app/layout.tsx`）。`lib/`、`components/`（若放在仓库根）等 **不在** `app/` 下的模块请用相对路径（如 `../lib/cn`）或后续另增专用别名；勿假设 `@/lib` 仍指向根目录 `lib/`。
 - **需求 / 范围：** 变更产品行为时先更新或对照 `docs/brainstorms/*-requirements.md`。
 - **实现规划：** 使用 Compound Engineering 的 `/ce-plan`，以需求文档为 origin。
 - **本地 CE 配置：** `.compound-engineering/config.local.yaml`（gitignore）；示例与模板见同目录 `config.local.example.yaml`。
@@ -63,5 +72,5 @@
 ## 前端 / 代码风格
 
 - 与现有 ESLint、TypeScript 配置保持一致；优先小步提交、避免无关重构。
-- **Tailwind（`className`）**：拼条件类名、合并冲突工具类时统一使用 **`cn()`**（`lib/cn.ts`，`clsx` + `tailwind-merge`），不要手写长模板字符串拼接或忽略冲突覆盖。
+- **Tailwind（`className`）**：拼条件类名、合并冲突工具类时统一使用 **`cn()`**（仓库根 `lib/cn.ts`，`clsx` + `tailwind-merge`；从 `app/` 内引用时用 `../lib/cn` 等相对路径），不要手写长模板字符串拼接或忽略冲突覆盖。
 - 用户规则要求中文沟通时，文档与注释可按团队习惯中英并存；本文件以中文为主便于本地阅读。

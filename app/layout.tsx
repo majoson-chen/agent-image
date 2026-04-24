@@ -1,6 +1,6 @@
 import { IBM_Plex_Mono, IBM_Plex_Sans } from 'next/font/google'
 import * as React from 'react'
-import { cn } from '@/lib/cn'
+import { cn } from '../lib/cn'
 import './globals.css'
 
 const fontSans = IBM_Plex_Sans({

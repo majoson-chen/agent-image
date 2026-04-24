@@ -8,11 +8,13 @@
         "build": "next build",
         "start": "next start",
         "lint": "eslint",
+        "test": "vitest",
         "lint:fix": "eslint --fix"
     },
     "dependencies": {
         "@prisma/adapter-better-sqlite3": "^7.8.0",
         "@prisma/client": "^7.8.0",
+        "ai": "^6.0.168",
         "clsx": "^2.1.1",
         "dotenv": "^17.4.2",
         "next": "^16.2.4",
@@ -20,25 +22,32 @@
         "react-dom": "^19.2.5",
         "tailwind-merge": "^3.5.0",
         "tailwindcss": "^4.2.4",
-        "typescript": "^6.0.3"
+        "typescript": "^6.0.3",
+        "zod": "^4.3.6"
     },
     "devDependencies": {
         "@antfu/eslint-config": "^8.2.0",
         "@eslint-react/eslint-plugin": "^3.0.0",
         "@next/eslint-plugin-next": "^16.2.4",
         "@tailwindcss/postcss": "^4.2.4",
+        "@testing-library/dom": "^10.4.1",
+        "@testing-library/react": "^16.3.2",
         "@types/better-sqlite3": "^7.6.13",
         "@types/bun": "latest",
         "@types/node": "^25.6.0",
         "@types/react": "^19.2.14",
         "@types/react-dom": "^19.2.3",
+        "@vitejs/plugin-react": "^6.0.1",
         "daisyui": "^5.5.19",
         "eslint": "^10.2.0",
         "eslint-plugin-format": "^2.0.1",
         "eslint-plugin-react-refresh": "^0.5.2",
         "jiti": "^2.6.1",
+        "jsdom": "^29.0.2",
         "postcss": "^8.5.10",
-        "prisma": "^7.8.0"
+        "prisma": "^7.8.0",
+        "vite-tsconfig-paths": "^6.1.1",
+        "vitest": "^4.1.5"
     },
     "browserslist": "> 1%"
 }
