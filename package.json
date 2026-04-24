@@ -13,10 +13,12 @@
     "dependencies": {
         "@prisma/adapter-better-sqlite3": "^7.8.0",
         "@prisma/client": "^7.8.0",
+        "clsx": "^2.1.1",
         "dotenv": "^17.4.2",
         "next": "^16.2.4",
         "react": "^19.2.5",
         "react-dom": "^19.2.5",
+        "tailwind-merge": "^3.5.0",
         "tailwindcss": "^4.2.4",
         "typescript": "^6.0.3"
     },

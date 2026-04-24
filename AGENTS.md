@@ -6,7 +6,8 @@
 
 **agent-image**：单机自用的玩具级 **Next.js** 应用，提供「类 Cursor / Claude Code」的 **多轮对话 Agent**，默认任务偏向 **图像生成与编排**（工具可见、多步），支持 **多厂商 LLM 与生图 Provider**（各 Provider 自带 baseURL 与密钥，不假设全局单一 API Key）。
 
-权威需求说明见：`docs/brainstorms/2026-04-23-agent-image-requirements.md`。
+权威需求说明见：`docs/brainstorms/2026-04-23-agent-image-requirements.md`。  
+推荐性 Agent 工作流与能力要点（供 Prompt 对照）：`docs/brainstorms/2026-04-23-agent-image-agent-playbook.md`。
 
 ## 技术栈（当前）
 
@@ -60,4 +61,5 @@
 ## 前端 / 代码风格
 
 - 与现有 ESLint、TypeScript 配置保持一致；优先小步提交、避免无关重构。
+- **Tailwind（`className`）**：拼条件类名、合并冲突工具类时统一使用 **`cn()`**（`lib/cn.ts`，`clsx` + `tailwind-merge`），不要手写长模板字符串拼接或忽略冲突覆盖。
 - 用户规则要求中文沟通时，文档与注释可按团队习惯中英并存；本文件以中文为主便于本地阅读。
