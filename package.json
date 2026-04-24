@@ -32,11 +32,13 @@
         "@types/node": "^25.6.0",
         "@types/react": "^19.2.14",
         "@types/react-dom": "^19.2.3",
+        "daisyui": "^5.5.19",
         "eslint": "^10.2.0",
         "eslint-plugin-format": "^2.0.1",
         "eslint-plugin-react-refresh": "^0.5.2",
         "jiti": "^2.6.1",
         "postcss": "^8.5.10",
         "prisma": "^7.8.0"
-    }
+    },
+    "browserslist": "> 1%"
 }

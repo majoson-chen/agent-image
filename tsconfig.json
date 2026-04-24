@@ -8,9 +8,13 @@
             "ESNext"
         ],
         "moduleDetection": "force",
+        "baseUrl": ".",
         "module": "Preserve",
         // Bundler mode
         "moduleResolution": "bundler",
+        "paths": {
+            "@/*": ["./*"]
+        },
         "allowImportingTsExtensions": true,
         "allowJs": true,
         // Best practices

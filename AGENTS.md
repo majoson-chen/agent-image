@@ -6,8 +6,10 @@
 
 **agent-image**：单机自用的玩具级 **Next.js** 应用，提供「类 Cursor / Claude Code」的 **多轮对话 Agent**，默认任务偏向 **图像生成与编排**（工具可见、多步），支持 **多厂商 LLM 与生图 Provider**（各 Provider 自带 baseURL 与密钥，不假设全局单一 API Key）。
 
-权威需求说明见：`docs/brainstorms/2026-04-23-agent-image-requirements.md`。  
+权威需求说明见：`docs/brainstorms/2026-04-23-agent-image-requirements.md`。
 推荐性 Agent 工作流与能力要点（供 Prompt 对照）：`docs/brainstorms/2026-04-23-agent-image-agent-playbook.md`。
+界面布局参考（如有）：`design/`（例如 `design/layout.pen`）。
+**设计语言与主题（须先于设置页/业务组件落地）：** [daisyUI 5](https://daisyui.com/) + `docs/design-language.md`。`app/globals.css` **暂仅** `@plugin "daisyui"`，使用内置 **`light` / `dark`**（与官方默认：`light --default`，`dark --prefersdark`）；界面使用 **语义色**（`bg-base-100`、`text-base-content`、`btn-primary` 等），**禁止**在组件中硬编码 `#hex` 或滥用 `bg-green-500` 等非语义调色板。设计稿（Pencil）填色对照 `docs/plans/2026-04-23-001-feat-chat-ui-shell-plan.md` 中的 **设计稿用色** 表；该文件为 **设计交付规格**，工程实现任务不在其内。
 
 ## 技术栈（当前）
 
@@ -25,15 +27,15 @@
 
 在 Cursor 中可通过 `@.agents/skills/<技能名>/SKILL.md` 引用，或用 Read 工具打开同名文件。
 
-| 技能目录 | 适用场景 |
-|----------|----------|
-| `ai-sdk` | Vercel AI SDK：`streamText` / `generateText`、工具调用、`useChat`、Provider、结构化输出、Agent 编排等 |
-| `next-best-practices` | Next.js 目录约定、RSC 边界、数据获取、Route Handler、metadata、错误处理、图片/字体等通用实践 |
-| `next-cache-components` | Next 16+ Cache Components、`use cache`、`cacheLife` / `cacheTag`、PPR 相关 |
-| `vercel-react-best-practices` | React / Next 性能、重渲染、数据与缓存、包体与加载等（Vercel 规则集） |
-| `vercel-composition-patterns` | 组合式组件、减少 boolean props、Context、React 19 相关 API |
-| `vercel-react-view-transitions` | View Transition API、路由/列表过渡、`<ViewTransition>` 与 Next 集成 |
-| `ast-grep` | 按 AST 结构搜索/盘点代码（复杂模式优于纯文本 grep） |
+| 技能目录                        | 适用场景                                                                                              |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `ai-sdk`                        | Vercel AI SDK：`streamText` / `generateText`、工具调用、`useChat`、Provider、结构化输出、Agent 编排等 |
+| `next-best-practices`           | Next.js 目录约定、RSC 边界、数据获取、Route Handler、metadata、错误处理、图片/字体等通用实践          |
+| `next-cache-components`         | Next 16+ Cache Components、`use cache`、`cacheLife` / `cacheTag`、PPR 相关                            |
+| `vercel-react-best-practices`   | React / Next 性能、重渲染、数据与缓存、包体与加载等（Vercel 规则集）                                  |
+| `vercel-composition-patterns`   | 组合式组件、减少 boolean props、Context、React 19 相关 API                                            |
+| `vercel-react-view-transitions` | View Transition API、路由/列表过渡、`<ViewTransition>` 与 Next 集成                                   |
+| `ast-grep`                      | 按 AST 结构搜索/盘点代码（复杂模式优于纯文本 grep）                                                   |
 
 若以后新增或移除技能，请同步更新本表。
 
@@ -46,11 +48,11 @@
 
 ## Compound Engineering 工作流
 
-| 目的 | 技能 / 命令 |
-|------|-------------|
-| 发散需求、落盘 requirements | `/ce-brainstorm` → `docs/brainstorms/*-requirements.md` |
-| 结构化实现计划 | `/ce-plan` → `docs/plans/` |
-| 环境与健康检查 | `/ce-setup`（本仓库无自带 `scripts/check-health` 时，使用插件内脚本，见 README） |
+| 目的                        | 技能 / 命令                                                                      |
+| --------------------------- | -------------------------------------------------------------------------------- |
+| 发散需求、落盘 requirements | `/ce-brainstorm` → `docs/brainstorms/*-requirements.md`                          |
+| 结构化实现计划              | `/ce-plan` → `docs/plans/`                                                       |
+| 环境与健康检查              | `/ce-setup`（本仓库无自带 `scripts/check-health` 时，使用插件内脚本，见 README） |
 
 ## 实现时注意
 

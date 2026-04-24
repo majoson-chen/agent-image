@@ -1,1 +1,15 @@
 @import 'tailwindcss';
+
+/* 与 daisyUI 文档默认一致：浅色为默认，系统深色偏好时用 dark */
+@plugin "daisyui" {
+    themes:
+        light --default,
+        dark --prefersdark;
+    logs: false;
+}
+
+/* next/font 在 body 上注入 --font-app-* */
+@theme {
+    --font-sans: var(--font-app-sans), ui-sans-serif, system-ui, sans-serif;
+    --font-mono: var(--font-app-mono), ui-monospace, monospace;
+}
