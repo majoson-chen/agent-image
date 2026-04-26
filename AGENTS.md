@@ -47,21 +47,12 @@
 
 若以后新增或移除技能，请同步更新本表。
 
-## 仓库约定
 
-- **路径别名：** `tsconfig.json` 中 `@/*` 解析到 **`app/`**（例如 `@/layout` → `app/layout.tsx`）。`lib/`、`components/`（若放在仓库根）等 **不在** `app/` 下的模块请用相对路径（如 `../lib/cn`）或后续另增专用别名；勿假设 `@/lib` 仍指向根目录 `lib/`。
-- **需求 / 范围：** 变更产品行为时先更新或对照 `docs/brainstorms/*-requirements.md`。
-- **实现规划：** 使用 Compound Engineering 的 `/ce-plan`，以需求文档为 origin。
-- **本地 CE 配置：** `.compound-engineering/config.local.yaml`（gitignore）；示例与模板见同目录 `config.local.example.yaml`。
-- **不要**在仓库中引入「全应用唯一厂商 API Key」环境变量作为产品前提；密钥按 Provider 存库（见需求文档 R2）。
+## 工作流
 
-## Compound Engineering 工作流
-
-| 目的                        | 技能 / 命令                                                                      |
-| --------------------------- | -------------------------------------------------------------------------------- |
-| 发散需求、落盘 requirements | `/ce-brainstorm` → `docs/brainstorms/*-requirements.md`                          |
-| 结构化实现计划              | `/ce-plan` → `docs/plans/`                                                       |
-| 环境与健康检查              | `/ce-setup`（本仓库无自带 `scripts/check-health` 时，使用插件内脚本，见 README） |
+本项目使用 Compound Engineering（CE） 与 Superpowers（SP） 技能进行工作流管理。
+工作时应当主动识别用户意图并且调用工作流内相关技能。
+两个工作流存在较大功能重叠和冲突，以 CE 为主，SP 为补充。
 
 ## 实现时注意
 
@@ -71,7 +62,7 @@
 
 ## 测试与 TDD（默认）
 
-- **纪律**：CE（`ce-plan` / `ce-work`）对测试先行只有弱提示；在本仓库内，对**可自动化验证的行为**（新功能、缺陷修复、重构、行为变更），默认遵循 **Superpowers `test-driven-development` 技能**的 TDD 哲学：先写**失败**测试并确认失败符合预期（RED），再写**最少**实现通过（GREEN），再重构（REFACTOR）；**未见过测试失败，不得认为测对了行为**。动手实现前应在 Cursor 中 **@** 阅读该技能 `SKILL.md`，不要只凭摘要执行。
+- **纪律**：CE对测试先行只有弱提示；在本仓库内，对**可自动化验证的行为**（新功能、缺陷修复、重构、行为变更），默认遵循 **Superpowers `test-driven-development` 技能**的 TDD 哲学：先写**失败**测试并确认失败符合预期（RED），再写**最少**实现通过（GREEN），再重构（REFACTOR）；**未见过测试失败，不得认为测对了行为**。
 - **与计划的关系**：若 `ce-plan` 中实现单元带有 `Execution note`（如 test-first、characterization-first），**以该 note 为准**，并与本节一并遵守（更具体、更严者优先）。
 - **命令与栈**：`bun test`（Vitest）；组件测遵循 **Testing Library** 惯例。
 - **务实豁免**（须在对话或 PR 中**简短声明**；拿不准时**不要**豁免，按 TDD 做）：

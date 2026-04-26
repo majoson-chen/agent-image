@@ -2,6 +2,9 @@
   "plugins": {
     "prisma": {
       "enabled": true
+    },
+    "superpowers": {
+      "enabled": true
     }
   }
 }
