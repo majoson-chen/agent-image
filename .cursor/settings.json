@@ -1,10 +1,10 @@
 {
-  "plugins": {
-    "prisma": {
-      "enabled": true
-    },
-    "superpowers": {
-      "enabled": true
+    "plugins": {
+        "prisma": {
+            "enabled": true
+        },
+        "superpowers": {
+            "enabled": true
+        }
     }
-  }
 }

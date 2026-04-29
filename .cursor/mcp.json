@@ -1,0 +1,7 @@
+{
+    "mcpServers": {
+        "ark-docs-mcp": {
+            "url": "https://sd6j8o9hu8aldae0o6es0.apigateway-cn-beijing.volceapi.com/mcp"
+        }
+    }
+}

@@ -1,11 +1,7 @@
 ---
-description: daisyUI 5
-alwaysApply: true
-applyTo: "**"
-downloadedFrom: https://daisyui.com/llms.txt
-version: 5.5.x
+description: daisyUI 5 规则，用于组件和样式编写
+alwaysApply: false
 ---
-
 # daisyUI 5
 daisyUI 5 is a CSS library for Tailwind CSS 4
 daisyUI 5 provides class names for common UI components

@@ -206,7 +206,7 @@
                           "fill": "#ecf9ff",
                           "textGrowth": "fixed-width",
                           "width": 580,
-                          "content": "目标与约束清楚。按推荐路径：先 web-search 收敛关键词与色板，再 image-search 找可作参考的霓虹/雨夜图；信息对齐后主生图。生图工具走 UI 闸：你点「允许」后才会打真实生图 API。",
+                          "content": "目标与约束清楚。按推荐路径：先 web-search 收敛关键词与色板，再 image-search 找可作参考的霓虹/雨夜图；信息对齐后主生图。生图工具走 UI 闸：你点「确认」后才会打真实生图 API。",
                           "lineHeight": 1.4,
                           "fontFamily": "Inter",
                           "fontSize": 14,
@@ -580,7 +580,7 @@
                           "fill": "#ecf9ff",
                           "textGrowth": "fixed-width",
                           "width": 560,
-                          "content": "是否允许使用主生图模型与当前上下文生成 1 张预览？",
+                          "content": "是否确认调用主生图工具：基于当前上下文生成 1 张预览？",
                           "lineHeight": 1.35,
                           "fontFamily": "Inter",
                           "fontSize": 12,
@@ -609,7 +609,7 @@
                                   "id": "3y9u2",
                                   "name": "r15xt",
                                   "fill": "#ecf9ff",
-                                  "content": "拒绝或跳过",
+                                  "content": "拒绝",
                                   "fontFamily": "Inter",
                                   "fontSize": 12,
                                   "fontWeight": "normal"
@@ -632,7 +632,7 @@
                                   "id": "5hD8t",
                                   "name": "r15yt",
                                   "fill": "#edf1fe",
-                                  "content": "允许",
+                                  "content": "确认",
                                   "fontFamily": "Inter",
                                   "fontSize": 13,
                                   "fontWeight": "600"
@@ -752,83 +752,6 @@
                           "lineHeight": 1.4,
                           "fontFamily": "Inter",
                           "fontSize": 14,
-                          "fontWeight": "normal"
-                        }
-                      ]
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "zicjj",
-                  "name": "tc",
-                  "width": "fill_container",
-                  "fill": "#191e24",
-                  "cornerRadius": 10,
-                  "layout": "vertical",
-                  "gap": 6,
-                  "padding": [
-                    12,
-                    14
-                  ],
-                  "children": [
-                    {
-                      "type": "frame",
-                      "id": "z95sM",
-                      "name": "tch",
-                      "width": "fill_container",
-                      "gap": 8,
-                      "alignItems": "center",
-                      "children": [
-                        {
-                          "type": "text",
-                          "id": "TIa0k",
-                          "name": "tcn",
-                          "opacity": 0.65,
-                          "fill": "#ecf9ff",
-                          "content": "工具 · task_complete",
-                          "fontFamily": "JetBrains Mono",
-                          "fontSize": 12,
-                          "fontWeight": "normal"
-                        },
-                        {
-                          "type": "text",
-                          "id": "zeg1S",
-                          "name": "tcs",
-                          "opacity": 0.5,
-                          "fill": "#ecf9ff",
-                          "content": "已调用",
-                          "fontFamily": "Inter",
-                          "fontSize": 11,
-                          "fontWeight": "normal"
-                        }
-                      ]
-                    },
-                    {
-                      "type": "frame",
-                      "id": "235tT",
-                      "name": "toolParams",
-                      "width": "fill_container",
-                      "fill": "#15191e",
-                      "cornerRadius": 8,
-                      "layout": "vertical",
-                      "padding": [
-                        10,
-                        12
-                      ],
-                      "children": [
-                        {
-                          "type": "text",
-                          "id": "Nroxz",
-                          "name": "pwttc",
-                          "opacity": 0.85,
-                          "fill": "#ecf9ff",
-                          "textGrowth": "fixed-width",
-                          "width": 540,
-                          "content": "▸ {}",
-                          "lineHeight": 1.25,
-                          "fontFamily": "JetBrains Mono",
-                          "fontSize": 11,
                           "fontWeight": "normal"
                         }
                       ]
@@ -1309,7 +1232,7 @@
       "id": "EZph5",
       "x": 1520,
       "y": 0,
-      "name": "02-R3-门闸-未选齐",
+      "name": "02-R3-门闸-未选 LLM",
       "width": 1440,
       "height": 900,
       "fill": "#1d232a",
@@ -1546,7 +1469,7 @@
                       "fill": "#ff627d",
                       "textGrowth": "fixed-width",
                       "width": 900,
-                      "content": "R3 门闸：请先选择 LLM 与主生图后再发送。",
+                      "content": "R3 门闸：请先选定 LLM 后再发送（主 / 次生图为可选项；未选主生图时 Agent 通过文本告知能力缺失）。",
                       "fontFamily": "Inter",
                       "fontSize": 12,
                       "fontWeight": "normal"
@@ -1753,7 +1676,7 @@
                   "fill": "#ecf9ff",
                   "textGrowth": "fixed-width",
                   "width": 600,
-                  "content": "是否允许使用主生图模型与当前对话上下文生成 1 张预览？无倒计时。",
+                  "content": "是否确认调用主生图工具：基于当前对话上下文生成 1 张预览？（无倒计时）",
                   "lineHeight": 1.35,
                   "fontFamily": "Inter",
                   "fontSize": 12,
@@ -1782,7 +1705,7 @@
                           "id": "PX31N",
                           "name": "rdt",
                           "fill": "#ecf9ff",
-                          "content": "拒绝或跳过",
+                          "content": "拒绝",
                           "fontFamily": "Inter",
                           "fontSize": 12,
                           "fontWeight": "normal"
@@ -1805,7 +1728,7 @@
                           "id": "XmZxP",
                           "name": "rot",
                           "fill": "#edf1fe",
-                          "content": "允许",
+                          "content": "确认",
                           "fontFamily": "Inter",
                           "fontSize": 13,
                           "fontWeight": "600"
