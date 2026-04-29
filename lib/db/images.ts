@@ -10,11 +10,13 @@ interface CreateImageInput {
     width?: number | null
     height?: number | null
     modelIdAtTime?: string | null
+    /** 仅 URL_FETCHED 时传入 */
+    originalUrl?: string | null
     buffer: Buffer
 }
 
 export async function createImage(prisma: PrismaClient, input: CreateImageInput) {
-    const { conversationId, source, mimeType, sizeBytes, width, height, modelIdAtTime, buffer } = input
+    const { conversationId, source, mimeType, sizeBytes, width, height, modelIdAtTime, originalUrl, buffer } = input
 
     const imageId = crypto.randomUUID()
 
@@ -32,6 +34,7 @@ export async function createImage(prisma: PrismaClient, input: CreateImageInput)
                 width: width ?? null,
                 height: height ?? null,
                 modelIdAtTime: modelIdAtTime ?? null,
+                originalUrl: originalUrl ?? null,
             },
         })
     }

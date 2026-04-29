@@ -147,6 +147,42 @@ describe('listImages', () => {
     })
 })
 
+describe('createImage URL_FETCHED', () => {
+    it('creates DB row with source URL_FETCHED and originalUrl round-trips correctly', async () => {
+        const createImage = await getCreateImage()
+        const conv = await prisma.conversation.create({ data: {} })
+
+        const img = await createImage(prisma, {
+            conversationId: conv.id,
+            source: 'URL_FETCHED',
+            mimeType: 'image/png',
+            sizeBytes: pngBuffer.length,
+            originalUrl: 'https://example.com/test.png',
+            buffer: pngBuffer,
+        })
+
+        expect(img.source).toBe('URL_FETCHED')
+        expect(img.originalUrl).toBe('https://example.com/test.png')
+        expect(img.modelIdAtTime).toBeNull()
+    })
+
+    it('creates URL_FETCHED row without originalUrl (nullable)', async () => {
+        const createImage = await getCreateImage()
+        const conv = await prisma.conversation.create({ data: {} })
+
+        const img = await createImage(prisma, {
+            conversationId: conv.id,
+            source: 'URL_FETCHED',
+            mimeType: 'image/png',
+            sizeBytes: pngBuffer.length,
+            buffer: pngBuffer,
+        })
+
+        expect(img.source).toBe('URL_FETCHED')
+        expect(img.originalUrl).toBeNull()
+    })
+})
+
 describe('createImage error paths', () => {
     it('does not create DB row when write fails', async () => {
         const { createImage, getImage } = await import('../../lib/db/images')

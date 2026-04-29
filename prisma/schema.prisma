@@ -28,6 +28,7 @@ enum ProviderType {
 enum ImageSource {
   USER_UPLOAD
   GENERATED
+  URL_FETCHED
 }
 
 enum SearchTool {
@@ -126,6 +127,8 @@ model Image {
   height         Int?
   /// 仅 GENERATED 时非 null（app 层校验）；删除 Model 时保留历史图像记录
   modelIdAtTime  String?
+  /// 仅 URL_FETCHED 时非 null（app 层校验）
+  originalUrl    String?
   createdAt      DateTime    @default(now())
 
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
