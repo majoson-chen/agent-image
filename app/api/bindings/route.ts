@@ -1,8 +1,8 @@
 import type { PrismaClient, SearchTool } from '../../../generated/prisma/client'
 import { NextResponse } from 'next/server'
+import { getModel } from '../../../lib/db/models'
 import { clearBinding, getAllBindings, setBinding } from '../../../lib/db/search-tool-bindings'
 import prismaDefault from '../../../lib/prisma'
-import { getModel } from '../../../lib/db/models'
 
 interface RouteContext { prisma?: PrismaClient }
 
@@ -20,7 +20,7 @@ export async function PUT(req: Request, ctx: RouteContext = {}) {
     try { body = await req.json() }
     catch { return NextResponse.json({ error: '无效 JSON' }, { status: 400 }) }
 
-    const { tool, modelId } = body as { tool?: unknown; modelId?: unknown }
+    const { tool, modelId } = body as { tool?: unknown, modelId?: unknown }
 
     if (!tool || !VALID_TOOLS.includes(tool as SearchTool))
         return NextResponse.json({ error: `tool 必须为 ${VALID_TOOLS.join(' 或 ')}` }, { status: 422 })

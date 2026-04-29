@@ -32,9 +32,9 @@ export default function RootLayout({
                     'bg-base-100 font-sans text-base-content antialiased',
                 )}
             >
-                <div className="flex h-dvh overflow-hidden">
+                <div className="flex h-dvh">
                     <Sidebar />
-                    <main className="flex-1 overflow-hidden">
+                    <main className="flex-1 overflow-y-auto">
                         {children}
                     </main>
                 </div>

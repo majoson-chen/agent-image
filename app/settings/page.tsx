@@ -1,7 +1,8 @@
 import { Suspense } from 'react'
-import { getAllBindings } from '../../lib/db/search-tool-bindings'
 import { listModels } from '../../lib/db/models'
+import { getAllBindings } from '../../lib/db/search-tool-bindings'
 import prisma from '../../lib/prisma'
+import { ImageModelList } from './ImageModelList'
 import { LlmModelList } from './LlmModelList'
 import { SearchModelList } from './SearchModelList'
 import { SearchToolBindingForm } from './SearchToolBindingForm'
@@ -31,6 +32,18 @@ export default async function SettingsPage() {
                 <h2 className="mb-4 text-lg font-medium text-base-content">Search 模型</h2>
                 <Suspense fallback={<span className="loading loading-spinner" />}>
                     <SearchModelList />
+                </Suspense>
+            </section>
+
+            <div className="divider" />
+
+            <section className="mb-8">
+                <h2 className="mb-4 text-lg font-medium text-base-content">生图模型</h2>
+                <p className="mb-4 text-sm text-base-content/60">
+                    配置火山方舟 Seedream 生图模型，含支持的分辨率与参考图上限。
+                </p>
+                <Suspense fallback={<span className="loading loading-spinner" />}>
+                    <ImageModelList />
                 </Suspense>
             </section>
 

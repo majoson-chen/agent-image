@@ -55,6 +55,18 @@ describe('setSelection', () => {
     })
 })
 
+describe('setSelection with params (M3)', () => {
+    it('sets IMAGE_PRIMARY with size param', async () => {
+        const model = await prisma.model.create({
+            data: { type: 'IMAGE', name: 'params-sel', providerType: 'VOLCENGINE_SEEDREAM', apiKey: 'k' },
+        })
+        const conv = await createConversation(prisma)
+        await setSelection(prisma, conv.id, 'IMAGE_PRIMARY', model.id, { size: '2048x2048' })
+        const sel = await getSelection(prisma, conv.id, 'IMAGE_PRIMARY')
+        expect(sel?.params).toEqual({ size: '2048x2048' })
+    })
+})
+
 describe('getAllSelections', () => {
     it('returns all three roles (some null)', async () => {
         const model = await createLlmModel(prisma, {

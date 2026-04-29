@@ -8,15 +8,20 @@ function isPrivateIPv4(hostname: string): boolean {
 
     const [a, b, c] = parts
     // 127.0.0.0/8
-    if (a === 127) return true
+    if (a === 127)
+        return true
     // 10.0.0.0/8
-    if (a === 10) return true
+    if (a === 10)
+        return true
     // 172.16.0.0/12
-    if (a === 172 && b >= 16 && b <= 31) return true
+    if (a === 172 && b >= 16 && b <= 31)
+        return true
     // 192.168.0.0/16
-    if (a === 192 && b === 168) return true
+    if (a === 192 && b === 168)
+        return true
     // 169.254.0.0/16（链路本地）
-    if (a === 169 && b === 254) return true
+    if (a === 169 && b === 254)
+        return true
 
     return false
 }
@@ -26,11 +31,14 @@ function isPrivateIPv6(hostname: string): boolean {
     // 去掉方括号（URL 中 IPv6 地址形如 [::1]）
     const h = hostname.replace(/^\[|\]$/g, '').toLowerCase()
     // ::1 回环
-    if (h === '::1') return true
+    if (h === '::1')
+        return true
     // fc00::/7 (fc 或 fd 开头)
-    if (h.startsWith('fc') || h.startsWith('fd')) return true
+    if (h.startsWith('fc') || h.startsWith('fd'))
+        return true
     // fe80::/10 (link-local)
-    if (h.startsWith('fe8') || h.startsWith('fe9') || h.startsWith('fea') || h.startsWith('feb')) return true
+    if (h.startsWith('fe8') || h.startsWith('fe9') || h.startsWith('fea') || h.startsWith('feb'))
+        return true
     return false
 }
 

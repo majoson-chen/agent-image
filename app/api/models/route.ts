@@ -1,8 +1,9 @@
 import type { PrismaClient } from '../../../generated/prisma/client'
 import { NextResponse } from 'next/server'
 import { ZodError } from 'zod'
-import { createLlmModel, createSearchModel, listModels } from '../../../lib/db/models'
+import { createImageModel, createLlmModel, createSearchModel, listModels } from '../../../lib/db/models'
 import prismaDefault from '../../../lib/prisma'
+import { imageModelInputSchema } from '../../../lib/validation/image-model-schema'
 import { llmModelInputSchema } from '../../../lib/validation/llm-model-schema'
 import { searchModelInputSchema } from '../../../lib/validation/search-model-schema'
 
@@ -30,6 +31,11 @@ export async function POST(req: Request, ctx: RouteContext = {}) {
         if (bodyType === 'SEARCH') {
             const parsed = searchModelInputSchema.parse(body)
             const model = await createSearchModel(db, parsed)
+            return NextResponse.json(model, { status: 201 })
+        }
+        if (bodyType === 'IMAGE') {
+            const parsed = imageModelInputSchema.parse(body)
+            const model = await createImageModel(db, parsed)
             return NextResponse.json(model, { status: 201 })
         }
         // 默认 LLM（向后兼容旧请求不带 type 字段）

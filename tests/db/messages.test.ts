@@ -4,9 +4,9 @@
  */
 import type { PrismaClient } from '../../generated/prisma/client'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { createConversation } from '../../lib/db/conversations'
 import { appendUserMessage, listMessages, upsertAssistantMessage } from '../../lib/db/messages'
 import { createLlmModel } from '../../lib/db/models'
-import { createConversation } from '../../lib/db/conversations'
 import { createTestDb } from '../helpers/db'
 
 let prisma: PrismaClient
@@ -124,7 +124,7 @@ describe('upsertAssistantMessage', () => {
 })
 
 describe('listMessages parts field', () => {
-    it('M1 legacy message (no parts) returns parts=null', async () => {
+    it('m1 legacy message (no parts) returns parts=null', async () => {
         const conv = await createConversation(prisma)
         await appendUserMessage(prisma, conv.id, 'hi')
         // 直接 create 模拟旧 M1 消息（不设 parts）

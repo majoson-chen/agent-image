@@ -22,9 +22,9 @@ export function getGateHint({ llmSelected }: { llmSelected: boolean }): string |
     return null
 }
 
-type SubmitButtonState =
-    | { kind: 'send'; disabled: boolean }
-    | { kind: 'stop' }
+type SubmitButtonState
+    = | { kind: 'send', disabled: boolean }
+        | { kind: 'stop' }
 
 interface SubmitButtonOptions {
     status: ChatStatus
@@ -38,4 +38,9 @@ export function getSubmitButtonState({ status, llmSelected, inputEmpty }: Submit
     // ready 或 error 状态显示「发送」
     const disabled = !llmSelected || inputEmpty
     return { kind: 'send', disabled }
+}
+
+/** 判断是否还可以继续上传参考图 */
+export function canUploadMore({ count, max }: { count: number, max: number }): boolean {
+    return count < max
 }

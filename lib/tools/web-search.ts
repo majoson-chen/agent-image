@@ -1,6 +1,6 @@
-import 'server-only'
 import { tool } from 'ai'
 import { z } from 'zod'
+import 'server-only'
 
 export function createWebSearchTool(apiKey: string) {
     return tool({
@@ -23,7 +23,7 @@ export function createWebSearchTool(apiKey: string) {
             if (!res.ok)
                 throw new Error(`Brave web-search ${res.status}: request failed`)
 
-            const json = await res.json() as { web?: { results?: Array<{ title?: string; url?: string; description?: string }> } }
+            const json = await res.json() as { web?: { results?: Array<{ title?: string, url?: string, description?: string }> } }
             const items = (json.web?.results ?? []).map(r => ({
                 title: r.title ?? '',
                 url: r.url ?? '',

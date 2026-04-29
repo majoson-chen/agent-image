@@ -16,7 +16,7 @@ interface UpsertAssistantMessageInput {
 
 function extractTextContent(parts: unknown[]): string {
     return parts
-        .filter((p): p is { type: string; text: string } =>
+        .filter((p): p is { type: string, text: string } =>
             typeof p === 'object' && p !== null && (p as { type: string }).type === 'text',
         )
         .map(p => p.text)

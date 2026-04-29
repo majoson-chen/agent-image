@@ -1,7 +1,9 @@
 import type { ModelType, PrismaClient } from '../../generated/prisma/client'
+import type { ImageModelInput } from '../validation/image-model-schema'
 import type { LlmModelInput } from '../validation/llm-model-schema'
-import { llmModelInputSchema } from '../validation/llm-model-schema'
 import type { SearchModelInput } from '../validation/search-model-schema'
+import { imageModelInputSchema } from '../validation/image-model-schema'
+import { llmModelInputSchema } from '../validation/llm-model-schema'
 import { searchModelInputSchema } from '../validation/search-model-schema'
 
 export async function listModels(prisma: PrismaClient, type?: ModelType) {
@@ -63,6 +65,19 @@ export async function createSearchModel(prisma: PrismaClient, input: SearchModel
             name: parsed.name,
             providerType: parsed.providerType,
             apiKey: parsed.apiKey,
+        },
+    })
+}
+
+export async function createImageModel(prisma: PrismaClient, input: ImageModelInput) {
+    const parsed = imageModelInputSchema.parse(input)
+    return prisma.model.create({
+        data: {
+            type: 'IMAGE',
+            name: parsed.name,
+            providerType: parsed.providerType,
+            apiKey: parsed.apiKey,
+            capabilities: parsed.capabilities as unknown as object,
         },
     })
 }

@@ -9,10 +9,10 @@
  * 4. 无 LLM 选型时返回 400
  */
 import type { PrismaClient } from '../../../generated/prisma/client'
-import { convertArrayToReadableStream, MockLanguageModelV3 } from 'ai/test'
 import { tool } from 'ai'
-import { z } from 'zod'
+import { convertArrayToReadableStream, MockLanguageModelV3 } from 'ai/test'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
+import { z } from 'zod'
 import { POST } from '../../../app/api/chat/route'
 import { createConversation } from '../../../lib/db/conversations'
 import { aggregateUsage, appendUserMessage, listMessages } from '../../../lib/db/messages'
@@ -164,7 +164,7 @@ describe('pOST /api/chat', () => {
         const msgs = await listMessages(prisma, conv.id)
         const assistant = msgs.find(m => m.role === 'ASSISTANT')
         expect(assistant).toBeDefined()
-        const parts = assistant!.parts as Array<{ type: string; state?: string }>
+        const parts = assistant!.parts as Array<{ type: string, state?: string }>
         const toolPart = parts.find(p => p.type === 'tool-echo-tool')
         expect(toolPart).toBeDefined()
         expect(toolPart?.state).toBe('output-available')
@@ -219,7 +219,7 @@ describe('pOST /api/chat', () => {
         const msgs = await listMessages(prisma, conv.id)
         const assistant = msgs.find(m => m.role === 'ASSISTANT')
         expect(assistant).toBeDefined()
-        const parts = assistant!.parts as Array<{ type: string; state?: string; errorText?: string }>
+        const parts = assistant!.parts as Array<{ type: string, state?: string, errorText?: string }>
         const toolPart = parts.find(p => p.type === 'tool-fail-tool')
         expect(toolPart?.state).toBe('output-error')
         expect(toolPart?.errorText).toContain('failed')

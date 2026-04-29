@@ -1,8 +1,7 @@
+import type { StepResult, ToolSet } from 'ai'
 import 'server-only'
-import type { StepResult } from 'ai'
-import type { ToolSet } from 'ai'
 
-type UIMessagePart = { type: string; [key: string]: unknown }
+interface UIMessagePart { type: string, [key: string]: unknown }
 
 /**
  * 把一个 StepResult 的 content 追加到 UIMessage parts 数组（纯函数）。

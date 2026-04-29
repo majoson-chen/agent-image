@@ -16,14 +16,14 @@
 
 ## daisyUI 语义色（与产品含义）
 
-| daisyUI 角色                  | 用途                 |
-| ----------------------------- | -------------------- |
-| `base-100` / `200` / `300`    | 画布、侧栏、抬升与边 |
-| `base-content`                | 主正文               |
-| `primary` / `primary-content` | 主 CTA               |
-| `secondary` / `accent`        | 次要强调             |
-| `neutral`                     | 低饱和 UI 块         |
-| `info` / `success` / `warning` / `error` | 状态与 R16  |
+| daisyUI 角色                             | 用途                 |
+| ---------------------------------------- | -------------------- |
+| `base-100` / `200` / `300`               | 画布、侧栏、抬升与边 |
+| `base-content`                           | 主正文               |
+| `primary` / `primary-content`            | 主 CTA               |
+| `secondary` / `accent`                   | 次要强调             |
+| `neutral`                                | 低饱和 UI 块         |
+| `info` / `success` / `warning` / `error` | 状态与 R16           |
 
 ## 主题切换（与当前 `globals.css` 一致）
 

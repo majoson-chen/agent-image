@@ -1,8 +1,8 @@
-import 'server-only'
 import type { PrismaClient } from '../generated/prisma/client'
 import { createImage, getImage } from './db/images'
 import { detectMime } from './images/mime'
 import { readImageBuffer } from './images/storage'
+import 'server-only'
 
 interface ImageModelRecord {
     id: string

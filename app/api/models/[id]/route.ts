@@ -36,7 +36,7 @@ export async function PATCH(req: Request, { params, prisma }: RouteContext) {
         return NextResponse.json({ error: '未找到' }, { status: 404 })
 
     if (existing.type === 'SEARCH') {
-        const model = await updateSearchModel(db, id, body as { name?: string; apiKey?: string })
+        const model = await updateSearchModel(db, id, body as { name?: string, apiKey?: string })
         return NextResponse.json(model)
     }
 

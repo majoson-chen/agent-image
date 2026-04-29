@@ -15,6 +15,7 @@
 
 - **运行时 / 包管理：** [Bun](https://bun.sh)（`bun install`、`bun dev`）
 - **框架：** Next.js（App Router）、React、TypeScript
+- **TypeScript 路径别名（`tsconfig.json` · `baseUrl` `.` · `paths`）：** `@/*` → `./app/*`，`@lib/*` → `./lib/*`，`~` → `./`（仓库根）
 - **数据：** SQLite + Prisma（`@prisma/adapter-better-sqlite3`），客户端生成目录 `generated/prisma/`
 - **对话与工具（规划）：** Vercel AI SDK；敏感能力走服务端 Route Handler（如 web-fetch）
 - **编辑器：** 已在 Cursor 安装 **Prisma 扩展（插件）**。修改 `prisma/schema.prisma`、查看模型与迁移、使用扩展提供的补全/格式化/数据库视图时，以扩展为准；**迁移与 generate** 仍以项目内 Prisma CLI 为准（例如 `bun --bun run prisma migrate dev`、`prisma generate`，见 `prisma.config.ts`）。
@@ -43,10 +44,10 @@
 | `vercel-react-view-transitions` | View Transition API、路由/列表过渡、`<ViewTransition>` 与 Next 集成                                   |
 | `ast-grep`                      | 按 AST 结构搜索/盘点代码（复杂模式优于纯文本 grep）                                                   |
 
-| MCP                        | 适用场景                                                                                              |
-| ------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `ark-docs-mcp`                 | 字节火山云 MCP，用于查询火山云文档 |
-| `context7-mcp`                 | 用于查询框架类型文档的实用工具，查询框架文档时优于直接联网搜索 |
+| MCP            | 适用场景                                                       |
+| -------------- | -------------------------------------------------------------- |
+| `ark-docs-mcp` | 字节火山云 MCP，用于查询火山云文档                             |
+| `context7-mcp` | 用于查询框架类型文档的实用工具，查询框架文档时优于直接联网搜索 |
 
 ## 工作流
 
@@ -71,10 +72,10 @@
 - **与计划的关系**：若 `ce-plan` 中实现单元带有 `Execution note`（如 test-first、characterization-first），**以该 note 为准**，并与本节一并遵守（更具体、更严者优先）。
 - **命令与栈**：`bun test`（Vitest）；组件测遵循 **Testing Library** 惯例。
 - **务实豁免**（须在对话或 PR 中**简短声明**；拿不准时**不要**豁免，按 TDD 做）：
-  - 纯样式 / 布局调整（如仅 Tailwind、daisyUI 类名）且无行为变化；
-  - 仅改文案或注释；
-  - 纯配置、生成物或脚手架（例如仅格式化、无新行为的迁移/配置），性质与 Superpowers 技能中「配置/生成代码」类例外一致且已由本仓库预先列明；
-  - 用户或当前任务**明确**声明本次不写测试。
+    - 纯样式 / 布局调整（如仅 Tailwind、daisyUI 类名）且无行为变化；
+    - 仅改文案或注释；
+    - 纯配置、生成物或脚手架（例如仅格式化、无新行为的迁移/配置），性质与 Superpowers 技能中「配置/生成代码」类例外一致且已由本仓库预先列明；
+    - 用户或当前任务**明确**声明本次不写测试。
 
 ## 前端 / 代码风格
 

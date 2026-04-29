@@ -1,7 +1,7 @@
-import 'server-only'
 import { tool } from 'ai'
 import { z } from 'zod'
 import { assertPublicHttpUrl } from './ssrf-guard'
+import 'server-only'
 
 const MAX_TEXT_BYTES = 50_000
 const FETCH_TIMEOUT_MS = 30_000

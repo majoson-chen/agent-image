@@ -4,7 +4,7 @@
 import type { PrismaClient } from '../../generated/prisma/client'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { DELETE, GET, PUT } from '../../app/api/bindings/route'
-import { createSearchModel, createLlmModel } from '../../lib/db/models'
+import { createLlmModel, createSearchModel } from '../../lib/db/models'
 import { createTestDb } from '../helpers/db'
 
 let prisma: PrismaClient

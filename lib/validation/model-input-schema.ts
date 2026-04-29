@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { imageModelInputSchema } from './image-model-schema'
 import { searchModelInputSchema } from './search-model-schema'
 
 // LLM 分支（含 type 鉴别字段，用于 discriminatedUnion）
@@ -21,9 +22,9 @@ const llmBranchSchema = z.object({
     }
 })
 
-// 鉴别联合：搜索分支额外补 type 字段（供 modelInputSchema 区分用）
 const searchBranchSchema = searchModelInputSchema.extend({ type: z.literal('SEARCH') })
+const imageBranchSchema = imageModelInputSchema.extend({ type: z.literal('IMAGE') })
 
-export const modelInputSchema = z.union([llmBranchSchema, searchBranchSchema])
+export const modelInputSchema = z.union([llmBranchSchema, searchBranchSchema, imageBranchSchema])
 
 export type ModelInput = z.infer<typeof modelInputSchema>

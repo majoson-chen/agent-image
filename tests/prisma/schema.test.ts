@@ -121,7 +121,7 @@ describe('conversation + Message cascade', () => {
     })
 })
 
-describe('BRAVE_SEARCH model + SearchToolBinding', () => {
+describe('bRAVE_SEARCH model + SearchToolBinding', () => {
     it('creates a BRAVE_SEARCH model', async () => {
         const m = await prisma.model.create({
             data: {
@@ -194,7 +194,7 @@ describe('BRAVE_SEARCH model + SearchToolBinding', () => {
     })
 })
 
-describe('Message.parts column', () => {
+describe('message.parts column', () => {
     it('writes and reads back parts JSON', async () => {
         const conv = await prisma.conversation.create({ data: {} })
         const parts = [
@@ -208,13 +208,146 @@ describe('Message.parts column', () => {
         expect(found.parts).toEqual(parts)
     })
 
-    it('M1 legacy message parts=null stays null', async () => {
+    it('m1 legacy message parts=null stays null', async () => {
         const conv = await prisma.conversation.create({ data: {} })
         const msg = await prisma.message.create({
             data: { conversationId: conv.id, role: 'ASSISTANT', content: 'legacy' },
         })
         const found = await prisma.message.findUniqueOrThrow({ where: { id: msg.id } })
         expect(found.parts).toBeNull()
+    })
+})
+
+describe('vOLCENGINE_SEEDREAM model (M3)', () => {
+    it('creates a VOLCENGINE_SEEDREAM model with IMAGE type', async () => {
+        const m = await prisma.model.create({
+            data: {
+                type: 'IMAGE',
+                name: 'doubao-seedream-4-5-251128',
+                providerType: 'VOLCENGINE_SEEDREAM',
+                apiKey: 'ark-test-key',
+                capabilities: { supportedSizes: ['1024x1024', '2048x2048'], maxReferenceImages: 14, supportsSeed: false },
+            },
+        })
+        expect(m.type).toBe('IMAGE')
+        expect(m.providerType).toBe('VOLCENGINE_SEEDREAM')
+        expect(m.capabilities).toMatchObject({ maxReferenceImages: 14 })
+    })
+})
+
+describe('image table (M3)', () => {
+    it('creates USER_UPLOAD Image and reads back', async () => {
+        const conv = await prisma.conversation.create({ data: {} })
+        const img = await prisma.image.create({
+            data: {
+                conversationId: conv.id,
+                source: 'USER_UPLOAD',
+                mimeType: 'image/png',
+                sizeBytes: 1024,
+                width: 100,
+                height: 100,
+            },
+        })
+        expect(img.source).toBe('USER_UPLOAD')
+        expect(img.modelIdAtTime).toBeNull()
+
+        const found = await prisma.image.findUniqueOrThrow({
+            where: { id: img.id },
+            include: { conversation: true },
+        })
+        expect(found.conversation.id).toBe(conv.id)
+    })
+
+    it('creates GENERATED Image with modelIdAtTime', async () => {
+        const model = await prisma.model.create({
+            data: {
+                type: 'IMAGE',
+                name: 'seedream-gen-test',
+                providerType: 'VOLCENGINE_SEEDREAM',
+                apiKey: 'key',
+            },
+        })
+        const conv = await prisma.conversation.create({ data: {} })
+        const img = await prisma.image.create({
+            data: {
+                conversationId: conv.id,
+                source: 'GENERATED',
+                mimeType: 'image/jpeg',
+                sizeBytes: 2048,
+                modelIdAtTime: model.id,
+            },
+        })
+        expect(img.source).toBe('GENERATED')
+        expect(img.modelIdAtTime).toBe(model.id)
+    })
+
+    it('cascades delete Conversation → Image rows deleted', async () => {
+        const conv = await prisma.conversation.create({ data: {} })
+        await prisma.image.create({
+            data: { conversationId: conv.id, source: 'USER_UPLOAD', mimeType: 'image/png', sizeBytes: 100 },
+        })
+        await prisma.conversation.delete({ where: { id: conv.id } })
+        const images = await prisma.image.findMany({ where: { conversationId: conv.id } })
+        expect(images).toHaveLength(0)
+    })
+
+    it('sets modelIdAtTime to null when Model is deleted (SetNull)', async () => {
+        const model = await prisma.model.create({
+            data: {
+                type: 'IMAGE',
+                name: 'setnull-test',
+                providerType: 'VOLCENGINE_SEEDREAM',
+                apiKey: 'key',
+            },
+        })
+        const conv = await prisma.conversation.create({ data: {} })
+        const img = await prisma.image.create({
+            data: {
+                conversationId: conv.id,
+                source: 'GENERATED',
+                mimeType: 'image/png',
+                sizeBytes: 100,
+                modelIdAtTime: model.id,
+            },
+        })
+        await prisma.model.delete({ where: { id: model.id } })
+        const updated = await prisma.image.findUniqueOrThrow({ where: { id: img.id } })
+        expect(updated.modelIdAtTime).toBeNull()
+    })
+})
+
+describe('conversationModelSelection.params (M3)', () => {
+    it('writes and reads back params JSON for IMAGE_PRIMARY', async () => {
+        const model = await prisma.model.create({
+            data: {
+                type: 'IMAGE',
+                name: 'params-test',
+                providerType: 'VOLCENGINE_SEEDREAM',
+                apiKey: 'key',
+            },
+        })
+        const conv = await prisma.conversation.create({ data: {} })
+        const sel = await prisma.conversationModelSelection.create({
+            data: { conversationId: conv.id, role: 'IMAGE_PRIMARY', modelId: model.id, params: { size: '2048x2048' } },
+        })
+        expect(sel.params).toEqual({ size: '2048x2048' })
+    })
+
+    it('m2 legacy selection params is null', async () => {
+        const model = await prisma.model.create({
+            data: {
+                type: 'LLM',
+                name: 'legacy-params',
+                providerType: 'OPENAI',
+                apiKey: 'sk-leg',
+                contextWindow: 4000,
+            },
+        })
+        const conv = await prisma.conversation.create({ data: {} })
+        const sel = await prisma.conversationModelSelection.create({
+            data: { conversationId: conv.id, role: 'LLM', modelId: model.id },
+        })
+        expect(sel.params).toBeNull()
     })
 })
 
