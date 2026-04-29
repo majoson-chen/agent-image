@@ -41,6 +41,10 @@ vi.mock('../../app/conversations/[id]/ImageModelPicker', () => ({
     ImageModelPicker: () => <div data-testid="image-model-picker" />,
 }))
 
+vi.mock('../../app/conversations/[id]/LlmModelPicker', () => ({
+    LlmModelPicker: () => <div data-testid="llm-model-picker" />,
+}))
+
 afterEach(() => {
     cleanup()
     vi.clearAllMocks()
@@ -52,6 +56,8 @@ function renderChatPage(overrides: Partial<React.ComponentProps<typeof ChatPage>
         conversationId: 'conv-1',
         initialMessages: [],
         hasLlm: true,
+        llmModels: [{ id: 'm1', name: 'test-llm' }],
+        llmModelId: 'm1',
         ...overrides,
     }
     return render(<ChatPage {...defaultProps} />)

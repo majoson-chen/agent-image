@@ -46,18 +46,20 @@ export function ImageModelPicker({ conversationId, role, currentModelId, current
 
     if (availableModels.length === 0) {
         return (
-            <div className="flex flex-col gap-0.5">
+            <div className="flex min-w-32 flex-col gap-0.5">
                 <span className="text-xs text-base-content/50">{label}</span>
-                <a href="/settings" className="text-xs text-primary underline">前往设置添加</a>
+                <a href="/settings" className="text-xs text-primary underline">
+                    前往设置添加
+                </a>
             </div>
         )
     }
 
     return (
-        <div className="flex flex-col gap-1">
+        <div className="flex min-w-0 flex-col gap-1">
             <span className="text-xs text-base-content/50">{label}</span>
             <select
-                className="select select-sm select-bordered w-full max-w-[180px]"
+                className="select select-bordered select-sm w-full min-w-44 max-w-[220px]"
                 value={currentModelId ?? ''}
                 onChange={e => handleModelChange(e.target.value)}
                 disabled={pending}
@@ -69,7 +71,7 @@ export function ImageModelPicker({ conversationId, role, currentModelId, current
             </select>
             {selectedModel && sizes.length > 0 && (
                 <select
-                    className="select select-xs select-bordered w-full max-w-[180px]"
+                    className="select select-bordered select-xs w-full min-w-44 max-w-[220px]"
                     value={currentSize ?? sizes[0]}
                     onChange={e => handleSizeChange(e.target.value)}
                     disabled={pending}

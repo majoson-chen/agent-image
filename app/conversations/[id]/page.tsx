@@ -23,10 +23,11 @@ export default async function ConversationPage({ params }: Props) {
     if (!conv)
         notFound()
 
-    const [messages, selections, imageModels] = await Promise.all([
+    const [messages, selections, imageModels, llmModelRecords] = await Promise.all([
         listMessages(prisma, id),
         getAllSelections(prisma, id),
         listModels(prisma, 'IMAGE'),
+        listModels(prisma, 'LLM'),
     ])
 
     const llmModel = selections.LLM?.model
@@ -38,6 +39,7 @@ export default async function ConversationPage({ params }: Props) {
         name: m.name,
         capabilities: m.capabilities as ImageModelCapabilities | null,
     }))
+    const llmModelList = llmModelRecords.map(m => ({ id: m.id, name: m.name }))
 
     return (
         <ChatPage
@@ -53,6 +55,8 @@ export default async function ConversationPage({ params }: Props) {
                 return { id: m.id, role, parts }
             }) as UIMessage<ChatMessageMetadata>[]}
             hasLlm={Boolean(llmModel)}
+            llmModels={llmModelList}
+            llmModelId={selections.LLM?.modelId ?? null}
             contextWindow={llmModel?.contextWindow ?? undefined}
             imageModels={imageModelList}
             primaryImageModelId={primarySel?.modelId ?? null}

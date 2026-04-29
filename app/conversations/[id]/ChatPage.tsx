@@ -11,6 +11,7 @@ import { canUploadMore, getGateHint, getSubmitButtonState } from '../../../lib/c
 import { cn } from '../../../lib/cn'
 import { ContextUsageBar } from './ContextUsageBar'
 import { ImageModelPicker } from './ImageModelPicker'
+import { LlmModelPicker } from './LlmModelPicker'
 
 interface MessageMetadata {
     usage?: { inputTokens: number, outputTokens: number, totalTokens: number }
@@ -176,10 +177,17 @@ interface ImageModelInfo {
     capabilities: ImageModelCapabilities | null
 }
 
+interface LlmModelInfo {
+    id: string
+    name: string
+}
+
 interface Props {
     conversationId: string
     initialMessages: UIMessage<MessageMetadata>[]
     hasLlm: boolean
+    llmModels?: LlmModelInfo[]
+    llmModelId?: string | null
     contextWindow?: number
     imageModels?: ImageModelInfo[]
     primaryImageModelId?: string | null
@@ -252,6 +260,8 @@ export function ChatPage({
     conversationId,
     initialMessages,
     hasLlm,
+    llmModels = [],
+    llmModelId = null,
     contextWindow,
     imageModels = [],
     primaryImageModelId = null,
@@ -346,32 +356,6 @@ export function ChatPage({
 
     return (
         <div className="flex h-dvh flex-col bg-base-100">
-            {/* 顶部 Model 选择栏 */}
-            <div className="border-b border-base-300 bg-base-200 px-4 py-2">
-                <div className="mx-auto flex max-w-2xl flex-wrap items-start gap-4">
-                    <div className="flex flex-col gap-0.5 min-w-0">
-                        <span className="text-xs text-base-content/50">LLM 模型</span>
-                        <a href="/settings" className="text-xs text-primary underline truncate">
-                            {hasLlm ? '已选择' : '前往设置选择'}
-                        </a>
-                    </div>
-                    <ImageModelPicker
-                        conversationId={conversationId}
-                        role="IMAGE_PRIMARY"
-                        currentModelId={primaryImageModelId}
-                        currentSize={primaryImageSize}
-                        availableModels={imageModels}
-                    />
-                    <ImageModelPicker
-                        conversationId={conversationId}
-                        role="IMAGE_SECONDARY"
-                        currentModelId={secondaryImageModelId}
-                        currentSize={secondaryImageSize}
-                        availableModels={imageModels}
-                    />
-                </div>
-            </div>
-
             {/* 错误 banner */}
             {error && (
                 <div className="alert alert-error rounded-none text-sm">
@@ -451,14 +435,33 @@ export function ChatPage({
                 </div>
             </div>
 
-            {/* 输入区 */}
+            {/* 输入区（设计稿：用量与 LLM | 主生图 | 次生图 在输入框上方同一带） */}
             <div className="border-t border-base-300 bg-base-100 px-4 py-3">
-                {contextWindow && (
-                    <div className="mx-auto mb-2 max-w-2xl">
-                        <ContextUsageBar totalTokens={totalTokens} contextWindow={contextWindow} />
-                    </div>
-                )}
                 <div className="mx-auto max-w-2xl">
+                    <div className="mb-3 flex flex-wrap items-end gap-x-4 gap-y-3 border-b border-base-300 pb-3">
+                        {contextWindow && (
+                            <ContextUsageBar totalTokens={totalTokens} contextWindow={contextWindow} />
+                        )}
+                        <LlmModelPicker
+                            conversationId={conversationId}
+                            currentModelId={llmModelId}
+                            availableModels={llmModels}
+                        />
+                        <ImageModelPicker
+                            conversationId={conversationId}
+                            role="IMAGE_PRIMARY"
+                            currentModelId={primaryImageModelId}
+                            currentSize={primaryImageSize}
+                            availableModels={imageModels}
+                        />
+                        <ImageModelPicker
+                            conversationId={conversationId}
+                            role="IMAGE_SECONDARY"
+                            currentModelId={secondaryImageModelId}
+                            currentSize={secondaryImageSize}
+                            availableModels={imageModels}
+                        />
+                    </div>
                     {gateHint && (
                         <p className="mb-2 text-xs text-warning">{gateHint}</p>
                     )}
