@@ -1,9 +1,10 @@
 import type { PrismaClient } from '../../../generated/prisma/client'
 import { NextResponse } from 'next/server'
 import { ZodError } from 'zod'
-import { createLlmModel, listModels } from '../../../lib/db/models'
+import { createLlmModel, createSearchModel, listModels } from '../../../lib/db/models'
 import prismaDefault from '../../../lib/prisma'
 import { llmModelInputSchema } from '../../../lib/validation/llm-model-schema'
+import { searchModelInputSchema } from '../../../lib/validation/search-model-schema'
 
 interface RouteContext { prisma?: PrismaClient }
 
@@ -23,7 +24,15 @@ export async function POST(req: Request, ctx: RouteContext = {}) {
         return NextResponse.json({ error: '无效 JSON' }, { status: 400 })
     }
 
+    const bodyType = (body as Record<string, unknown>)?.type
+
     try {
+        if (bodyType === 'SEARCH') {
+            const parsed = searchModelInputSchema.parse(body)
+            const model = await createSearchModel(db, parsed)
+            return NextResponse.json(model, { status: 201 })
+        }
+        // 默认 LLM（向后兼容旧请求不带 type 字段）
         const parsed = llmModelInputSchema.parse(body)
         const model = await createLlmModel(db, parsed)
         return NextResponse.json(model, { status: 201 })

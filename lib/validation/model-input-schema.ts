@@ -21,6 +21,9 @@ const llmBranchSchema = z.object({
     }
 })
 
-export const modelInputSchema = z.union([llmBranchSchema, searchModelInputSchema])
+// 鉴别联合：搜索分支额外补 type 字段（供 modelInputSchema 区分用）
+const searchBranchSchema = searchModelInputSchema.extend({ type: z.literal('SEARCH') })
+
+export const modelInputSchema = z.union([llmBranchSchema, searchBranchSchema])
 
 export type ModelInput = z.infer<typeof modelInputSchema>

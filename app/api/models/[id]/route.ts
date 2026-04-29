@@ -1,7 +1,7 @@
 import type { PrismaClient } from '../../../../generated/prisma/client'
 import type { LlmModelInput } from '../../../../lib/validation/llm-model-schema'
 import { NextResponse } from 'next/server'
-import { deleteModel, updateLlmModel } from '../../../../lib/db/models'
+import { deleteModel, getModel, updateLlmModel, updateSearchModel } from '../../../../lib/db/models'
 import prismaDefault from '../../../../lib/prisma'
 
 interface RouteContext { params: Promise<{ id: string }>, prisma?: PrismaClient }
@@ -29,6 +29,15 @@ export async function PATCH(req: Request, { params, prisma }: RouteContext) {
     }
     catch {
         return NextResponse.json({ error: '无效 JSON' }, { status: 400 })
+    }
+
+    const existing = await getModel(db, id)
+    if (!existing)
+        return NextResponse.json({ error: '未找到' }, { status: 404 })
+
+    if (existing.type === 'SEARCH') {
+        const model = await updateSearchModel(db, id, body as { name?: string; apiKey?: string })
+        return NextResponse.json(model)
     }
 
     const model = await updateLlmModel(db, id, body)
