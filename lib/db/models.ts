@@ -91,6 +91,7 @@ export async function createImageModel(prisma: PrismaClient, input: ImageModelIn
             type: 'IMAGE',
             name: parsed.name,
             providerType: parsed.providerType,
+            baseURL: parsed.baseURL ?? null,
             apiKey: parsed.apiKey,
             capabilities: parsed.capabilities as unknown as object,
         },

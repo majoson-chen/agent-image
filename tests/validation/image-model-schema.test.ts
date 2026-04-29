@@ -17,6 +17,27 @@ describe('imageModelInputSchema', () => {
         expect(imageModelInputSchema.safeParse(valid).success).toBe(true)
     })
 
+    it('accepts optional baseURL', () => {
+        const r = imageModelInputSchema.safeParse({
+            ...valid,
+            baseURL: 'https://ark.cn-beijing.volces.com/api/v3/images/generations',
+        })
+        expect(r.success).toBe(true)
+    })
+
+    it('treats empty baseURL as undefined', () => {
+        const r = imageModelInputSchema.safeParse({ ...valid, baseURL: '   ' })
+        expect(r.success).toBe(true)
+        if (r.success) {
+            expect(r.data.baseURL).toBeUndefined()
+        }
+    })
+
+    it('rejects invalid baseURL', () => {
+        const r = imageModelInputSchema.safeParse({ ...valid, baseURL: 'not-a-url' })
+        expect(r.success).toBe(false)
+    })
+
     it('rejects empty name', () => {
         const r = imageModelInputSchema.safeParse({ ...valid, name: '' })
         expect(r.success).toBe(false)

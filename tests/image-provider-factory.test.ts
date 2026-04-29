@@ -53,11 +53,13 @@ describe('executeImageGeneration - happy paths', () => {
 
         // Mock Seedream + download fetch
         let capturedBody: unknown
+        let seedreamRequestUrl = ''
         let fetchCallCount = 0
         const originalFetch = globalThis.fetch
-        globalThis.fetch = vi.fn(async (url: string, init?: RequestInit) => {
+        globalThis.fetch = vi.fn(async (url: string | URL, init?: RequestInit) => {
             fetchCallCount++
             if (fetchCallCount === 1) {
+                seedreamRequestUrl = String(url)
                 // Seedream API call
                 capturedBody = JSON.parse(init?.body as string)
                 return new Response(
@@ -86,6 +88,8 @@ describe('executeImageGeneration - happy paths', () => {
 
             expect(result.imageId).toBeTruthy()
             expect(result.mimeType).toBe('image/png')
+            const { SEEDREAM_DEFAULT_API_BASE_URL } = await import('../lib/image/seedream-presets')
+            expect(seedreamRequestUrl).toBe(SEEDREAM_DEFAULT_API_BASE_URL)
             expect(capturedBody).toMatchObject({
                 model: 'doubao-seedream-4-5-251128',
                 prompt: '一只柯基',
@@ -93,6 +97,47 @@ describe('executeImageGeneration - happy paths', () => {
             })
             // 无参考图时不传 image 字段
             expect((capturedBody as Record<string, unknown>).image).toBeUndefined()
+        }
+        finally {
+            globalThis.fetch = originalFetch
+        }
+    })
+
+    it('uses model baseURL when set', async () => {
+        const customUrl = 'https://ark.example.com/api/v3/images/generations'
+        const model = await createSeedreamModel({ baseURL: customUrl })
+        const conv = await createConversation(prisma)
+
+        let seedreamRequestUrl = ''
+        let fetchCallCount = 0
+        const originalFetch = globalThis.fetch
+        globalThis.fetch = vi.fn(async (url: string | URL, _init?: RequestInit) => {
+            fetchCallCount++
+            if (fetchCallCount === 1) {
+                seedreamRequestUrl = String(url)
+                return new Response(
+                    JSON.stringify({ data: [{ url: 'https://oss.example.com/img.png' }] }),
+                    { status: 200, headers: { 'Content-Type': 'application/json' } },
+                ) as Response
+            }
+            return new Response(pngBuffer, {
+                status: 200,
+                headers: { 'Content-Type': 'image/png' },
+            }) as Response
+        }) as typeof fetch
+
+        try {
+            const executeImageGeneration = await getFactory()
+            await executeImageGeneration({
+                model,
+                prompt: 'x',
+                referenceImageIds: [],
+                size: '1024x1024',
+                conversationId: conv.id,
+                prisma,
+                abortSignal: new AbortController().signal,
+            })
+            expect(seedreamRequestUrl).toBe(customUrl)
         }
         finally {
             globalThis.fetch = originalFetch

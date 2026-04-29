@@ -22,6 +22,7 @@ export async function ImageModelList() {
                                 <p className="truncate font-medium text-base-content font-mono text-sm">{m.name}</p>
                                 <p className="mt-0.5 text-xs text-base-content/50">
                                     火山方舟 Seedream
+                                    {m.baseURL ? ` · ${m.baseURL}` : ''}
                                     {cap && (
                                         <>
                                             {' · 分辨率：'}

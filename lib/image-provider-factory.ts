@@ -1,5 +1,6 @@
 import type { PrismaClient } from '../generated/prisma/client'
 import { createImage, getImage } from './db/images'
+import { SEEDREAM_DEFAULT_API_BASE_URL } from './image/seedream-presets'
 import { detectMime } from './images/mime'
 import { readImageBuffer } from './images/storage'
 import 'server-only'
@@ -9,6 +10,7 @@ interface ImageModelRecord {
     name: string
     providerType: string
     apiKey: string
+    baseURL?: string | null
 }
 
 interface ExecuteImageGenerationInput {
@@ -58,8 +60,10 @@ async function executeSeedream(input: ExecuteImageGenerationInput) {
         body.image = images
     }
 
+    const apiUrl = model.baseURL?.trim() || SEEDREAM_DEFAULT_API_BASE_URL
+
     const res = await fetch(
-        'https://operator.las.cn-beijing.volces.com/api/v1/online/images/generations',
+        apiUrl,
         {
             method: 'POST',
             signal: combinedSignal,

@@ -64,6 +64,38 @@ describe('pOST /api/models', () => {
         }), { prisma })
         expect(res.status).toBe(422)
     })
+
+    it('creates ALIBABA LLM without baseURL and returns 201', async () => {
+        const res = await handleModelsPost(makeRequest('POST', {
+            name: 'qwen-plus',
+            providerType: 'ALIBABA',
+            apiKey: 'sk-dash',
+            contextWindow: 128000,
+        }), { prisma })
+        expect(res.status).toBe(201)
+        const body = await res.json()
+        expect(body.name).toBe('qwen-plus')
+        expect(body.providerType).toBe('ALIBABA')
+        expect(body.baseURL).toBeNull()
+    })
+
+    it('creates IMAGE model with optional baseURL', async () => {
+        const res = await handleModelsPost(makeRequest('POST', {
+            type: 'IMAGE',
+            name: 'doubao-seedream-4-5-251128',
+            providerType: 'VOLCENGINE_SEEDREAM',
+            apiKey: 'ark-x',
+            baseURL: 'https://ark.cn-beijing.volces.com/api/v3/images/generations',
+            capabilities: {
+                supportedSizes: ['1024x1024'],
+                maxReferenceImages: 14,
+                supportsSeed: false,
+            },
+        }), { prisma })
+        expect(res.status).toBe(201)
+        const body = await res.json()
+        expect(body.baseURL).toBe('https://ark.cn-beijing.volces.com/api/v3/images/generations')
+    })
 })
 
 describe('dELETE /api/models/[id]', () => {
