@@ -25,11 +25,17 @@ export default async function ConversationPage({ params }: Props) {
     return (
         <ChatPage
             conversationId={id}
-            initialMessages={messages.map(m => ({
-                id: m.id,
-                role: m.role.toLowerCase() as 'user' | 'assistant',
-                parts: [{ type: 'text' as const, text: m.content }],
-            }))}
+            initialMessages={messages.map(m => {
+                const role = m.role.toLowerCase() as 'user' | 'assistant'
+                if (role === 'user') {
+                    return { id: m.id, role, parts: [{ type: 'text' as const, text: m.content }] }
+                }
+                // assistant：M2 消息有 parts JSON，M1 旧消息 parts=null 用 content fallback
+                const parts = m.parts !== null
+                    ? m.parts as object[]
+                    : [{ type: 'text' as const, text: m.content }]
+                return { id: m.id, role, parts }
+            })}
             hasLlm={Boolean(llmModel)}
             contextWindow={llmModel?.contextWindow ?? undefined}
         />
