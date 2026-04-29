@@ -2,7 +2,7 @@
  * U6/U7 — R3 门闸：canSendMessage / getSubmitButtonState 逻辑单元测试
  */
 import { describe, expect, it } from 'vitest'
-import { canSendMessage, getGateHint, getSubmitButtonState } from '../../lib/chat-guard'
+import { canSendMessage, canUploadMore, getGateHint, getSubmitButtonState } from '../../lib/chat-guard'
 
 describe('canSendMessage', () => {
     it('returns false when no LLM selected', () => {
@@ -38,19 +38,22 @@ describe('getSubmitButtonState', () => {
     it('status=ready + input non-empty → send enabled', () => {
         const state = getSubmitButtonState({ status: 'ready', llmSelected: true, inputEmpty: false })
         expect(state.kind).toBe('send')
-        if (state.kind === 'send') expect(state.disabled).toBe(false)
+        if (state.kind === 'send')
+            expect(state.disabled).toBe(false)
     })
 
     it('status=ready + input empty → send disabled', () => {
         const state = getSubmitButtonState({ status: 'ready', llmSelected: true, inputEmpty: true })
         expect(state.kind).toBe('send')
-        if (state.kind === 'send') expect(state.disabled).toBe(true)
+        if (state.kind === 'send')
+            expect(state.disabled).toBe(true)
     })
 
     it('status=ready + no LLM → send disabled', () => {
         const state = getSubmitButtonState({ status: 'ready', llmSelected: false, inputEmpty: false })
         expect(state.kind).toBe('send')
-        if (state.kind === 'send') expect(state.disabled).toBe(true)
+        if (state.kind === 'send')
+            expect(state.disabled).toBe(true)
     })
 
     it('status=streaming → stop', () => {
@@ -66,6 +69,18 @@ describe('getSubmitButtonState', () => {
     it('status=error + input non-empty → send enabled', () => {
         const state = getSubmitButtonState({ status: 'error', llmSelected: true, inputEmpty: false })
         expect(state.kind).toBe('send')
-        if (state.kind === 'send') expect(state.disabled).toBe(false)
+        if (state.kind === 'send')
+            expect(state.disabled).toBe(false)
+    })
+})
+
+describe('canUploadMore', () => {
+    it('returns true when count < max', () => {
+        expect(canUploadMore({ count: 0, max: 3 })).toBe(true)
+        expect(canUploadMore({ count: 2, max: 3 })).toBe(true)
+    })
+    it('returns false when count >= max', () => {
+        expect(canUploadMore({ count: 3, max: 3 })).toBe(false)
+        expect(canUploadMore({ count: 14, max: 14 })).toBe(false)
     })
 })
