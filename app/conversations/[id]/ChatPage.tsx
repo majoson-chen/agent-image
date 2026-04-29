@@ -271,8 +271,8 @@ export function ChatPage({
         messages: initialMessages,
         transport: new DefaultChatTransport({
             api: '/api/chat',
-            prepareSendMessagesRequest: () => ({
-                body: { conversationId },
+            prepareSendMessagesRequest: ({ messages }) => ({
+                body: { conversationId, messages },
             }),
         }),
         sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithApprovalResponses,

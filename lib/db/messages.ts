@@ -40,6 +40,54 @@ export async function appendUserMessage(
     })
 }
 
+/** 客户端传来的 USER UIMessage id/parts 与本地会话对齐创建或更新（单机自用契约）。 */
+export async function upsertUserMessageParts(
+    prisma: PrismaClient,
+    conversationId: string,
+    input: { id: string, parts: unknown[] },
+) {
+    const content = extractTextContent(input.parts)
+    const parts = input.parts as object[]
+    return prisma.message.upsert({
+        where: { id: input.id },
+        create: {
+            id: input.id,
+            conversationId,
+            role: 'USER',
+            content,
+            parts,
+        },
+        update: {
+            content,
+            parts,
+        },
+    })
+}
+
+/** POST body 中的 useChat messages：仅同步 role=user，且校验 id 不跨会话冲突。 */
+export async function syncIncomingClientUserMessages(
+    prisma: PrismaClient,
+    conversationId: string,
+    clientMessages: Array<{ id: string, role: string, parts: unknown[] }>,
+): Promise<{ ok: true } | { ok: false, error: string }> {
+    for (const m of clientMessages) {
+        if (m.role.toLowerCase() !== 'user')
+            continue
+
+        const existing = await prisma.message.findUnique({ where: { id: m.id } })
+        if (existing) {
+            if (existing.conversationId !== conversationId)
+                return { ok: false, error: '消息 id 不属于本会话' }
+            if (existing.role !== 'USER')
+                return { ok: false, error: '无效的用户消息 id' }
+        }
+
+        await upsertUserMessageParts(prisma, conversationId, { id: m.id, parts: m.parts })
+    }
+
+    return { ok: true }
+}
+
 export async function appendAssistantMessage(
     prisma: PrismaClient,
     conversationId: string,

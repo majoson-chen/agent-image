@@ -4,12 +4,13 @@ import { buildAgent } from '@lib/ai/build-agent'
 import { hydrateImagesForLLM } from '@lib/ai/hydrate-images'
 import { appendStepToParts } from '@lib/ai/step-to-parts'
 import { buildSystemPrompt } from '@lib/ai/system-prompt'
-import { listMessages, upsertAssistantMessage } from '@lib/db/messages'
+import { listMessages, syncIncomingClientUserMessages, upsertAssistantMessage } from '@lib/db/messages'
 import { getModel } from '@lib/db/models'
 import { getSelection } from '@lib/db/selections'
 import { buildLlmModel } from '@lib/llm-provider-factory'
 import prismaDefault from '@lib/prisma'
 import { buildAvailableTools } from '@lib/tools/tool-registry'
+import { chatPostBodySchema } from '@lib/validation/chat-post-schema'
 import { createAgentUIStreamResponse } from 'ai'
 import { NextResponse } from 'next/server'
 
@@ -32,11 +33,11 @@ export async function handleChatPost(req: Request, deps: ChatPostDeps = {}) {
         return NextResponse.json({ error: '无效 JSON' }, { status: 400 })
     }
 
-    const conversationId = typeof raw === 'object' && raw !== null && 'conversationId' in raw
-        ? (raw as { conversationId?: unknown }).conversationId
-        : undefined
-    if (typeof conversationId !== 'string' || !conversationId.trim())
-        return NextResponse.json({ error: 'conversationId 必填' }, { status: 400 })
+    const parsedBody = chatPostBodySchema.safeParse(raw)
+    if (!parsedBody.success)
+        return NextResponse.json({ error: '请求体无效', issues: parsedBody.error.flatten() }, { status: 400 })
+
+    const { conversationId, messages: clientMessagesOpt } = parsedBody.data
 
     // 获取 LLM 选型
     const selection = await getSelection(db, conversationId, 'LLM')
@@ -55,19 +56,32 @@ export async function handleChatPost(req: Request, deps: ChatPostDeps = {}) {
         llmModel = buildLlmModel(modelRecord)
     }
 
-    // 获取消息历史，转为 UIMessage 格式
-    const dbMessages = await listMessages(db, conversationId)
-    const uiMessages = dbMessages.map((m) => {
-        // M2 消息：直接用 parts；M1 旧消息：降级为 content text part
-        const parts = m.parts !== null
-            ? m.parts as object[]
-            : [{ type: 'text' as const, text: m.content }]
-        return {
+    // 消息历史：客户端 POST `messages`（与 useChat 一致）优先；否则仅从 DB 组装（兼容集成测试旧契约）
+    let uiMessages: Array<{ id: string, role: 'user' | 'assistant', parts: object[] }>
+    if (clientMessagesOpt && clientMessagesOpt.length > 0) {
+        const synced = await syncIncomingClientUserMessages(db, conversationId, clientMessagesOpt)
+        if (!synced.ok)
+            return NextResponse.json({ error: synced.error }, { status: 400 })
+
+        uiMessages = clientMessagesOpt.map(m => ({
             id: m.id,
             role: m.role.toLowerCase() as 'user' | 'assistant',
-            parts,
-        }
-    })
+            parts: m.parts as object[],
+        }))
+    }
+    else {
+        const dbMessages = await listMessages(db, conversationId)
+        uiMessages = dbMessages.map((m) => {
+            const parts = m.parts !== null
+                ? m.parts as object[]
+                : [{ type: 'text' as const, text: m.content }]
+            return {
+                id: m.id,
+                role: m.role.toLowerCase() as 'user' | 'assistant',
+                parts,
+            }
+        })
+    }
 
     // 多模态 hydrate：把 user message 中的 image-ref parts 转为 image bytes
     const hydratedMessages = await hydrateImagesForLLM(uiMessages, db)

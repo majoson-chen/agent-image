@@ -72,6 +72,41 @@ function makeRequest(body: unknown) {
 }
 
 describe('pOST /api/chat', () => {
+    it('persists user messages from POST body when messages provided', async () => {
+        const llmModel = await createLlmModel(prisma, {
+            name: 'test-llm-body',
+            providerType: 'OPENAI',
+            apiKey: 'sk-test',
+            contextWindow: 4096,
+        })
+        const conv = await createConversation(prisma)
+        await setSelection(prisma, conv.id, 'LLM', llmModel.id)
+
+        const userMsgId = 'client-user-msg-body-1'
+        const mockModel = makeStreamModel('ack')
+
+        const res = await handleChatPost(
+            makeRequest({
+                conversationId: conv.id,
+                messages: [
+                    { id: userMsgId, role: 'user', parts: [{ type: 'text', text: 'only-from-body' }] },
+                ],
+            }),
+            { prisma, model: mockModel },
+        )
+
+        expect(res.status).toBe(200)
+        const reader = res.body!.getReader()
+        while (!(await reader.read()).done) { /* drain */ }
+        await new Promise(r => setTimeout(r, 50))
+
+        const msgs = await listMessages(prisma, conv.id)
+        const row = msgs.find(m => m.id === userMsgId)
+        expect(row).toBeDefined()
+        expect(row?.role).toBe('USER')
+        expect(row?.content).toContain('only-from-body')
+    })
+
     it('returns 400 when conversationId missing', async () => {
         const res = await handleChatPost(makeRequest({}), { prisma })
         expect(res.status).toBe(400)
