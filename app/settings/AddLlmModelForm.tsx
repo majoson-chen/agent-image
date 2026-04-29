@@ -21,6 +21,8 @@ interface FormState {
     baseURL: string
     apiKey: string
     contextWindow: string
+    /** 阿里云百炼专用：勾选后写入 capabilities.supportsThinking */
+    supportsThinking: boolean
 }
 
 const initialState: FormState = {
@@ -29,6 +31,7 @@ const initialState: FormState = {
     baseURL: '',
     apiKey: '',
     contextWindow: '128000',
+    supportsThinking: false,
 }
 
 export function AddLlmModelForm() {
@@ -60,6 +63,9 @@ export function AddLlmModelForm() {
             const b = form.baseURL.trim()
             if (b) {
                 payload.baseURL = b
+            }
+            if (form.supportsThinking) {
+                payload.capabilities = { supportsThinking: true }
             }
         }
 
@@ -156,6 +162,18 @@ export function AddLlmModelForm() {
                             </p>
                         )}
                     </fieldset>
+                )}
+
+                {form.providerType === 'ALIBABA' && (
+                    <label className="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-base-300 bg-base-200/40 px-3 py-2">
+                        <span className="text-sm text-base-content">模型支持思考模式</span>
+                        <input
+                            type="checkbox"
+                            className="toggle toggle-primary toggle-sm"
+                            checked={form.supportsThinking}
+                            onChange={e => setForm(prev => ({ ...prev, supportsThinking: e.target.checked }))}
+                        />
+                    </label>
                 )}
 
                 <fieldset className="fieldset">

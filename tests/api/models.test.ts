@@ -79,6 +79,19 @@ describe('pOST /api/models', () => {
         expect(body.baseURL).toBeNull()
     })
 
+    it('creates ALIBABA LLM with supportsThinking capability when provided', async () => {
+        const res = await handleModelsPost(makeRequest('POST', {
+            name: 'qwen-thinking',
+            providerType: 'ALIBABA',
+            apiKey: 'sk-dash',
+            contextWindow: 128000,
+            capabilities: { supportsThinking: true },
+        }), { prisma })
+        expect(res.status).toBe(201)
+        const body = await res.json()
+        expect(body.capabilities).toEqual({ supportsThinking: true })
+    })
+
     it('creates IMAGE Seedream model with optional baseURL', async () => {
         const res = await handleModelsPost(makeRequest('POST', {
             type: 'IMAGE',

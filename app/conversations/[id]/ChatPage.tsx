@@ -10,9 +10,9 @@ import { Check, ChevronDown, ChevronUp, ImagePlus, Send, Square, X } from 'lucid
 import { useState } from 'react'
 import { canUploadMore, getGateHint, getSubmitButtonState } from '../../../lib/chat-guard'
 import { cn } from '../../../lib/cn'
+import { ComposerImageSlot } from './ComposerImageSlot'
+import { ComposerLlmSlot } from './ComposerLlmSlot'
 import { ContextUsageBar } from './ContextUsageBar'
-import { ImageModelPicker } from './ImageModelPicker'
-import { LlmModelPicker } from './LlmModelPicker'
 
 interface MessageMetadata {
     usage?: { inputTokens: number, outputTokens: number, totalTokens: number }
@@ -183,6 +183,7 @@ interface ImageModelInfo {
 interface LlmModelInfo {
     id: string
     name: string
+    capabilities: unknown
 }
 
 interface Props {
@@ -191,6 +192,7 @@ interface Props {
     hasLlm: boolean
     llmModels?: LlmModelInfo[]
     llmModelId?: string | null
+    llmThinkingEnabled?: boolean
     contextWindow?: number
     imageModels?: ImageModelInfo[]
     primaryImageModelId?: string | null
@@ -267,6 +269,7 @@ export function ChatPage({
     hasLlm,
     llmModels = [],
     llmModelId = null,
+    llmThinkingEnabled = false,
     contextWindow,
     imageModels = [],
     primaryImageModelId = null,
@@ -447,24 +450,25 @@ export function ChatPage({
                         {contextWindow && (
                             <ContextUsageBar totalTokens={totalTokens} contextWindow={contextWindow} />
                         )}
-                        <LlmModelPicker
+                        <ComposerLlmSlot
                             conversationId={conversationId}
                             currentModelId={llmModelId}
-                            availableModels={llmModels}
+                            thinkingEnabled={llmThinkingEnabled}
+                            models={llmModels}
                         />
-                        <ImageModelPicker
+                        <ComposerImageSlot
                             conversationId={conversationId}
                             role="IMAGE_PRIMARY"
                             currentModelId={primaryImageModelId}
                             currentSize={primaryImageSize}
-                            availableModels={imageModels}
+                            models={imageModels}
                         />
-                        <ImageModelPicker
+                        <ComposerImageSlot
                             conversationId={conversationId}
                             role="IMAGE_SECONDARY"
                             currentModelId={secondaryImageModelId}
                             currentSize={secondaryImageSize}
-                            availableModels={imageModels}
+                            models={imageModels}
                         />
                     </div>
                     {gateHint && (

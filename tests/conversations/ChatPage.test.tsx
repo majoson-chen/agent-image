@@ -36,13 +36,13 @@ vi.mock('next/navigation', () => ({
     useRouter: () => ({ push: vi.fn() }),
 }))
 
-// mock ImageModelPicker to avoid server-action issues
-vi.mock('../../app/conversations/[id]/ImageModelPicker', () => ({
-    ImageModelPicker: () => <div data-testid="image-model-picker" />,
+// mock composer slots to avoid server-action / dialog issues
+vi.mock('../../app/conversations/[id]/ComposerImageSlot', () => ({
+    ComposerImageSlot: () => <div data-testid="composer-image-slot" />,
 }))
 
-vi.mock('../../app/conversations/[id]/LlmModelPicker', () => ({
-    LlmModelPicker: () => <div data-testid="llm-model-picker" />,
+vi.mock('../../app/conversations/[id]/ComposerLlmSlot', () => ({
+    ComposerLlmSlot: () => <div data-testid="composer-llm-slot" />,
 }))
 
 afterEach(() => {
@@ -56,7 +56,8 @@ function renderChatPage(overrides: Partial<React.ComponentProps<typeof ChatPage>
         conversationId: 'conv-1',
         initialMessages: [],
         hasLlm: true,
-        llmModels: [{ id: 'm1', name: 'test-llm' }],
+        llmModels: [{ id: 'm1', name: 'test-llm', capabilities: null }],
+        llmThinkingEnabled: false,
         llmModelId: 'm1',
         ...overrides,
     }

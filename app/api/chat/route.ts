@@ -7,6 +7,7 @@ import { buildSystemPrompt } from '@lib/ai/system-prompt'
 import { listMessages, syncIncomingClientUserMessages, upsertAssistantMessage } from '@lib/db/messages'
 import { getModel } from '@lib/db/models'
 import { getSelection } from '@lib/db/selections'
+import { computeLlmChatProviderOptions } from '@lib/llm-chat-provider-options'
 import { buildLlmModel } from '@lib/llm-provider-factory'
 import prismaDefault from '@lib/prisma'
 import { buildAvailableTools } from '@lib/tools/tool-registry'
@@ -44,17 +45,14 @@ export async function handleChatPost(req: Request, deps: ChatPostDeps = {}) {
     if (!selection)
         return NextResponse.json({ error: '请先选择 LLM 模型' }, { status: 400 })
 
-    // 构建 LLM 模型实例
-    let llmModel: LanguageModel
-    if (deps.model) {
-        llmModel = deps.model
-    }
-    else {
-        const modelRecord = await getModel(db, selection.modelId)
-        if (!modelRecord)
-            return NextResponse.json({ error: 'LLM 模型不存在' }, { status: 404 })
-        llmModel = buildLlmModel(modelRecord)
-    }
+    const modelRecord = await getModel(db, selection.modelId)
+    if (!modelRecord)
+        return NextResponse.json({ error: 'LLM 模型不存在' }, { status: 404 })
+
+    const llmModel: LanguageModel = deps.model ?? buildLlmModel(modelRecord)
+    const providerOptions = deps.model
+        ? undefined
+        : computeLlmChatProviderOptions(modelRecord, selection.params)
 
     // 消息历史：客户端 POST `messages`（与 useChat 一致）优先；否则仅从 DB 组装（兼容集成测试旧契约）
     let uiMessages: Array<{ id: string, role: 'user' | 'assistant', parts: object[] }>
@@ -102,6 +100,7 @@ export async function handleChatPost(req: Request, deps: ChatPostDeps = {}) {
         model: llmModel,
         tools,
         instructions,
+        ...(providerOptions ? { providerOptions } : {}),
         onStepFinish: async (step) => {
             runningParts = appendStepToParts(runningParts, step as never)
             const u = step.usage ?? {}

@@ -39,7 +39,13 @@ export default async function ConversationPage({ params }: Props) {
         name: m.name,
         capabilities: m.capabilities as ImageModelCapabilities | null,
     }))
-    const llmModelList = llmModelRecords.map(m => ({ id: m.id, name: m.name }))
+    const llmModelList = llmModelRecords.map(m => ({
+        id: m.id,
+        name: m.name,
+        capabilities: m.capabilities,
+    }))
+    const llmParams = selections.LLM?.params as { thinkingEnabled?: boolean } | undefined
+    const llmThinkingEnabled = llmParams?.thinkingEnabled === true
 
     return (
         <ChatPage
@@ -57,6 +63,7 @@ export default async function ConversationPage({ params }: Props) {
             hasLlm={Boolean(llmModel)}
             llmModels={llmModelList}
             llmModelId={selections.LLM?.modelId ?? null}
+            llmThinkingEnabled={llmThinkingEnabled}
             contextWindow={llmModel?.contextWindow ?? undefined}
             imageModels={imageModelList}
             primaryImageModelId={primarySel?.modelId ?? null}

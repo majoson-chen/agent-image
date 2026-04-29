@@ -15,12 +15,33 @@
 
 - **运行时 / 包管理：** [Bun](https://bun.sh)（`bun install`、`bun dev`）
 - **框架：** Next.js（App Router）、React、TypeScript
-- **TypeScript 路径别名（`tsconfig.json` · `baseUrl` `.` · `paths`）：** `@/*` → `./app/*`，`@lib/*` → `./lib/*`，`~` → `./`（仓库根）
 - **数据：** SQLite + Prisma（`@prisma/adapter-better-sqlite3`），客户端生成目录 `generated/prisma/`
 - **对话与工具（规划）：** Vercel AI SDK；敏感能力走服务端 Route Handler（如 web-fetch）
 - **编辑器：** 已在 Cursor 安装 **Prisma 扩展（插件）**。修改 `prisma/schema.prisma`、查看模型与迁移、使用扩展提供的补全/格式化/数据库视图时，以扩展为准；**迁移与 generate** 仍以项目内 Prisma CLI 为准（例如 `bun --bun run prisma migrate dev`、`prisma generate`，见 `prisma.config.ts`）。
 
 默认本地数据库 URL：`prisma.config.ts` / `lib/prisma.ts` 中 `DATABASE_URL` 未设置时为 `file:./data.db`（仓库根目录相对路径，已 `.gitignore`）。
+
+## Import Alias
+
+本项目配置了 TypeScript 路径别名，以简化导入路径。如果某个导入可以使用别名进行而没有使用，则视为错误的导入。
+
+- `@/*` → `./app/*`
+- `@lib/*` → `./lib/*`
+- `~` → `./`
+
+❌ 错误的导入：
+
+```ts
+import SomeComponent from '../../../../xxx'
+import { cn } from '../../lib/cn'
+```
+
+✅ 正确的导入：
+
+```ts
+import { cn } from '@lib/cn'
+import SomeComponent from '~/xxx'
+```
 
 ## Next.js：动手前读文档，并与 Skills 配合
 
