@@ -4,7 +4,8 @@ interface DbMessage {
     id: string
     role: string
     content: string
-    parts: unknown[] | null
+    /** Prisma Json? 字段；运行时可能是数组、标量或 null */
+    parts: unknown
 }
 
 interface MappedMessage {
@@ -21,7 +22,7 @@ interface MappedMessage {
 export function mapDbMessagesToInitialMessages(messages: DbMessage[]): MappedMessage[] {
     return messages.map((m) => {
         const role = m.role.toLowerCase() as 'user' | 'assistant'
-        const parts = m.parts !== null
+        const parts = Array.isArray(m.parts)
             ? m.parts as object[]
             : [{ type: 'text' as const, text: m.content }]
         return { id: m.id, role, parts }
