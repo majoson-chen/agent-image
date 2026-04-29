@@ -4,6 +4,7 @@ import type { ImageModelCapabilities } from '../validation/image-model-schema'
 import { getModel } from '../db/models'
 import { getAllBindings } from '../db/search-tool-bindings'
 import { getSelection } from '../db/selections'
+import { createConversationRenameTool } from './conversation-rename'
 import { createImageGenerateTool } from './image-generate'
 import { createImageSearchTool } from './image-search'
 import { createWebFetchTool } from './web-fetch'
@@ -19,6 +20,8 @@ interface AvailableTools {
 export async function buildAvailableTools(prisma: PrismaClient, conversationId: string): Promise<AvailableTools> {
     const bindings = await getAllBindings(prisma)
     const tools = {} as ToolSet
+
+    tools['conversation-rename'] = createConversationRenameTool({ conversationId, prisma })
 
     if (bindings.WEB_SEARCH) {
         const model = await getModel(prisma, bindings.WEB_SEARCH)

@@ -27,6 +27,7 @@ ${toolList}
 - **web-search**：搜索互联网获取最新信息、新闻、文档。当用户需要实时或最新信息时使用。
 - **image-search**：搜索图片资源。当用户要求查找图片时使用。
 - **web-fetch**：抓取特定 URL 的网页内容。常在 web-search 后用于获取详情页。
+- **conversation-rename**：将当前对话改名为简短标题（仅更新侧栏显示名）。**非必须**；在话题已明朗、起一个可扫一眼的名字有帮助时可调用。不要每轮都调用。
 - **image-generate-primary**：调用主生图模型生成图像。需要用户确认后执行。
 - **image-generate-secondary**：调用次生图模型生成图像。需要用户确认后执行。
 

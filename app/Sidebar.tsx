@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { listConversations } from '../lib/db/conversations'
 import prisma from '../lib/prisma'
+import { ConversationSidebarNav } from './ConversationSidebarNav'
 import { NewConversationButton } from './NewConversationButton'
 
 export async function Sidebar() {
@@ -13,19 +14,16 @@ export async function Sidebar() {
                 <NewConversationButton />
             </div>
 
-            <nav className="flex-1 overflow-y-auto py-2">
-                {conversations.length === 0 && (
-                    <p className="px-4 py-3 text-sm text-base-content/40">暂无对话</p>
-                )}
-                {conversations.map(c => (
-                    <Link
-                        key={c.id}
-                        href={`/conversations/${c.id}`}
-                        className="block truncate px-4 py-2.5 text-sm text-base-content hover:bg-base-300"
-                    >
-                        {c.title ?? '新对话'}
-                    </Link>
-                ))}
+            <nav className="flex-1 overflow-y-auto px-1 py-2">
+                {conversations.length === 0
+                    ? (
+                            <p className="px-3 py-3 text-sm text-base-content/40">暂无对话</p>
+                        )
+                    : (
+                            <ConversationSidebarNav
+                                conversations={conversations.map(c => ({ id: c.id, title: c.title }))}
+                            />
+                        )}
             </nav>
 
             <div className="border-t border-base-300 px-4 py-3">
