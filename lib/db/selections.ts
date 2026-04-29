@@ -16,11 +16,22 @@ export async function setSelection(
     conversationId: string,
     role: SelectionRole,
     modelId: string,
+    params?: Record<string, unknown> | null,
 ) {
     return prisma.conversationModelSelection.upsert({
         where: { conversationId_role: { conversationId, role } },
-        create: { conversationId, role, modelId },
-        update: { modelId },
+        create: { conversationId, role, modelId, params: params ?? null },
+        update: { modelId, params: params ?? null },
+    })
+}
+
+export async function clearSelection(
+    prisma: PrismaClient,
+    conversationId: string,
+    role: SelectionRole,
+) {
+    await prisma.conversationModelSelection.deleteMany({
+        where: { conversationId, role },
     })
 }
 

@@ -1,17 +1,17 @@
-import type { LanguageModelV1 } from 'ai'
-import type { ToolSet } from 'ai'
+import type { LanguageModelV1, ToolSet } from 'ai'
 import type { PrismaClient } from '../../../generated/prisma/client'
 import { createAgentUIStreamResponse } from 'ai'
 import { NextResponse } from 'next/server'
+import { buildAgent } from '../../../lib/ai/build-agent'
+import { hydrateImagesForLLM } from '../../../lib/ai/hydrate-images'
+import { appendStepToParts } from '../../../lib/ai/step-to-parts'
+import { buildSystemPrompt } from '../../../lib/ai/system-prompt'
 import { listMessages, upsertAssistantMessage } from '../../../lib/db/messages'
 import { getModel } from '../../../lib/db/models'
 import { getSelection } from '../../../lib/db/selections'
 import { buildLlmModel } from '../../../lib/llm-provider-factory'
-import { buildAgent } from '../../../lib/ai/build-agent'
-import { buildSystemPrompt } from '../../../lib/ai/system-prompt'
-import { appendStepToParts } from '../../../lib/ai/step-to-parts'
-import { buildAvailableTools } from '../../../lib/tools/tool-registry'
 import prismaDefault from '../../../lib/prisma'
+import { buildAvailableTools } from '../../../lib/tools/tool-registry'
 
 interface RouteContext {
     prisma?: PrismaClient
@@ -64,16 +64,19 @@ export async function POST(req: Request, ctx: RouteContext = {}) {
         }
     })
 
-    // 构建可用工具集
+    // 多模态 hydrate：把 user message 中的 image-ref parts 转为 image bytes
+    const hydratedMessages = await hydrateImagesForLLM(uiMessages, db)
+
+    // 构建可用工具集（传 conversationId 以按 IMAGE selection 暴露生图工具）
     const { tools, descriptors } = ctx.toolsOverride
         ? { tools: ctx.toolsOverride, descriptors: Object.keys(ctx.toolsOverride) }
-        : await buildAvailableTools(db)
+        : await buildAvailableTools(db, conversationId)
 
     const instructions = buildSystemPrompt(descriptors)
 
     // 每请求生成唯一 runId，作为本次 assistant Message 的 id
     const runId = crypto.randomUUID()
-    type UIMessagePart = { type: string; [key: string]: unknown }
+    interface UIMessagePart { type: string, [key: string]: unknown }
     let runningParts: UIMessagePart[] = []
     let runningUsage = { inputTokens: 0, outputTokens: 0, totalTokens: 0 }
 
@@ -105,9 +108,9 @@ export async function POST(req: Request, ctx: RouteContext = {}) {
 
     return createAgentUIStreamResponse({
         agent: agent as never,
-        uiMessages: uiMessages as never,
+        uiMessages: hydratedMessages as never,
         abortSignal: req.signal,
-        messageMetadata: ({ part }: { part: { type: string; totalUsage?: { inputTokens: number; outputTokens: number; totalTokens: number } } }) => {
+        messageMetadata: ({ part }: { part: { type: string, totalUsage?: { inputTokens: number, outputTokens: number, totalTokens: number } } }) => {
             if (part.type === 'finish' && part.totalUsage) {
                 const inp = part.totalUsage.inputTokens ?? 0
                 const out = part.totalUsage.outputTokens ?? 0
