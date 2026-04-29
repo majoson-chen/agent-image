@@ -1,10 +1,10 @@
 'use client'
 
-import type { SeedreamPresetKey } from '../../lib/image/seedream-presets'
+import type { SeedreamPresetKey } from '@lib/image/seedream-presets'
+import { cn } from '@lib/cn'
+import { getSeedreamPreset, SEEDREAM_PRESETS } from '@lib/image/seedream-presets'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { cn } from '../../lib/cn'
-import { getSeedreamPreset, SEEDREAM_PRESETS } from '../../lib/image/seedream-presets'
 
 interface FormState {
     preset: SeedreamPresetKey
