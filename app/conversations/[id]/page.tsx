@@ -2,6 +2,7 @@ import type { UIMessage } from 'ai'
 import type { ImageModelCapabilities } from '../../../lib/validation/image-model-schema'
 import { notFound } from 'next/navigation'
 import { getConversation } from '../../../lib/db/conversations'
+import { mapDbMessagesToInitialMessages } from '../../../lib/conversations/initial-messages'
 import { listMessages } from '../../../lib/db/messages'
 import { listModels } from '../../../lib/db/models'
 import { getAllSelections } from '../../../lib/db/selections'
@@ -50,16 +51,7 @@ export default async function ConversationPage({ params }: Props) {
     return (
         <ChatPage
             conversationId={id}
-            initialMessages={messages.map((m) => {
-                const role = m.role.toLowerCase() as 'user' | 'assistant'
-                if (role === 'user') {
-                    return { id: m.id, role, parts: [{ type: 'text' as const, text: m.content }] }
-                }
-                const parts = m.parts !== null
-                    ? m.parts as object[]
-                    : [{ type: 'text' as const, text: m.content }]
-                return { id: m.id, role, parts }
-            }) as UIMessage<ChatMessageMetadata>[]}
+            initialMessages={mapDbMessagesToInitialMessages(messages) as UIMessage<ChatMessageMetadata>[]}
             hasLlm={Boolean(llmModel)}
             llmModels={llmModelList}
             llmModelId={selections.LLM?.modelId ?? null}

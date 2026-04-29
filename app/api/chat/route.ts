@@ -2,7 +2,7 @@ import type { LanguageModel, ToolSet } from 'ai'
 import type { PrismaClient } from '~/generated/prisma/client'
 import { buildAgent } from '@lib/ai/build-agent'
 import { hydrateImagesForLLM } from '@lib/ai/hydrate-images'
-import { appendStepToParts } from '@lib/ai/step-to-parts'
+import { appendStepToParts, patchToolResultsFromResponseMessages } from '@lib/ai/step-to-parts'
 import { buildSystemPrompt } from '@lib/ai/system-prompt'
 import { listMessages, syncIncomingClientUserMessages, upsertAssistantMessage } from '@lib/db/messages'
 import { getModel } from '@lib/db/models'
@@ -91,10 +91,28 @@ export async function handleChatPost(req: Request, deps: ChatPostDeps = {}) {
 
     const instructions = buildSystemPrompt(descriptors)
 
-    // 每请求生成唯一 runId，作为本次 assistant Message 的 id
-    const runId = crypto.randomUUID()
-    let runningParts: UIMessagePart[] = []
+    // 检测 continuation 请求（审批响应场景）：若客户端 messages 中含有 assistant 消息，
+    // 说明是对已有助手消息的续写（例如工具审批后继续执行），复用其 id 以更新同一行。
+    const existingAssistantMsg = clientMessagesOpt?.findLast(m => m.role.toLowerCase() === 'assistant')
+    let runId: string
+    let runningParts: UIMessagePart[]
     let runningUsage = { inputTokens: 0, outputTokens: 0, totalTokens: 0 }
+
+    if (existingAssistantMsg) {
+        runId = existingAssistantMsg.id
+        // 从 DB 加载已有 parts 作为续写起点（可能含 input-available 工具 part）
+        const dbMsg = await db.message.findUnique({ where: { id: runId } })
+        runningParts = (dbMsg?.parts as UIMessagePart[] | null) ?? (existingAssistantMsg.parts as UIMessagePart[])
+        runningUsage = {
+            inputTokens: dbMsg?.usageInputTokens ?? 0,
+            outputTokens: dbMsg?.usageOutputTokens ?? 0,
+            totalTokens: dbMsg?.usageTotalTokens ?? 0,
+        }
+    }
+    else {
+        runId = crypto.randomUUID()
+        runningParts = []
+    }
 
     const agent = buildAgent({
         model: llmModel,
@@ -103,6 +121,11 @@ export async function handleChatPost(req: Request, deps: ChatPostDeps = {}) {
         ...(providerOptions ? { providerOptions } : {}),
         onStepFinish: async (step) => {
             runningParts = appendStepToParts(runningParts, step as never)
+            // 用 response.messages 里的 tool-result 回填跨步骤/跨请求的 input-available parts
+            const respMsgs = (step as { response?: { messages?: unknown[] } }).response?.messages
+            if (respMsgs) {
+                runningParts = patchToolResultsFromResponseMessages(runningParts, respMsgs as never)
+            }
             const u = step.usage ?? {}
             runningUsage = {
                 inputTokens: runningUsage.inputTokens + ((u as { inputTokens?: number }).inputTokens ?? 0),
