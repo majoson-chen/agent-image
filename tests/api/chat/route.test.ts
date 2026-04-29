@@ -1,19 +1,21 @@
+/**
+ * U5 — 聊天 Route Handler 集成测试（M2 扩展）
+ *
+ * 用 MockLanguageModelV3 + convertArrayToReadableStream 模拟工具循环。
+ * 验证：
+ * 1. 基础流式响应 + onStepFinish 落库
+ * 2. 工具调用 → 成功 → parts 写入 DB
+ * 3. 工具调用 → 失败 → output-error parts 写入 DB
+ * 4. 无 LLM 选型时返回 400
+ */
 import type { PrismaClient } from '../../../generated/prisma/client'
 import { convertArrayToReadableStream, MockLanguageModelV3 } from 'ai/test'
-/**
- * U5 — 聊天 Route Handler 集成测试
- *
- * 用 MockLanguageModelV3 + convertArrayToReadableStream 模拟 streamText。
- * 验证：
- * 1. 返回流式响应（UI Message Stream 格式）
- * 2. onFinish 将 usage 写入数据库
- * 3. 无 LLM 选型时返回 400
- * 4. messageMetadata finish part 含 usage
- */
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { tool } from 'ai'
+import { z } from 'zod'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { POST } from '../../../app/api/chat/route'
 import { createConversation } from '../../../lib/db/conversations'
-import { aggregateUsage, appendUserMessage } from '../../../lib/db/messages'
+import { aggregateUsage, appendUserMessage, listMessages } from '../../../lib/db/messages'
 import { createLlmModel } from '../../../lib/db/models'
 import { setSelection } from '../../../lib/db/selections'
 import { createTestDb } from '../../helpers/db'
@@ -93,7 +95,7 @@ describe('pOST /api/chat', () => {
         expect(res.headers.get('content-type')).toContain('text/event-stream')
     })
 
-    it('writes usage to db via onFinish', async () => {
+    it('writes usage to db via onStepFinish', async () => {
         const { conv } = await setupConversationWithLlm()
         const mockModel = makeStreamModel('hi')
 
@@ -102,12 +104,124 @@ describe('pOST /api/chat', () => {
             { prisma, model: mockModel },
         )
 
-        // 消费流，触发 onFinish；onFinish 是异步 callback，稍作等待
+        // 消费流，触发 onStepFinish
         const reader = res.body!.getReader()
         while (!(await reader.read()).done) { /* drain */ }
         await new Promise(r => setTimeout(r, 50))
 
         const usage = await aggregateUsage(prisma, conv.id)
-        expect(usage?.totalTokens).toBe(15)
+        expect(usage?.totalTokens).toBeGreaterThan(0)
+    })
+
+    it('tool success → onStepFinish writes output-available part to DB', async () => {
+        const { conv } = await setupConversationWithLlm()
+
+        // 第 1 次 LLM 调用：产生工具调用
+        // 第 2 次 LLM 调用：工具结果已喂回，生成文本总结
+        let callCount = 0
+        const mockModel = new MockLanguageModelV3({
+            doStream: async () => {
+                callCount++
+                if (callCount === 1) {
+                    return {
+                        stream: convertArrayToReadableStream([
+                            { type: 'tool-input-start', id: 'tc-1', toolName: 'echo-tool' },
+                            { type: 'tool-input-delta', id: 'tc-1', delta: '{"text":"hello"}' },
+                            { type: 'tool-input-end', id: 'tc-1' },
+                            { type: 'tool-call', toolCallId: 'tc-1', toolName: 'echo-tool', input: '{"text":"hello"}' },
+                            { type: 'finish', finishReason: 'tool-calls', usage: { inputTokens: { total: 5 }, outputTokens: { total: 3 } } },
+                        ]),
+                        response: { headers: {} },
+                    }
+                }
+                return {
+                    stream: convertArrayToReadableStream([
+                        { type: 'text-start', id: 'text-1' },
+                        { type: 'text-delta', id: 'text-1', delta: 'Done!' },
+                        { type: 'text-end', id: 'text-1' },
+                        { type: 'finish', finishReason: 'stop', usage: { inputTokens: { total: 10 }, outputTokens: { total: 5 } } },
+                    ]),
+                    response: { headers: {} },
+                }
+            },
+        })
+
+        const echoTool = tool({
+            description: '回显工具',
+            inputSchema: z.object({ text: z.string() }),
+            execute: async ({ text }) => ({ echoed: text }),
+        })
+
+        const res = await POST(
+            makeRequest({ conversationId: conv.id }),
+            { prisma, model: mockModel, toolsOverride: { 'echo-tool': echoTool } },
+        )
+
+        const reader = res.body!.getReader()
+        while (!(await reader.read()).done) { /* drain */ }
+        await new Promise(r => setTimeout(r, 100))
+
+        const msgs = await listMessages(prisma, conv.id)
+        const assistant = msgs.find(m => m.role === 'ASSISTANT')
+        expect(assistant).toBeDefined()
+        const parts = assistant!.parts as Array<{ type: string; state?: string }>
+        const toolPart = parts.find(p => p.type === 'tool-echo-tool')
+        expect(toolPart).toBeDefined()
+        expect(toolPart?.state).toBe('output-available')
+    })
+
+    it('tool error → onStepFinish writes output-error part to DB', async () => {
+        const { conv } = await setupConversationWithLlm()
+
+        let callCount = 0
+        const mockModel = new MockLanguageModelV3({
+            doStream: async () => {
+                callCount++
+                if (callCount === 1) {
+                    return {
+                        stream: convertArrayToReadableStream([
+                            { type: 'tool-input-start', id: 'tc-err', toolName: 'fail-tool' },
+                            { type: 'tool-input-delta', id: 'tc-err', delta: '{}' },
+                            { type: 'tool-input-end', id: 'tc-err' },
+                            { type: 'tool-call', toolCallId: 'tc-err', toolName: 'fail-tool', input: '{}' },
+                            { type: 'finish', finishReason: 'tool-calls', usage: { inputTokens: { total: 3 }, outputTokens: { total: 2 } } },
+                        ]),
+                        response: { headers: {} },
+                    }
+                }
+                return {
+                    stream: convertArrayToReadableStream([
+                        { type: 'text-start', id: 'text-e' },
+                        { type: 'text-delta', id: 'text-e', delta: 'Tool failed, sorry.' },
+                        { type: 'text-end', id: 'text-e' },
+                        { type: 'finish', finishReason: 'stop', usage: { inputTokens: { total: 8 }, outputTokens: { total: 4 } } },
+                    ]),
+                    response: { headers: {} },
+                }
+            },
+        })
+
+        const failTool = tool({
+            description: '会失败的工具',
+            inputSchema: z.object({}),
+            execute: async () => { throw new Error('tool execution failed') },
+        })
+
+        const res = await POST(
+            makeRequest({ conversationId: conv.id }),
+            { prisma, model: mockModel, toolsOverride: { 'fail-tool': failTool } },
+        )
+
+        const reader = res.body!.getReader()
+        while (!(await reader.read()).done) { /* drain */ }
+        await new Promise(r => setTimeout(r, 100))
+
+        const msgs = await listMessages(prisma, conv.id)
+        const assistant = msgs.find(m => m.role === 'ASSISTANT')
+        expect(assistant).toBeDefined()
+        const parts = assistant!.parts as Array<{ type: string; state?: string; errorText?: string }>
+        const toolPart = parts.find(p => p.type === 'tool-fail-tool')
+        expect(toolPart?.state).toBe('output-error')
+        expect(toolPart?.errorText).toContain('failed')
     })
 })

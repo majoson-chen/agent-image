@@ -1,16 +1,22 @@
 import type { LanguageModelV1 } from 'ai'
+import type { ToolSet } from 'ai'
 import type { PrismaClient } from '../../../generated/prisma/client'
-import { convertToModelMessages, streamText } from 'ai'
+import { createAgentUIStreamResponse } from 'ai'
 import { NextResponse } from 'next/server'
-import { appendAssistantMessage, listMessages } from '../../../lib/db/messages'
+import { listMessages, upsertAssistantMessage } from '../../../lib/db/messages'
 import { getModel } from '../../../lib/db/models'
 import { getSelection } from '../../../lib/db/selections'
 import { buildLlmModel } from '../../../lib/llm-provider-factory'
+import { buildAgent } from '../../../lib/ai/build-agent'
+import { buildSystemPrompt } from '../../../lib/ai/system-prompt'
+import { appendStepToParts } from '../../../lib/ai/step-to-parts'
+import { buildAvailableTools } from '../../../lib/tools/tool-registry'
 import prismaDefault from '../../../lib/prisma'
 
 interface RouteContext {
     prisma?: PrismaClient
     model?: LanguageModelV1
+    toolsOverride?: ToolSet
 }
 
 export async function POST(req: Request, ctx: RouteContext = {}) {
@@ -32,7 +38,7 @@ export async function POST(req: Request, ctx: RouteContext = {}) {
     if (!selection)
         return NextResponse.json({ error: '请先选择 LLM 模型' }, { status: 400 })
 
-    // 构建 LLM 模型实例（测试时由 ctx.model 注入）
+    // 构建 LLM 模型实例
     let llmModel: LanguageModelV1
     if (ctx.model) {
         llmModel = ctx.model
@@ -44,37 +50,65 @@ export async function POST(req: Request, ctx: RouteContext = {}) {
         llmModel = buildLlmModel(modelRecord)
     }
 
-    // 获取消息历史
+    // 获取消息历史，转为 UIMessage 格式
     const dbMessages = await listMessages(db, conversationId)
-    const uiMessages = dbMessages.map(m => ({
-        id: m.id,
-        role: m.role.toLowerCase() as 'user' | 'assistant',
-        parts: [{ type: 'text' as const, text: m.content }],
-    }))
+    const uiMessages = dbMessages.map((m) => {
+        // M2 消息：直接用 parts；M1 旧消息：降级为 content text part
+        const parts = m.parts !== null
+            ? m.parts as object[]
+            : [{ type: 'text' as const, text: m.content }]
+        return {
+            id: m.id,
+            role: m.role.toLowerCase() as 'user' | 'assistant',
+            parts,
+        }
+    })
 
-    const result = streamText({
-        model: llmModel,
-        messages: await convertToModelMessages(uiMessages),
-        onFinish: async ({ totalUsage, text }) => {
-            const inputTokens = totalUsage.inputTokens ?? null
-            const outputTokens = totalUsage.outputTokens ?? null
-            await appendAssistantMessage(
-                db,
+    // 构建可用工具集
+    const { tools, descriptors } = ctx.toolsOverride
+        ? { tools: ctx.toolsOverride, descriptors: Object.keys(ctx.toolsOverride) }
+        : await buildAvailableTools(db)
+
+    const instructions = buildSystemPrompt(descriptors)
+
+    // 每请求生成唯一 runId，作为本次 assistant Message 的 id
+    const runId = crypto.randomUUID()
+    type UIMessagePart = { type: string; [key: string]: unknown }
+    let runningParts: UIMessagePart[] = []
+    let runningUsage = { inputTokens: 0, outputTokens: 0, totalTokens: 0 }
+
+    const agent = buildAgent({
+        model: llmModel as never,
+        tools,
+        instructions,
+        onStepFinish: async (step) => {
+            runningParts = appendStepToParts(runningParts, step as never)
+            const u = step.usage ?? {}
+            runningUsage = {
+                inputTokens: runningUsage.inputTokens + ((u as { inputTokens?: number }).inputTokens ?? 0),
+                outputTokens: runningUsage.outputTokens + ((u as { outputTokens?: number }).outputTokens ?? 0),
+                totalTokens: runningUsage.totalTokens + ((u as { totalTokens?: number }).totalTokens ?? 0),
+            }
+            await upsertAssistantMessage(db, {
+                id: runId,
                 conversationId,
-                text,
-                {
-                    inputTokens,
-                    outputTokens,
-                    totalTokens: (inputTokens ?? 0) + (outputTokens ?? 0) || null,
+                parts: runningParts,
+                usage: {
+                    inputTokens: runningUsage.inputTokens,
+                    outputTokens: runningUsage.outputTokens,
+                    totalTokens: runningUsage.totalTokens,
                 },
-                selection.modelId,
-            )
+                modelIdAtTime: selection.modelId,
+            })
         },
     })
 
-    return result.toUIMessageStreamResponse({
-        messageMetadata: ({ part }) => {
-            if (part.type === 'finish') {
+    return createAgentUIStreamResponse({
+        agent: agent as never,
+        uiMessages: uiMessages as never,
+        abortSignal: req.signal,
+        messageMetadata: ({ part }: { part: { type: string; totalUsage?: { inputTokens: number; outputTokens: number; totalTokens: number } } }) => {
+            if (part.type === 'finish' && part.totalUsage) {
                 const inp = part.totalUsage.inputTokens ?? 0
                 const out = part.totalUsage.outputTokens ?? 0
                 return {
