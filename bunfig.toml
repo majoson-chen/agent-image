@@ -1,0 +1,3 @@
+[test]
+# server-only 在测试环境（非 Next.js server）会抛错，mock 为空模块
+preload = ["./tests/helpers/setup.ts"]
