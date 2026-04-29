@@ -4,7 +4,15 @@ import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { cn } from '../../lib/cn'
 
-type ProviderType = 'OPENAI' | 'OPENAI_COMPATIBLE'
+type ProviderType = 'OPENAI' | 'OPENAI_COMPATIBLE' | 'ALIBABA'
+
+function llmModelNamePlaceholder(p: ProviderType): string {
+    if (p === 'ALIBABA')
+        return '如 qwen-plus'
+    if (p === 'OPENAI_COMPATIBLE')
+        return '如 moonshot-v1-8k'
+    return '如 gpt-4o'
+}
 
 interface FormState {
     name: string
@@ -44,8 +52,15 @@ export function AddLlmModelForm() {
             apiKey: form.apiKey.trim(),
             contextWindow: Number(form.contextWindow),
         }
-        if (form.providerType === 'OPENAI_COMPATIBLE')
+        if (form.providerType === 'OPENAI_COMPATIBLE') {
             payload.baseURL = form.baseURL.trim()
+        }
+        else if (form.providerType === 'ALIBABA') {
+            const b = form.baseURL.trim()
+            if (b) {
+                payload.baseURL = b
+            }
+        }
 
         const res = await fetch('/api/models', {
             method: 'POST',
@@ -97,7 +112,7 @@ export function AddLlmModelForm() {
                     <legend className="fieldset-legend">模型名称</legend>
                     <input
                         className="input input-bordered w-full"
-                        placeholder="如 gpt-4o"
+                        placeholder={llmModelNamePlaceholder(form.providerType)}
                         value={form.name}
                         onChange={e => set('name', e.target.value)}
                         required
@@ -113,19 +128,31 @@ export function AddLlmModelForm() {
                     >
                         <option value="OPENAI">OpenAI</option>
                         <option value="OPENAI_COMPATIBLE">OpenAI Compatible</option>
+                        <option value="ALIBABA">阿里云百炼（DashScope）</option>
                     </select>
                 </fieldset>
 
-                {form.providerType === 'OPENAI_COMPATIBLE' && (
+                {(form.providerType === 'OPENAI_COMPATIBLE' || form.providerType === 'ALIBABA') && (
                     <fieldset className="fieldset">
-                        <legend className="fieldset-legend">Base URL</legend>
+                        <legend className="fieldset-legend">
+                            {form.providerType === 'ALIBABA' ? 'Base URL（可选）' : 'Base URL'}
+                        </legend>
                         <input
                             className="input input-bordered w-full font-mono text-sm"
-                            placeholder="https://api.example.com/v1"
+                            placeholder={
+                                form.providerType === 'ALIBABA'
+                                    ? '留空使用 SDK 默认（国际兼容端点）'
+                                    : 'https://api.example.com/v1'
+                            }
                             value={form.baseURL}
                             onChange={e => set('baseURL', e.target.value)}
-                            required
+                            required={form.providerType === 'OPENAI_COMPATIBLE'}
                         />
+                        {form.providerType === 'ALIBABA' && (
+                            <p className="mt-1 text-xs text-base-content/60">
+                                中国内地可填 https://dashscope.aliyuncs.com/compatible-mode/v1
+                            </p>
+                        )}
                     </fieldset>
                 )}
 

@@ -92,6 +92,17 @@ describe('createLlmModel', () => {
         catch { threw = true }
         expect(threw).toBe(true)
     })
+
+    it('creates ALIBABA model without baseURL', async () => {
+        const m = await createLlmModel(prisma, {
+            name: 'qwen-plus',
+            providerType: 'ALIBABA',
+            apiKey: 'sk-dash',
+            contextWindow: 128000,
+        })
+        expect(m.providerType).toBe('ALIBABA')
+        expect(m.baseURL).toBeNull()
+    })
 })
 
 describe('getModel', () => {

@@ -16,6 +16,17 @@ describe('modelInputSchema discriminated union', () => {
         expect(result.success).toBe(true)
     })
 
+    it('accepts ALIBABA LLM input without baseURL', () => {
+        const result = modelInputSchema.safeParse({
+            type: 'LLM',
+            providerType: 'ALIBABA',
+            name: 'qwen-plus',
+            apiKey: 'sk-dash',
+            contextWindow: 128000,
+        })
+        expect(result.success).toBe(true)
+    })
+
     it('accepts SEARCH input', () => {
         const result = modelInputSchema.safeParse({
             type: 'SEARCH',

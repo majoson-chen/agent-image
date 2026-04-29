@@ -19,6 +19,7 @@ enum ModelType {
 enum ProviderType {
   OPENAI
   OPENAI_COMPATIBLE
+  ALIBABA
   BRAVE_SEARCH
   VOLCENGINE_SEEDREAM
 }

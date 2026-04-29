@@ -23,6 +23,38 @@ describe('llmModelInputSchema', () => {
         expect(result.success).toBe(true)
     })
 
+    it('accepts valid ALIBABA model without baseURL', () => {
+        const result = llmModelInputSchema.safeParse({
+            name: 'qwen-plus',
+            providerType: 'ALIBABA',
+            apiKey: 'sk-dash',
+            contextWindow: 128000,
+        })
+        expect(result.success).toBe(true)
+    })
+
+    it('accepts valid ALIBABA model with baseURL', () => {
+        const result = llmModelInputSchema.safeParse({
+            name: 'qwen-plus',
+            providerType: 'ALIBABA',
+            baseURL: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+            apiKey: 'sk-dash',
+            contextWindow: 128000,
+        })
+        expect(result.success).toBe(true)
+    })
+
+    it('rejects ALIBABA with empty baseURL string', () => {
+        const result = llmModelInputSchema.safeParse({
+            name: 'qwen-plus',
+            providerType: 'ALIBABA',
+            baseURL: '',
+            apiKey: 'sk-dash',
+            contextWindow: 128000,
+        })
+        expect(result.success).toBe(false)
+    })
+
     it('rejects empty apiKey', () => {
         const result = llmModelInputSchema.safeParse({
             name: 'x',
