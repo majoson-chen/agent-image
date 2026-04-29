@@ -16,7 +16,6 @@ export function buildAgent({ model, tools, instructions, onStepFinish, providerO
         model,
         instructions,
         tools,
-        stopWhen: stepCountIs(20),
         onStepFinish,
         ...(providerOptions ? { providerOptions } : {}),
     })

@@ -10,7 +10,8 @@ interface Props {
 
 /**
  * R6 / 设计稿：本对话 LLM 上下文用量为圆环，外径贴近旁侧控件行高；默认无数字；
- * hover 以原生 title 展示详情。尚无可信累计（totalTokens == null）时不占位（设计稿「无数据帧」）。
+ * hover 用 daisyUI `tooltip` + `data-tip` 展示详情（原生 `title` 在 SVG transform 等场景易不弹出）。
+ * 尚无可信累计（totalTokens == null）时不占位（设计稿「无数据帧」）。
  */
 export function ContextUsageBar({ totalTokens, contextWindow }: Props) {
     if (totalTokens === null)
@@ -24,10 +25,13 @@ export function ContextUsageBar({ totalTokens, contextWindow }: Props) {
     const filled = (percent / 100) * c
 
     const strokeColor = percent >= 90 ? 'stroke-error' : percent >= 70 ? 'stroke-warning' : 'stroke-primary'
-    const tip = `${percent}% · ${formatUsage(totalTokens)} / ${formatUsage(contextWindow)} · 本对话上下文`
+    const tip = `${percent}% | ${formatUsage(totalTokens)} / ${formatUsage(contextWindow)}`
 
     return (
-        <div className="flex max-w-full shrink-0 items-end pb-0.5" title={tip}>
+        <div
+            className="tooltip tooltip-top tooltip-neutral flex max-w-full shrink-0 items-end pb-0.5"
+            data-tip={tip}
+        >
             <svg
                 width={size}
                 height={size}
