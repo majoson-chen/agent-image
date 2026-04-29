@@ -1,5 +1,7 @@
 'use client'
 
+/* eslint-disable next/no-img-element, react/no-array-index-key -- 对话区同源 /api/images；UIMessage.parts 子项无统一稳定 key */
+
 import type { UIMessage } from 'ai'
 import type { ImageModelCapabilities } from '../../../lib/validation/image-model-schema'
 import { useChat } from '@ai-sdk/react'
@@ -176,7 +178,7 @@ interface ImageModelInfo {
 
 interface Props {
     conversationId: string
-    initialMessages: UIMessage[]
+    initialMessages: UIMessage<MessageMetadata>[]
     hasLlm: boolean
     contextWindow?: number
     imageModels?: ImageModelInfo[]
@@ -259,14 +261,14 @@ export function ChatPage({
     secondaryImageSize = null,
 }: Props) {
     const [input, setInput] = useState('')
-    const [abortedMessageIds, setAbortedMessageIds] = useState<Set<string>>(new Set())
+    const [abortedMessageIds, setAbortedMessageIds] = useState<Set<string>>(() => new Set())
     const [uploadedImages, setUploadedImages] = useState<Array<{ id: string, name: string }>>([])
     const [uploading, setUploading] = useState(false)
     const [uploadError, setUploadError] = useState<string | null>(null)
 
     const { messages, sendMessage, stop, status, error, clearError, addToolApprovalResponse } = useChat<UIMessage<MessageMetadata>>({
         id: conversationId,
-        initialMessages,
+        messages: initialMessages,
         transport: new DefaultChatTransport({
             api: '/api/chat',
             prepareSendMessagesRequest: () => ({
@@ -293,7 +295,10 @@ export function ChatPage({
 
     function handleSubmit(e: React.FormEvent) {
         e.preventDefault()
-        if (btnState.kind === 'stop') { stop(); return }
+        if (btnState.kind === 'stop') {
+            stop()
+            return
+        }
         if (btnState.kind === 'send' && !btnState.disabled) {
             if (error)
                 clearError()

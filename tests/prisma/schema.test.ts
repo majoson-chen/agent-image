@@ -7,7 +7,7 @@
 import * as fs from 'node:fs/promises'
 import * as os from 'node:os'
 import * as path from 'node:path'
-import { PrismaBunSqlite } from 'prisma-adapter-bun-sqlite'
+import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { PrismaClient } from '../../generated/prisma/client'
 
@@ -26,7 +26,7 @@ beforeAll(async () => {
         cwd: process.cwd(),
     })
 
-    const adapter = new PrismaBunSqlite({ url: `file:${dbPath}` })
+    const adapter = new PrismaBetterSqlite3({ url: `file:${dbPath}` })
     prisma = new PrismaClient({ adapter })
 })
 

@@ -204,7 +204,9 @@ export function AddImageModelForm() {
                     type="button"
                     className="btn btn-ghost btn-sm"
                     onClick={() => {
-                        setOpen(false); setError(null); setForm(initialState)
+                        setOpen(false)
+                        setError(null)
+                        setForm(initialState)
                     }}
                 >
                     取消

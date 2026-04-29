@@ -6,7 +6,7 @@ import { execSync } from 'node:child_process'
 import * as fs from 'node:fs/promises'
 import * as os from 'node:os'
 import * as path from 'node:path'
-import { PrismaBunSqlite } from 'prisma-adapter-bun-sqlite'
+import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3'
 import { PrismaClient } from '../../generated/prisma/client'
 
 export async function createTestDb(): Promise<{
@@ -21,7 +21,7 @@ export async function createTestDb(): Promise<{
         cwd: process.cwd(),
     })
 
-    const adapter = new PrismaBunSqlite({ url: `file:${dbPath}` })
+    const adapter = new PrismaBetterSqlite3({ url: `file:${dbPath}` })
     const prisma = new PrismaClient({ adapter })
 
     return {

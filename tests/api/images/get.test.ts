@@ -3,7 +3,7 @@ import * as fs from 'node:fs/promises'
 import * as os from 'node:os'
 import * as path from 'node:path'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
-import { GET } from '../../../app/api/images/[id]/route'
+import { handleGetImage } from '../../../app/api/images/[id]/route'
 import { createConversation } from '../../../lib/db/conversations'
 import { createImage } from '../../../lib/db/images'
 import { createTestDb } from '../../helpers/db'
@@ -15,7 +15,6 @@ let tmpDir: string
 beforeAll(async () => {
     ({ prisma, cleanup } = await createTestDb())
 })
-afterAll(() => cleanup())
 
 beforeEach(async () => {
     tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'agent-image-api-get-test-'))
@@ -25,6 +24,8 @@ afterEach(async () => {
     delete process.env.DATA_IMAGES_ROOT
     await fs.rm(tmpDir, { recursive: true, force: true })
 })
+
+afterAll(() => cleanup())
 
 const pngBuffer = Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00])
 
@@ -39,11 +40,7 @@ describe('gET /api/images/[id]', () => {
             buffer: pngBuffer,
         })
 
-        const req = new Request(`http://localhost/api/images/${img.id}`)
-        const res = await GET(req, {
-            params: Promise.resolve({ id: img.id }),
-            prisma,
-        })
+        const res = await handleGetImage(Promise.resolve({ id: img.id }), { prisma })
 
         expect(res.status).toBe(200)
         expect(res.headers.get('Content-Type')).toBe('image/png')
@@ -54,11 +51,7 @@ describe('gET /api/images/[id]', () => {
     })
 
     it('returns 404 for non-existent imageId', async () => {
-        const req = new Request('http://localhost/api/images/non-existent')
-        const res = await GET(req, {
-            params: Promise.resolve({ id: 'non-existent' }),
-            prisma,
-        })
+        const res = await handleGetImage(Promise.resolve({ id: 'non-existent' }), { prisma })
         expect(res.status).toBe(404)
     })
 })

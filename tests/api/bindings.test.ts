@@ -3,7 +3,11 @@
  */
 import type { PrismaClient } from '../../generated/prisma/client'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { DELETE, GET, PUT } from '../../app/api/bindings/route'
+import {
+    handleBindingsDelete,
+    handleBindingsGet,
+    handleBindingsPut,
+} from '../../app/api/bindings/route'
 import { createLlmModel, createSearchModel } from '../../lib/db/models'
 import { createTestDb } from '../helpers/db'
 
@@ -26,7 +30,7 @@ function makeReq(method: string, body?: unknown, search?: string) {
 
 describe('gET /api/bindings', () => {
     it('returns empty bindings initially', async () => {
-        const res = await GET(makeReq('GET'), { prisma })
+        const res = await handleBindingsGet({ prisma })
         expect(res.status).toBe(200)
         const data = await res.json()
         expect(data).toEqual({})
@@ -41,13 +45,13 @@ describe('pUT /api/bindings', () => {
             apiKey: 'bsa-test-key',
         })
 
-        const res = await PUT(
+        const res = await handleBindingsPut(
             makeReq('PUT', { tool: 'WEB_SEARCH', modelId: model.id }),
             { prisma },
         )
         expect(res.status).toBe(200)
 
-        const getRes = await GET(makeReq('GET'), { prisma })
+        const getRes = await handleBindingsGet({ prisma })
         const data = await getRes.json()
         expect(data.WEB_SEARCH).toBe(model.id)
     })
@@ -64,21 +68,21 @@ describe('pUT /api/bindings', () => {
             apiKey: 'key-b',
         })
 
-        await PUT(makeReq('PUT', { tool: 'IMAGE_SEARCH', modelId: m1.id }), { prisma })
-        await PUT(makeReq('PUT', { tool: 'IMAGE_SEARCH', modelId: m2.id }), { prisma })
+        await handleBindingsPut(makeReq('PUT', { tool: 'IMAGE_SEARCH', modelId: m1.id }), { prisma })
+        await handleBindingsPut(makeReq('PUT', { tool: 'IMAGE_SEARCH', modelId: m2.id }), { prisma })
 
-        const getRes = await GET(makeReq('GET'), { prisma })
+        const getRes = await handleBindingsGet({ prisma })
         const data = await getRes.json()
         expect(data.IMAGE_SEARCH).toBe(m2.id)
     })
 
     it('returns 422 when tool is missing', async () => {
-        const res = await PUT(makeReq('PUT', { modelId: 'some-id' }), { prisma })
+        const res = await handleBindingsPut(makeReq('PUT', { modelId: 'some-id' }), { prisma })
         expect(res.status).toBe(422)
     })
 
     it('returns 422 when modelId is missing', async () => {
-        const res = await PUT(makeReq('PUT', { tool: 'WEB_SEARCH' }), { prisma })
+        const res = await handleBindingsPut(makeReq('PUT', { tool: 'WEB_SEARCH' }), { prisma })
         expect(res.status).toBe(422)
     })
 
@@ -89,7 +93,7 @@ describe('pUT /api/bindings', () => {
             apiKey: 'sk-x',
             contextWindow: 4096,
         })
-        const res = await PUT(
+        const res = await handleBindingsPut(
             makeReq('PUT', { tool: 'WEB_SEARCH', modelId: llm.id }),
             { prisma },
         )
@@ -104,21 +108,21 @@ describe('dELETE /api/bindings', () => {
             providerType: 'BRAVE_SEARCH',
             apiKey: 'key-del',
         })
-        await PUT(makeReq('PUT', { tool: 'WEB_SEARCH', modelId: model.id }), { prisma })
+        await handleBindingsPut(makeReq('PUT', { tool: 'WEB_SEARCH', modelId: model.id }), { prisma })
 
-        const res = await DELETE(
+        const res = await handleBindingsDelete(
             makeReq('DELETE', undefined, '?tool=WEB_SEARCH'),
             { prisma },
         )
         expect(res.status).toBe(200)
 
-        const getRes = await GET(makeReq('GET'), { prisma })
+        const getRes = await handleBindingsGet({ prisma })
         const data = await getRes.json()
         expect(data.WEB_SEARCH).toBeUndefined()
     })
 
     it('returns 422 when tool query param missing', async () => {
-        const res = await DELETE(makeReq('DELETE'), { prisma })
+        const res = await handleBindingsDelete(makeReq('DELETE'), { prisma })
         expect(res.status).toBe(422)
     })
 })

@@ -2,6 +2,7 @@ import type { ModelType, PrismaClient } from '../../generated/prisma/client'
 import type { ImageModelInput } from '../validation/image-model-schema'
 import type { LlmModelInput } from '../validation/llm-model-schema'
 import type { SearchModelInput } from '../validation/search-model-schema'
+import { Prisma } from '../../generated/prisma/client'
 import { imageModelInputSchema } from '../validation/image-model-schema'
 import { llmModelInputSchema } from '../validation/llm-model-schema'
 import { searchModelInputSchema } from '../validation/search-model-schema'
@@ -27,8 +28,12 @@ export async function createLlmModel(prisma: PrismaClient, input: LlmModelInput)
             baseURL: parsed.baseURL ?? null,
             apiKey: parsed.apiKey,
             contextWindow: parsed.contextWindow,
-            extraHeaders: parsed.extraHeaders ?? null,
-            capabilities: parsed.capabilities ?? null,
+            ...(parsed.extraHeaders != null && {
+                extraHeaders: parsed.extraHeaders as Prisma.InputJsonValue,
+            }),
+            ...(parsed.capabilities != null && {
+                capabilities: parsed.capabilities as Prisma.InputJsonValue,
+            }),
         },
     })
 }
@@ -47,8 +52,18 @@ export async function updateLlmModel(
             ...(patch.baseURL !== undefined && { baseURL: patch.baseURL }),
             ...(patch.apiKey !== undefined && { apiKey: patch.apiKey }),
             ...(patch.contextWindow !== undefined && { contextWindow: patch.contextWindow }),
-            ...(patch.extraHeaders !== undefined && { extraHeaders: patch.extraHeaders }),
-            ...(patch.capabilities !== undefined && { capabilities: patch.capabilities }),
+            ...(patch.extraHeaders !== undefined && {
+                extraHeaders:
+                    patch.extraHeaders === null
+                        ? Prisma.JsonNull
+                        : (patch.extraHeaders as Prisma.InputJsonValue),
+            }),
+            ...(patch.capabilities !== undefined && {
+                capabilities:
+                    patch.capabilities === null
+                        ? Prisma.JsonNull
+                        : (patch.capabilities as Prisma.InputJsonValue),
+            }),
         },
     })
 }

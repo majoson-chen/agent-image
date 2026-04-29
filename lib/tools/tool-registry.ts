@@ -1,3 +1,4 @@
+import type { ToolSet } from 'ai'
 import type { PrismaClient } from '../../generated/prisma/client'
 import type { ImageModelCapabilities } from '../validation/image-model-schema'
 import { getModel } from '../db/models'
@@ -9,8 +10,6 @@ import { createWebFetchTool } from './web-fetch'
 import { createWebSearchTool } from './web-search'
 import 'server-only'
 
-type ToolSet = Record<string, { execute?: unknown }>
-
 interface AvailableTools {
     tools: ToolSet
     /** 工具名称列表，供 system prompt 引用 */
@@ -19,7 +18,7 @@ interface AvailableTools {
 
 export async function buildAvailableTools(prisma: PrismaClient, conversationId: string): Promise<AvailableTools> {
     const bindings = await getAllBindings(prisma)
-    const tools: ToolSet = {}
+    const tools = {} as ToolSet
 
     if (bindings.WEB_SEARCH) {
         const model = await getModel(prisma, bindings.WEB_SEARCH)
@@ -43,9 +42,12 @@ export async function buildAvailableTools(prisma: PrismaClient, conversationId: 
     if (primarySel) {
         const model = await getModel(prisma, primarySel.modelId)
         if (model && model.capabilities) {
+            const caps = model.capabilities as ImageModelCapabilities
+            const defaultSize = caps.supportedSizes[0] ?? '1024x1024'
+            const selParams = primarySel.params as { size?: string } | null
             tools['image-generate-primary'] = createImageGenerateTool({
                 model: model as Parameters<typeof createImageGenerateTool>[0]['model'],
-                params: (primarySel.params as { size: string } | null) ?? { size: (model.capabilities as ImageModelCapabilities).supportedSizes[0] },
+                params: { size: selParams?.size ?? defaultSize },
                 role: 'PRIMARY',
                 conversationId,
             })
@@ -56,9 +58,12 @@ export async function buildAvailableTools(prisma: PrismaClient, conversationId: 
     if (secondarySel) {
         const model = await getModel(prisma, secondarySel.modelId)
         if (model && model.capabilities) {
+            const caps = model.capabilities as ImageModelCapabilities
+            const defaultSize = caps.supportedSizes[0] ?? '1024x1024'
+            const selParams = secondarySel.params as { size?: string } | null
             tools['image-generate-secondary'] = createImageGenerateTool({
                 model: model as Parameters<typeof createImageGenerateTool>[0]['model'],
-                params: (secondarySel.params as { size: string } | null) ?? { size: (model.capabilities as ImageModelCapabilities).supportedSizes[0] },
+                params: { size: selParams?.size ?? defaultSize },
                 role: 'SECONDARY',
                 conversationId,
             })

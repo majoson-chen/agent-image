@@ -18,7 +18,7 @@ export function getPrisma(): PrismaClient {
         return _prisma
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    // eslint-disable-next-line ts/no-require-imports -- Prisma adapter 仅在首次 DB 访问时同步加载原生模块
     const { PrismaBetterSqlite3 } = require('@prisma/adapter-better-sqlite3')
 
     const url = process.env.DATABASE_URL ?? 'file:./data.db'
@@ -35,7 +35,7 @@ export function getPrisma(): PrismaClient {
 // 只有当真正访问 prisma.xxx 时才触发 getPrisma()
 const lazyPrisma: PrismaClient = new Proxy({} as PrismaClient, {
     get(_, prop) {
-        return (getPrisma() as Record<string | symbol, unknown>)[prop]
+        return (getPrisma() as unknown as Record<string | symbol, unknown>)[prop]
     },
 })
 

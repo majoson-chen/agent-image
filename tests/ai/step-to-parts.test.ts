@@ -15,8 +15,8 @@ describe('appendStepToParts', () => {
         const step = makeStep([{ type: 'text', text: 'Hello world' }])
         const result = appendStepToParts([], step)
         expect(result).toHaveLength(2)
-        expect(result[0].type).toBe('step-start')
-        expect(result[1]).toMatchObject({ type: 'text', text: 'Hello world' })
+        expect(result[0]!.type).toBe('step-start')
+        expect(result[1]!).toMatchObject({ type: 'text', text: 'Hello world' })
     })
 
     it('tool-call + tool-result → step-start + output-available part', () => {
@@ -26,8 +26,8 @@ describe('appendStepToParts', () => {
         ])
         const result = appendStepToParts([], step)
         expect(result).toHaveLength(2)
-        expect(result[0].type).toBe('step-start')
-        expect(result[1]).toMatchObject({
+        expect(result[0]!.type).toBe('step-start')
+        expect(result[1]!).toMatchObject({
             type: 'tool-web-fetch',
             state: 'output-available',
             toolCallId: 'tc1',
@@ -41,12 +41,12 @@ describe('appendStepToParts', () => {
         ])
         const result = appendStepToParts([], step)
         expect(result).toHaveLength(2)
-        expect(result[1]).toMatchObject({
+        expect(result[1]!).toMatchObject({
             type: 'tool-web-search',
             state: 'output-error',
             toolCallId: 'tc2',
         })
-        expect((result[1] as { errorText: string }).errorText).toContain('fetch 500')
+        expect((result[1] as unknown as { errorText: string }).errorText).toContain('fetch 500')
     })
 
     it('appends to existing parts (accumulate across steps)', () => {
@@ -57,14 +57,14 @@ describe('appendStepToParts', () => {
         const step = makeStep([{ type: 'text', text: 'Step 2' }])
         const result = appendStepToParts(prev as never, step)
         expect(result).toHaveLength(4)
-        expect(result[3]).toMatchObject({ type: 'text', text: 'Step 2' })
+        expect(result[3]!).toMatchObject({ type: 'text', text: 'Step 2' })
     })
 
     it('empty content step → only step-start', () => {
         const step = makeStep([])
         const result = appendStepToParts([], step)
         expect(result).toHaveLength(1)
-        expect(result[0].type).toBe('step-start')
+        expect(result[0]!.type).toBe('step-start')
     })
 
     it('non-text/tool content is ignored', () => {

@@ -1,3 +1,4 @@
+import { createReadStream } from 'node:fs'
 import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
 import { mimeToExt } from './mime'
@@ -34,7 +35,6 @@ export async function readImageBuffer(
 
 export function readImageStream(conversationId: string, imageId: string, mimeType: string) {
     const p = imagePath(conversationId, imageId, mimeType)
-    const { createReadStream } = require('node:fs') as typeof import('node:fs')
     return createReadStream(p)
 }
 

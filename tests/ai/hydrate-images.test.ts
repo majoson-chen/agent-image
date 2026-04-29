@@ -63,13 +63,15 @@ describe('hydrateImagesForLLM', () => {
         ]
 
         const result = await hydrateImagesForLLM(uiMessages, prisma)
-        expect(result[0].parts).toHaveLength(2)
-        expect(result[0].parts[0]).toMatchObject({ type: 'text', text: 'see this' })
-        const imagePart = result[0].parts[1] as { type: string, image: Buffer, mimeType: string }
+        const row = result[0]!
+        expect(row.parts).toHaveLength(2)
+        expect(row.parts[0]).toMatchObject({ type: 'text', text: 'see this' })
+        const imagePart = row.parts[1] as { type: string, image: Buffer | Uint8Array, mimeType: string }
         expect(imagePart.type).toBe('image')
         expect(imagePart.mimeType).toBe('image/png')
-        expect(Buffer.isBuffer(imagePart.image) || imagePart.image instanceof Uint8Array).toBe(true)
-        expect(Buffer.from(imagePart.image).subarray(0, 4)).toEqual(pngBuffer.subarray(0, 4))
+        const img = imagePart.image
+        expect(Buffer.isBuffer(img) || (typeof img === 'object' && img !== null && img instanceof Uint8Array)).toBe(true)
+        expect(Buffer.from(img as Uint8Array).subarray(0, 4)).toEqual(pngBuffer.subarray(0, 4))
     })
 
     it('preserves non-image-ref parts unchanged', async () => {
@@ -86,7 +88,7 @@ describe('hydrateImagesForLLM', () => {
         ]
 
         const result = await hydrateImagesForLLM(uiMessages, prisma)
-        expect(result[0].parts).toEqual(uiMessages[0].parts)
+        expect(result[0]!.parts).toEqual(uiMessages[0]!.parts)
     })
 
     it('skips image-ref with missing image (no throw)', async () => {
@@ -103,7 +105,7 @@ describe('hydrateImagesForLLM', () => {
 
         const result = await hydrateImagesForLLM(uiMessages, prisma)
         // image-ref with missing image is skipped
-        expect(result[0].parts).toHaveLength(0)
+        expect(result[0]!.parts).toHaveLength(0)
     })
 
     it('does not mutate original messages array', async () => {

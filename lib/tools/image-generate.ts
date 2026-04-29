@@ -3,6 +3,7 @@ import type { ImageModelCapabilities } from '../validation/image-model-schema'
 import { tool } from 'ai'
 import { z } from 'zod'
 import { executeImageGeneration } from '../image-provider-factory'
+import prismaDefault from '../prisma'
 import 'server-only'
 
 interface ImageModelRecord extends Model {
@@ -49,6 +50,7 @@ export function createImageGenerateTool({
                 referenceImageIds: referenceImageIds ?? [],
                 size: params.size,
                 conversationId,
+                prisma: prismaDefault,
                 abortSignal,
             })
         },

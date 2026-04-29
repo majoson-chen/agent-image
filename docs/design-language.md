@@ -4,7 +4,7 @@
 
 **设计稿（Pencil 等）：** 填色请对照 **设计计划** [`docs/plans/2026-04-23-001-feat-chat-ui-shell-plan.md`](../plans/2026-04-23-001-feat-chat-ui-shell-plan.md) 中的 **「设计稿用色」** 表（与当前安装的 daisyUI 内置主题一致）。
 
-### 日后若要品牌调色
+## 日后若要品牌调色
 
 - 在 `globals.css` 增加 `@plugin "daisyui/theme" { name: "dark"; … }` 等，**只覆盖** 需要改的 `--color-*`，其余继承同名内置主题（[Customize an existing theme](https://daisyui.com/docs/themes/#how-to-customize-an-existing-theme)）。
 

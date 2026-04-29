@@ -1,17 +1,20 @@
-import type { PrismaClient } from '../../../../generated/prisma/client'
+import type { Buffer } from 'node:buffer'
+import type { PrismaClient } from '~/generated/prisma/client'
+import { getImage } from '@lib/db/images'
+import { readImageBuffer } from '@lib/images/storage'
+import prismaDefault from '@lib/prisma'
 import { NextResponse } from 'next/server'
-import { getImage } from '../../../../lib/db/images'
-import { readImageBuffer } from '../../../../lib/images/storage'
-import prismaDefault from '../../../../lib/prisma'
 
-interface RouteContext {
-    params: Promise<{ id: string }>
+export interface ImageByIdRouteDeps {
     prisma?: PrismaClient
 }
 
-export async function GET(_req: Request, ctx: RouteContext) {
-    const db = ctx.prisma ?? prismaDefault
-    const { id } = await ctx.params
+export async function handleGetImage(
+    paramsPromise: Promise<{ id: string }>,
+    deps: ImageByIdRouteDeps = {},
+) {
+    const db = deps.prisma ?? prismaDefault
+    const { id } = await paramsPromise
 
     const image = await getImage(db, id)
     if (!image)
@@ -25,10 +28,17 @@ export async function GET(_req: Request, ctx: RouteContext) {
         return NextResponse.json({ error: '图像文件不存在' }, { status: 404 })
     }
 
-    return new Response(buffer, {
+    return new Response(new Uint8Array(buffer), {
         headers: {
             'Content-Type': image.mimeType,
             'Cache-Control': 'private, max-age=31536000, immutable',
         },
     })
+}
+
+export async function GET(
+    _req: Request,
+    segmentContext: { params: Promise<{ id: string }> },
+) {
+    return handleGetImage(segmentContext.params)
 }

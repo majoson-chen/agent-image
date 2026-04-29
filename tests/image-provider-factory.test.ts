@@ -13,7 +13,6 @@ let tmpDir: string
 beforeAll(async () => {
     ({ prisma, cleanup } = await createTestDb())
 })
-afterAll(() => cleanup())
 
 beforeEach(async () => {
     tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'agent-image-factory-test-'))
@@ -24,6 +23,8 @@ afterEach(async () => {
     delete process.env.DATA_IMAGES_ROOT
     await fs.rm(tmpDir, { recursive: true, force: true })
 })
+
+afterAll(() => cleanup())
 
 const pngBuffer = Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x00])
 

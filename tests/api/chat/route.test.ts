@@ -8,12 +8,13 @@
  * 3. 工具调用 → 失败 → output-error parts 写入 DB
  * 4. 无 LLM 选型时返回 400
  */
+import type { LanguageModel } from 'ai'
 import type { PrismaClient } from '../../../generated/prisma/client'
 import { tool } from 'ai'
 import { convertArrayToReadableStream, MockLanguageModelV3 } from 'ai/test'
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { z } from 'zod'
-import { POST } from '../../../app/api/chat/route'
+import { handleChatPost } from '../../../app/api/chat/route'
 import { createConversation } from '../../../lib/db/conversations'
 import { aggregateUsage, appendUserMessage, listMessages } from '../../../lib/db/messages'
 import { createLlmModel } from '../../../lib/db/models'
@@ -28,7 +29,7 @@ beforeAll(async () => {
 })
 afterAll(() => cleanup())
 
-function makeStreamModel(text: string) {
+function makeStreamModel(text: string): LanguageModel {
     return new MockLanguageModelV3({
         doStream: {
             stream: convertArrayToReadableStream([
@@ -46,7 +47,7 @@ function makeStreamModel(text: string) {
             ]),
             response: { headers: {} },
         },
-    })
+    } as never) as unknown as LanguageModel
 }
 
 async function setupConversationWithLlm() {
@@ -72,13 +73,13 @@ function makeRequest(body: unknown) {
 
 describe('pOST /api/chat', () => {
     it('returns 400 when conversationId missing', async () => {
-        const res = await POST(makeRequest({}), { prisma })
+        const res = await handleChatPost(makeRequest({}), { prisma })
         expect(res.status).toBe(400)
     })
 
     it('returns 400 when no LLM selection', async () => {
         const conv = await createConversation(prisma)
-        const res = await POST(makeRequest({ conversationId: conv.id }), { prisma })
+        const res = await handleChatPost(makeRequest({ conversationId: conv.id }), { prisma })
         expect(res.status).toBe(400)
     })
 
@@ -86,7 +87,7 @@ describe('pOST /api/chat', () => {
         const { conv } = await setupConversationWithLlm()
         const mockModel = makeStreamModel('Hello world')
 
-        const res = await POST(
+        const res = await handleChatPost(
             makeRequest({ conversationId: conv.id }),
             { prisma, model: mockModel },
         )
@@ -99,7 +100,7 @@ describe('pOST /api/chat', () => {
         const { conv } = await setupConversationWithLlm()
         const mockModel = makeStreamModel('hi')
 
-        const res = await POST(
+        const res = await handleChatPost(
             makeRequest({ conversationId: conv.id }),
             { prisma, model: mockModel },
         )
@@ -144,7 +145,7 @@ describe('pOST /api/chat', () => {
                     response: { headers: {} },
                 }
             },
-        })
+        } as never) as unknown as LanguageModel
 
         const echoTool = tool({
             description: '回显工具',
@@ -152,7 +153,7 @@ describe('pOST /api/chat', () => {
             execute: async ({ text }) => ({ echoed: text }),
         })
 
-        const res = await POST(
+        const res = await handleChatPost(
             makeRequest({ conversationId: conv.id }),
             { prisma, model: mockModel, toolsOverride: { 'echo-tool': echoTool } },
         )
@@ -199,15 +200,15 @@ describe('pOST /api/chat', () => {
                     response: { headers: {} },
                 }
             },
-        })
+        } as never) as unknown as LanguageModel
 
         const failTool = tool({
             description: '会失败的工具',
-            inputSchema: z.object({}),
+            inputSchema: z.object({ _reason: z.string().optional() }),
             execute: async () => { throw new Error('tool execution failed') },
         })
 
-        const res = await POST(
+        const res = await handleChatPost(
             makeRequest({ conversationId: conv.id }),
             { prisma, model: mockModel, toolsOverride: { 'fail-tool': failTool } },
         )

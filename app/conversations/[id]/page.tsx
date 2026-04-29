@@ -1,3 +1,4 @@
+import type { UIMessage } from 'ai'
 import type { ImageModelCapabilities } from '../../../lib/validation/image-model-schema'
 import { notFound } from 'next/navigation'
 import { getConversation } from '../../../lib/db/conversations'
@@ -6,6 +7,11 @@ import { listModels } from '../../../lib/db/models'
 import { getAllSelections } from '../../../lib/db/selections'
 import prisma from '../../../lib/prisma'
 import { ChatPage } from './ChatPage'
+
+/** 与 ChatPage 内 MessageMetadata 对齐，供初始消息类型断言 */
+interface ChatMessageMetadata {
+    usage?: { inputTokens: number, outputTokens: number, totalTokens: number }
+}
 
 interface Props {
     params: Promise<{ id: string }>
@@ -45,7 +51,7 @@ export default async function ConversationPage({ params }: Props) {
                     ? m.parts as object[]
                     : [{ type: 'text' as const, text: m.content }]
                 return { id: m.id, role, parts }
-            })}
+            }) as UIMessage<ChatMessageMetadata>[]}
             hasLlm={Boolean(llmModel)}
             contextWindow={llmModel?.contextWindow ?? undefined}
             imageModels={imageModelList}

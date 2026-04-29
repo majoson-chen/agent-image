@@ -3,10 +3,11 @@ import 'server-only'
 // IPv4 私有段检查：返回 true 表示是私有地址
 function isPrivateIPv4(hostname: string): boolean {
     const parts = hostname.split('.').map(Number)
-    if (parts.length !== 4 || parts.some(p => isNaN(p) || p < 0 || p > 255))
+    if (parts.length !== 4 || parts.some(p => Number.isNaN(p) || p < 0 || p > 255))
         return false
 
-    const [a, b, c] = parts
+    const a = parts[0]!
+    const b = parts[1]!
     // 127.0.0.0/8
     if (a === 127)
         return true

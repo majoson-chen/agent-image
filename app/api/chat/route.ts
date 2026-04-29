@@ -1,36 +1,41 @@
-import type { LanguageModelV1, ToolSet } from 'ai'
-import type { PrismaClient } from '../../../generated/prisma/client'
+import type { LanguageModel, ToolSet } from 'ai'
+import type { PrismaClient } from '~/generated/prisma/client'
+import { buildAgent } from '@lib/ai/build-agent'
+import { hydrateImagesForLLM } from '@lib/ai/hydrate-images'
+import { appendStepToParts } from '@lib/ai/step-to-parts'
+import { buildSystemPrompt } from '@lib/ai/system-prompt'
+import { listMessages, upsertAssistantMessage } from '@lib/db/messages'
+import { getModel } from '@lib/db/models'
+import { getSelection } from '@lib/db/selections'
+import { buildLlmModel } from '@lib/llm-provider-factory'
+import prismaDefault from '@lib/prisma'
+import { buildAvailableTools } from '@lib/tools/tool-registry'
 import { createAgentUIStreamResponse } from 'ai'
 import { NextResponse } from 'next/server'
-import { buildAgent } from '../../../lib/ai/build-agent'
-import { hydrateImagesForLLM } from '../../../lib/ai/hydrate-images'
-import { appendStepToParts } from '../../../lib/ai/step-to-parts'
-import { buildSystemPrompt } from '../../../lib/ai/system-prompt'
-import { listMessages, upsertAssistantMessage } from '../../../lib/db/messages'
-import { getModel } from '../../../lib/db/models'
-import { getSelection } from '../../../lib/db/selections'
-import { buildLlmModel } from '../../../lib/llm-provider-factory'
-import prismaDefault from '../../../lib/prisma'
-import { buildAvailableTools } from '../../../lib/tools/tool-registry'
 
-interface RouteContext {
+export interface ChatPostDeps {
     prisma?: PrismaClient
-    model?: LanguageModelV1
+    model?: LanguageModel
     toolsOverride?: ToolSet
 }
 
-export async function POST(req: Request, ctx: RouteContext = {}) {
-    const db = ctx.prisma ?? prismaDefault
-    let body: { conversationId?: string }
+interface UIMessagePart { type: string, [key: string]: unknown }
+
+/** Vitest / 集成测试注入 prisma、model、tools */
+export async function handleChatPost(req: Request, deps: ChatPostDeps = {}) {
+    const db = deps.prisma ?? prismaDefault
+    let raw: unknown
     try {
-        body = await req.json()
+        raw = await req.json()
     }
     catch {
         return NextResponse.json({ error: '无效 JSON' }, { status: 400 })
     }
 
-    const { conversationId } = body
-    if (!conversationId)
+    const conversationId = typeof raw === 'object' && raw !== null && 'conversationId' in raw
+        ? (raw as { conversationId?: unknown }).conversationId
+        : undefined
+    if (typeof conversationId !== 'string' || !conversationId.trim())
         return NextResponse.json({ error: 'conversationId 必填' }, { status: 400 })
 
     // 获取 LLM 选型
@@ -39,9 +44,9 @@ export async function POST(req: Request, ctx: RouteContext = {}) {
         return NextResponse.json({ error: '请先选择 LLM 模型' }, { status: 400 })
 
     // 构建 LLM 模型实例
-    let llmModel: LanguageModelV1
-    if (ctx.model) {
-        llmModel = ctx.model
+    let llmModel: LanguageModel
+    if (deps.model) {
+        llmModel = deps.model
     }
     else {
         const modelRecord = await getModel(db, selection.modelId)
@@ -68,20 +73,19 @@ export async function POST(req: Request, ctx: RouteContext = {}) {
     const hydratedMessages = await hydrateImagesForLLM(uiMessages, db)
 
     // 构建可用工具集（传 conversationId 以按 IMAGE selection 暴露生图工具）
-    const { tools, descriptors } = ctx.toolsOverride
-        ? { tools: ctx.toolsOverride, descriptors: Object.keys(ctx.toolsOverride) }
+    const { tools, descriptors } = deps.toolsOverride
+        ? { tools: deps.toolsOverride, descriptors: Object.keys(deps.toolsOverride) }
         : await buildAvailableTools(db, conversationId)
 
     const instructions = buildSystemPrompt(descriptors)
 
     // 每请求生成唯一 runId，作为本次 assistant Message 的 id
     const runId = crypto.randomUUID()
-    interface UIMessagePart { type: string, [key: string]: unknown }
     let runningParts: UIMessagePart[] = []
     let runningUsage = { inputTokens: 0, outputTokens: 0, totalTokens: 0 }
 
     const agent = buildAgent({
-        model: llmModel as never,
+        model: llmModel,
         tools,
         instructions,
         onStepFinish: async (step) => {
@@ -107,17 +111,25 @@ export async function POST(req: Request, ctx: RouteContext = {}) {
     })
 
     return createAgentUIStreamResponse({
-        agent: agent as never,
-        uiMessages: hydratedMessages as never,
+        agent,
+        uiMessages: hydratedMessages,
         abortSignal: req.signal,
-        messageMetadata: ({ part }: { part: { type: string, totalUsage?: { inputTokens: number, outputTokens: number, totalTokens: number } } }) => {
-            if (part.type === 'finish' && part.totalUsage) {
-                const inp = part.totalUsage.inputTokens ?? 0
-                const out = part.totalUsage.outputTokens ?? 0
-                return {
-                    usage: { inputTokens: inp, outputTokens: out, totalTokens: inp + out },
-                }
+        messageMetadata: ({ part }) => {
+            if (part.type !== 'finish')
+                return undefined
+            const u = 'totalUsage' in part ? part.totalUsage : undefined
+            if (!u)
+                return undefined
+            const inp = u.inputTokens ?? 0
+            const out = u.outputTokens ?? 0
+            const tot = u.totalTokens ?? inp + out
+            return {
+                usage: { inputTokens: inp, outputTokens: out, totalTokens: tot },
             }
         },
     })
+}
+
+export async function POST(req: Request) {
+    return handleChatPost(req, {})
 }

@@ -1,4 +1,4 @@
-import type { LanguageModelV1 } from 'ai'
+import type { LanguageModel } from 'ai'
 import type { Model } from '../generated/prisma/client'
 import { createOpenAI } from '@ai-sdk/openai'
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
@@ -7,7 +7,7 @@ import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
  * 根据 Model 记录构建 AI SDK LanguageModel 实例。
  * 仅支持 LLM 类型且 providerType 为 OPENAI / OPENAI_COMPATIBLE。
  */
-export function buildLlmModel(model: Model): LanguageModelV1 {
+export function buildLlmModel(model: Model): LanguageModel {
     if (model.providerType === 'OPENAI') {
         const provider = createOpenAI({ apiKey: model.apiKey })
         return provider(model.name)

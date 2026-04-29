@@ -10,7 +10,7 @@ export function NewConversationButton() {
     async function handleClick() {
         setLoading(true)
         const res = await fetch('/api/conversations', { method: 'POST' })
-        const conv = await res.json()
+        const conv = await res.json() as { id: string }
         router.push(`/conversations/${conv.id}`)
         router.refresh()
     }

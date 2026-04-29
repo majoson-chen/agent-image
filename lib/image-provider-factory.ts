@@ -18,7 +18,7 @@ interface ExecuteImageGenerationInput {
     size: string
     conversationId: string
     prisma: PrismaClient
-    abortSignal: AbortSignal
+    abortSignal?: AbortSignal
 }
 
 export async function executeImageGeneration(input: ExecuteImageGenerationInput) {
@@ -35,7 +35,9 @@ async function executeSeedream(input: ExecuteImageGenerationInput) {
 
     // 30s 超时复合 abortSignal
     const timeoutSignal = AbortSignal.timeout(30_000)
-    const combinedSignal = AbortSignal.any([abortSignal, timeoutSignal])
+    const combinedSignal = abortSignal
+        ? AbortSignal.any([abortSignal, timeoutSignal])
+        : timeoutSignal
 
     // 1. 把参考图解析为 base64
     const images: string[] = []

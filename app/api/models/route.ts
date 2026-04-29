@@ -1,22 +1,28 @@
-import type { PrismaClient } from '../../../generated/prisma/client'
+import type { PrismaClient } from '~/generated/prisma/client'
+import { createImageModel, createLlmModel, createSearchModel, listModels } from '@lib/db/models'
+import prismaDefault from '@lib/prisma'
+import { imageModelInputSchema } from '@lib/validation/image-model-schema'
+import { llmModelInputSchema } from '@lib/validation/llm-model-schema'
+import { searchModelInputSchema } from '@lib/validation/search-model-schema'
 import { NextResponse } from 'next/server'
 import { ZodError } from 'zod'
-import { createImageModel, createLlmModel, createSearchModel, listModels } from '../../../lib/db/models'
-import prismaDefault from '../../../lib/prisma'
-import { imageModelInputSchema } from '../../../lib/validation/image-model-schema'
-import { llmModelInputSchema } from '../../../lib/validation/llm-model-schema'
-import { searchModelInputSchema } from '../../../lib/validation/search-model-schema'
 
-interface RouteContext { prisma?: PrismaClient }
+export interface ModelsRouteDeps {
+    prisma?: PrismaClient
+}
 
-export async function GET(_req: Request = new Request(''), ctx: RouteContext = {}) {
-    const db = ctx.prisma ?? prismaDefault
+export async function handleModelsGet(deps: ModelsRouteDeps = {}) {
+    const db = deps.prisma ?? prismaDefault
     const models = await listModels(db)
     return NextResponse.json(models)
 }
 
-export async function POST(req: Request, ctx: RouteContext = {}) {
-    const db = ctx.prisma ?? prismaDefault
+export async function GET() {
+    return handleModelsGet()
+}
+
+export async function handleModelsPost(req: Request, deps: ModelsRouteDeps = {}) {
+    const db = deps.prisma ?? prismaDefault
     let body: unknown
     try {
         body = await req.json()
@@ -38,14 +44,17 @@ export async function POST(req: Request, ctx: RouteContext = {}) {
             const model = await createImageModel(db, parsed)
             return NextResponse.json(model, { status: 201 })
         }
-        // 默认 LLM（向后兼容旧请求不带 type 字段）
         const parsed = llmModelInputSchema.parse(body)
         const model = await createLlmModel(db, parsed)
         return NextResponse.json(model, { status: 201 })
     }
     catch (e) {
         if (e instanceof ZodError)
-            return NextResponse.json({ errors: e.errors }, { status: 422 })
+            return NextResponse.json({ errors: e.issues }, { status: 422 })
         throw e
     }
+}
+
+export async function POST(req: Request) {
+    return handleModelsPost(req)
 }

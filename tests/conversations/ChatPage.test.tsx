@@ -1,10 +1,17 @@
 /**
  * U8 — ChatPage 组件测试（test-first）
+ * @vitest-environment jsdom
  * 覆盖 approval 状态、上传 UI、image-ref 渲染
  */
 import type { UIMessage } from 'ai'
-import { cleanup, render, screen, fireEvent } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+
+import { ChatPage } from '../../app/conversations/[id]/ChatPage'
+
+const mockChat = vi.hoisted(() => ({
+    messages: [] as UIMessage[],
+}))
 
 // mock @ai-sdk/react useChat
 const mockAddToolApprovalResponse = vi.fn()
@@ -14,7 +21,7 @@ const mockClearError = vi.fn()
 
 vi.mock('@ai-sdk/react', () => ({
     useChat: () => ({
-        messages: mockMessages,
+        messages: mockChat.messages,
         sendMessage: mockSendMessage,
         stop: mockStop,
         status: 'ready',
@@ -34,14 +41,10 @@ vi.mock('../../app/conversations/[id]/ImageModelPicker', () => ({
     ImageModelPicker: () => <div data-testid="image-model-picker" />,
 }))
 
-let mockMessages: UIMessage[] = []
-
-import { ChatPage } from '../../app/conversations/[id]/ChatPage'
-
 afterEach(() => {
     cleanup()
     vi.clearAllMocks()
-    mockMessages = []
+    mockChat.messages.length = 0
 })
 
 function renderChatPage(overrides: Partial<React.ComponentProps<typeof ChatPage>> = {}) {
@@ -54,9 +57,9 @@ function renderChatPage(overrides: Partial<React.ComponentProps<typeof ChatPage>
     return render(<ChatPage {...defaultProps} />)
 }
 
-describe('ChatPage - approval-requested state', () => {
+describe('chatPage - approval-requested state', () => {
     it('renders confirm and deny buttons when tool state is approval-requested', () => {
-        mockMessages = [
+        mockChat.messages = [
             {
                 id: 'msg-1',
                 role: 'assistant',
@@ -80,7 +83,7 @@ describe('ChatPage - approval-requested state', () => {
     })
 
     it('calls addToolApprovalResponse with approved=true on 确认 click', () => {
-        mockMessages = [
+        mockChat.messages = [
             {
                 id: 'msg-1',
                 role: 'assistant',
@@ -103,7 +106,7 @@ describe('ChatPage - approval-requested state', () => {
     })
 
     it('calls addToolApprovalResponse with approved=false on 拒绝 click', () => {
-        mockMessages = [
+        mockChat.messages = [
             {
                 id: 'msg-1',
                 role: 'assistant',
@@ -126,9 +129,9 @@ describe('ChatPage - approval-requested state', () => {
     })
 })
 
-describe('ChatPage - output-available state', () => {
+describe('chatPage - output-available state', () => {
     it('renders img tag with /api/images/:id when output-available', () => {
-        mockMessages = [
+        mockChat.messages = [
             {
                 id: 'msg-1',
                 role: 'assistant',
@@ -150,9 +153,9 @@ describe('ChatPage - output-available state', () => {
     })
 })
 
-describe('ChatPage - image-ref in user message', () => {
+describe('chatPage - image-ref in user message', () => {
     it('renders img with /api/images/:id for image-ref parts', () => {
-        mockMessages = [
+        mockChat.messages = [
             {
                 id: 'msg-1',
                 role: 'user',
@@ -169,7 +172,7 @@ describe('ChatPage - image-ref in user message', () => {
     })
 })
 
-describe('ChatPage - upload UI', () => {
+describe('chatPage - upload UI', () => {
     it('renders + button for file upload', () => {
         renderChatPage({ hasLlm: true })
         // + 号按钮（label 包含 input[type=file]）
@@ -198,9 +201,9 @@ describe('ChatPage - upload UI', () => {
     })
 })
 
-describe('ChatPage - executing state', () => {
+describe('chatPage - executing state', () => {
     it('shows 生成中 spinner when executing', () => {
-        mockMessages = [
+        mockChat.messages = [
             {
                 id: 'msg-1',
                 role: 'assistant',

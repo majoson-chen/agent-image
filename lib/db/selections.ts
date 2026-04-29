@@ -1,4 +1,5 @@
 import type { PrismaClient, SelectionRole } from '../../generated/prisma/client'
+import { Prisma } from '../../generated/prisma/client'
 
 export async function getSelection(
     prisma: PrismaClient,
@@ -18,10 +19,17 @@ export async function setSelection(
     modelId: string,
     params?: Record<string, unknown> | null,
 ) {
+    const payload
+        = params === undefined
+            ? {}
+            : params === null
+                ? { params: Prisma.DbNull }
+                : { params: params as Prisma.InputJsonValue }
+
     return prisma.conversationModelSelection.upsert({
         where: { conversationId_role: { conversationId, role } },
-        create: { conversationId, role, modelId, params: params ?? null },
-        update: { modelId, params: params ?? null },
+        create: { conversationId, role, modelId, ...payload },
+        update: { modelId, ...payload },
     })
 }
 

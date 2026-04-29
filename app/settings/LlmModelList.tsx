@@ -21,7 +21,7 @@ export async function LlmModelList() {
                                 {m.providerType}
                                 {m.baseURL ? ` · ${m.baseURL}` : ''}
                                 {' · '}
-                                {(m.contextWindow / 1000).toFixed(0)}
+                                {((m.contextWindow ?? 0) / 1000).toFixed(0)}
                                 k ctx
                             </p>
                         </div>

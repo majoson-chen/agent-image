@@ -1,17 +1,18 @@
-import type { PrismaClient } from '../../../generated/prisma/client'
+import type { PrismaClient } from '~/generated/prisma/client'
+import { Buffer } from 'node:buffer'
+import { getConversation } from '@lib/db/conversations'
+import { createImage } from '@lib/db/images'
+import { detectMime, isAllowedMime } from '@lib/images/mime'
+import prismaDefault from '@lib/prisma'
+import { MAX_UPLOAD_BYTES } from '@lib/validation/image-upload-schema'
 import { NextResponse } from 'next/server'
-import { getConversation } from '../../../lib/db/conversations'
-import { createImage } from '../../../lib/db/images'
-import { detectMime, isAllowedMime } from '../../../lib/images/mime'
-import prismaDefault from '../../../lib/prisma'
-import { MAX_UPLOAD_BYTES } from '../../../lib/validation/image-upload-schema'
 
-interface RouteContext {
+export interface ImagesPostDeps {
     prisma?: PrismaClient
 }
 
-export async function POST(req: Request, ctx: RouteContext = {}) {
-    const db = ctx.prisma ?? prismaDefault
+export async function handleImagesPost(req: Request, deps: ImagesPostDeps = {}) {
+    const db = deps.prisma ?? prismaDefault
 
     let formData: FormData
     try {
@@ -43,7 +44,6 @@ export async function POST(req: Request, ctx: RouteContext = {}) {
     const arrayBuf = await file.arrayBuffer()
     const buffer = Buffer.from(arrayBuf)
 
-    // 服务端 magic bytes 探测，防止 client 伪造
     const detectedMime = detectMime(buffer)
     if (!detectedMime || !isAllowedMime(detectedMime))
         return NextResponse.json({ error: '不支持的图像类型' }, { status: 400 })
@@ -68,4 +68,8 @@ export async function POST(req: Request, ctx: RouteContext = {}) {
         console.error('createImage failed:', e)
         return NextResponse.json({ error: '上传失败' }, { status: 500 })
     }
+}
+
+export async function POST(req: Request) {
+    return handleImagesPost(req)
 }

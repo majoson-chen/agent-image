@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { detectMime, isAllowedMime, mimeToExt } from '../../lib/images/mime'
 
 // PNG magic bytes: 89 50 4E 47 0D 0A 1A 0A
