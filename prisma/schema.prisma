@@ -19,6 +19,12 @@ enum ModelType {
 enum ProviderType {
   OPENAI
   OPENAI_COMPATIBLE
+  BRAVE_SEARCH
+}
+
+enum SearchTool {
+  WEB_SEARCH
+  IMAGE_SEARCH
 }
 
 enum MessageRole {
@@ -51,8 +57,9 @@ model Model {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
-  messages    Message[]
-  selections  ConversationModelSelection[]
+  messages        Message[]
+  selections      ConversationModelSelection[]
+  searchBindings  SearchToolBinding[]
 }
 
 model Conversation {
@@ -70,6 +77,8 @@ model Message {
   conversationId    String
   role              MessageRole
   content           String
+  /// M2: UIMessage parts JSON；M1 旧消息保持 null
+  parts             Json?
   usageInputTokens  Int?
   usageOutputTokens Int?
   usageTotalTokens  Int?
@@ -93,4 +102,13 @@ model ConversationModelSelection {
   model        Model        @relation(fields: [modelId], references: [id], onDelete: Cascade)
 
   @@unique([conversationId, role])
+}
+
+model SearchToolBinding {
+  id        String     @id @default(cuid())
+  tool      SearchTool @unique
+  modelId   String
+  createdAt DateTime   @default(now())
+
+  model Model @relation(fields: [modelId], references: [id], onDelete: Cascade)
 }

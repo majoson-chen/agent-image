@@ -121,6 +121,103 @@ describe('conversation + Message cascade', () => {
     })
 })
 
+describe('BRAVE_SEARCH model + SearchToolBinding', () => {
+    it('creates a BRAVE_SEARCH model', async () => {
+        const m = await prisma.model.create({
+            data: {
+                type: 'SEARCH',
+                name: 'Brave Search',
+                providerType: 'BRAVE_SEARCH',
+                apiKey: 'BSA-test-token',
+            },
+        })
+        expect(m.id).toBeTruthy()
+        expect(m.type).toBe('SEARCH')
+        expect(m.providerType).toBe('BRAVE_SEARCH')
+        expect(m.contextWindow).toBeNull()
+    })
+
+    it('creates SearchToolBinding and reads back with model', async () => {
+        const m = await prisma.model.create({
+            data: {
+                type: 'SEARCH',
+                name: 'Brave WEB',
+                providerType: 'BRAVE_SEARCH',
+                apiKey: 'BSA-abc',
+            },
+        })
+        const binding = await prisma.searchToolBinding.create({
+            data: { tool: 'WEB_SEARCH', modelId: m.id },
+            include: { model: true },
+        })
+        expect(binding.tool).toBe('WEB_SEARCH')
+        expect(binding.model.id).toBe(m.id)
+    })
+
+    it('enforces UNIQUE on tool column', async () => {
+        const m = await prisma.model.create({
+            data: {
+                type: 'SEARCH',
+                name: 'Brave UNIQUE',
+                providerType: 'BRAVE_SEARCH',
+                apiKey: 'BSA-unique',
+            },
+        })
+        await prisma.searchToolBinding.create({ data: { tool: 'IMAGE_SEARCH', modelId: m.id } })
+        let threw = false
+        try {
+            await prisma.searchToolBinding.create({ data: { tool: 'IMAGE_SEARCH', modelId: m.id } })
+        }
+        catch {
+            threw = true
+        }
+        expect(threw).toBe(true)
+    })
+
+    it('cascades delete SEARCH Model → binding removed', async () => {
+        // 清理可能存在的同 tool 绑定，避免 UNIQUE 冲突
+        await prisma.searchToolBinding.deleteMany({ where: { tool: 'WEB_SEARCH' } })
+        const m = await prisma.model.create({
+            data: {
+                type: 'SEARCH',
+                name: 'Brave CASCADE',
+                providerType: 'BRAVE_SEARCH',
+                apiKey: 'BSA-cascade',
+            },
+        })
+        const binding = await prisma.searchToolBinding.create({
+            data: { tool: 'WEB_SEARCH', modelId: m.id },
+        })
+        await prisma.model.delete({ where: { id: m.id } })
+        const found = await prisma.searchToolBinding.findUnique({ where: { id: binding.id } })
+        expect(found).toBeNull()
+    })
+})
+
+describe('Message.parts column', () => {
+    it('writes and reads back parts JSON', async () => {
+        const conv = await prisma.conversation.create({ data: {} })
+        const parts = [
+            { type: 'text', text: 'Hello' },
+            { type: 'tool-web-search', state: 'output-available', toolCallId: 'tc1', input: { query: 'test' }, output: { items: [] } },
+        ]
+        const msg = await prisma.message.create({
+            data: { conversationId: conv.id, role: 'ASSISTANT', content: 'Hello', parts: parts as unknown as object },
+        })
+        const found = await prisma.message.findUniqueOrThrow({ where: { id: msg.id } })
+        expect(found.parts).toEqual(parts)
+    })
+
+    it('M1 legacy message parts=null stays null', async () => {
+        const conv = await prisma.conversation.create({ data: {} })
+        const msg = await prisma.message.create({
+            data: { conversationId: conv.id, role: 'ASSISTANT', content: 'legacy' },
+        })
+        const found = await prisma.message.findUniqueOrThrow({ where: { id: msg.id } })
+        expect(found.parts).toBeNull()
+    })
+})
+
 describe('conversationModelSelection unique constraint', () => {
     it('rejects duplicate (conversationId, role)', async () => {
         const model = await prisma.model.create({
