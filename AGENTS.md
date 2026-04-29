@@ -23,7 +23,7 @@
 
 ## Import Alias
 
-本项目配置了 TypeScript 路径别名，以简化导入路径。如果某个导入可以使用别名进行而没有使用，则视为错误的导入。
+本项目配置了 TypeScript 路径别名，以简化导入路径。如果某个导入可以使用别名进行而没有使用，则视为「错误」的导入。
 
 - `@/*` → `./app/*`
 - `@lib/*` → `./lib/*`
@@ -34,6 +34,8 @@
 ```ts
 import SomeComponent from '../../../../xxx'
 import { cn } from '../../lib/cn'
+import prismaClient from '../../lib/prisma'
+import { getPrisma } from '../../..prisma/generated/prisma/client'
 ```
 
 ✅ 正确的导入：
@@ -41,6 +43,7 @@ import { cn } from '../../lib/cn'
 ```ts
 import { cn } from '@lib/cn'
 import SomeComponent from '~/xxx'
+import prismaClient from '@lib/prisma'
 ```
 
 ## Next.js：动手前读文档，并与 Skills 配合
