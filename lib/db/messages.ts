@@ -6,6 +6,23 @@ interface UsageInput {
     totalTokens: number | null
 }
 
+interface UpsertAssistantMessageInput {
+    id: string
+    conversationId: string
+    parts: unknown[]
+    usage: UsageInput
+    modelIdAtTime: string | null
+}
+
+function extractTextContent(parts: unknown[]): string {
+    return parts
+        .filter((p): p is { type: string; text: string } =>
+            typeof p === 'object' && p !== null && (p as { type: string }).type === 'text',
+        )
+        .map(p => p.text)
+        .join('')
+}
+
 export async function listMessages(prisma: PrismaClient, conversationId: string) {
     return prisma.message.findMany({
         where: { conversationId },
@@ -39,6 +56,34 @@ export async function appendAssistantMessage(
             usageOutputTokens: usage.outputTokens,
             usageTotalTokens: usage.totalTokens,
             modelIdAtTime,
+        },
+    })
+}
+
+export async function upsertAssistantMessage(
+    prisma: PrismaClient,
+    input: UpsertAssistantMessageInput,
+) {
+    const content = extractTextContent(input.parts)
+    const data = {
+        conversationId: input.conversationId,
+        role: 'ASSISTANT' as const,
+        content,
+        parts: input.parts as object[],
+        usageInputTokens: input.usage.inputTokens,
+        usageOutputTokens: input.usage.outputTokens,
+        usageTotalTokens: input.usage.totalTokens,
+        modelIdAtTime: input.modelIdAtTime,
+    }
+    return prisma.message.upsert({
+        where: { id: input.id },
+        create: { id: input.id, ...data },
+        update: {
+            content,
+            parts: input.parts as object[],
+            usageInputTokens: input.usage.inputTokens,
+            usageOutputTokens: input.usage.outputTokens,
+            usageTotalTokens: input.usage.totalTokens,
         },
     })
 }

@@ -1,13 +1,12 @@
+/**
+ * U2 — messages DB 层测试（扩展 M1）
+ * 验证 upsertAssistantMessage 的 INSERT / UPDATE / parts 序列化往返行为
+ */
 import type { PrismaClient } from '../../generated/prisma/client'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { createConversation } from '../../lib/db/conversations'
-import {
-    aggregateUsage,
-    appendAssistantMessage,
-    appendUserMessage,
-    listMessages,
-} from '../../lib/db/messages'
+import { appendUserMessage, listMessages, upsertAssistantMessage } from '../../lib/db/messages'
 import { createLlmModel } from '../../lib/db/models'
+import { createConversation } from '../../lib/db/conversations'
 import { createTestDb } from '../helpers/db'
 
 let prisma: PrismaClient
@@ -18,64 +17,122 @@ beforeAll(async () => {
 })
 afterAll(() => cleanup())
 
-describe('aggregateUsage', () => {
-    it('returns null for empty conversation', async () => {
-        const conv = await createConversation(prisma)
-        expect(await aggregateUsage(prisma, conv.id)).toBeNull()
+async function makeConv() {
+    const model = await createLlmModel(prisma, {
+        name: 'test-llm',
+        providerType: 'OPENAI',
+        apiKey: 'sk-test',
+        contextWindow: 4096,
+    })
+    const conv = await createConversation(prisma)
+    return { conv, modelId: model.id }
+}
+
+describe('upsertAssistantMessage', () => {
+    it('first call INSERTs a row', async () => {
+        const { conv, modelId } = await makeConv()
+        const parts = [{ type: 'text', text: 'Hello' }]
+        await upsertAssistantMessage(prisma, {
+            id: 'run-insert-1',
+            conversationId: conv.id,
+            parts,
+            usage: { inputTokens: 10, outputTokens: 5, totalTokens: 15 },
+            modelIdAtTime: modelId,
+        })
+        const msgs = await listMessages(prisma, conv.id)
+        expect(msgs).toHaveLength(1)
+        expect(msgs[0].id).toBe('run-insert-1')
+        expect(msgs[0].parts).toEqual(parts)
     })
 
-    it('sums totalTokens across messages with usage', async () => {
-        const model = await createLlmModel(prisma, {
-            name: 'agg-model',
-            providerType: 'OPENAI',
-            apiKey: 'sk-a',
-            contextWindow: 4000,
-        })
-        const conv = await createConversation(prisma)
-        await appendUserMessage(prisma, conv.id, 'hello')
-        await appendAssistantMessage(prisma, conv.id, 'hi', { inputTokens: 10, outputTokens: 20, totalTokens: 30 }, model.id)
-        await appendAssistantMessage(prisma, conv.id, 'bye', { inputTokens: 5, outputTokens: 15, totalTokens: 20 }, model.id)
+    it('second call with same id UPDATEs the row', async () => {
+        const { conv, modelId } = await makeConv()
+        const parts1 = [{ type: 'text', text: 'Step 1' }]
+        const parts2 = [
+            { type: 'text', text: 'Step 1' },
+            { type: 'tool-web-search', state: 'output-available', toolCallId: 'tc1', input: {}, output: {} },
+            { type: 'text', text: 'Done' },
+        ]
+        const usage1 = { inputTokens: 5, outputTokens: 3, totalTokens: 8 }
+        const usage2 = { inputTokens: 15, outputTokens: 9, totalTokens: 24 }
 
-        const usage = await aggregateUsage(prisma, conv.id)
-        expect(usage?.totalTokens).toBe(50)
-        expect(usage?.inputTokens).toBe(15)
-        expect(usage?.outputTokens).toBe(35)
+        await upsertAssistantMessage(prisma, {
+            id: 'run-update-1',
+            conversationId: conv.id,
+            parts: parts1,
+            usage: usage1,
+            modelIdAtTime: modelId,
+        })
+        await upsertAssistantMessage(prisma, {
+            id: 'run-update-1',
+            conversationId: conv.id,
+            parts: parts2,
+            usage: usage2,
+            modelIdAtTime: modelId,
+        })
+
+        const msgs = await listMessages(prisma, conv.id)
+        expect(msgs).toHaveLength(1)
+        expect(msgs[0].parts).toEqual(parts2)
+        expect(msgs[0].usageTotalTokens).toBe(24)
     })
 
-    it('ignores messages without usage', async () => {
-        const conv = await createConversation(prisma)
-        await appendUserMessage(prisma, conv.id, 'no usage')
-        // assistant without usage
-        await prisma.message.create({
-            data: { conversationId: conv.id, role: 'ASSISTANT', content: 'ok' },
+    it('derives content from text parts', async () => {
+        const { conv, modelId } = await makeConv()
+        const parts = [
+            { type: 'text', text: 'First' },
+            { type: 'tool-web-search', state: 'output-available', toolCallId: 'tc2', input: {}, output: {} },
+            { type: 'text', text: ' Second' },
+        ]
+        await upsertAssistantMessage(prisma, {
+            id: 'run-content-1',
+            conversationId: conv.id,
+            parts,
+            usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+            modelIdAtTime: modelId,
         })
-        expect(await aggregateUsage(prisma, conv.id)).toBeNull()
+        const msgs = await listMessages(prisma, conv.id)
+        expect(msgs[0].content).toBe('First Second')
     })
 
-    it('does not mix usage across conversations', async () => {
-        const model = await createLlmModel(prisma, {
-            name: 'iso-model',
-            providerType: 'OPENAI',
-            apiKey: 'sk-b',
-            contextWindow: 4000,
+    it('empty parts → content is empty string', async () => {
+        const { conv, modelId } = await makeConv()
+        await upsertAssistantMessage(prisma, {
+            id: 'run-empty-1',
+            conversationId: conv.id,
+            parts: [],
+            usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
+            modelIdAtTime: modelId,
         })
-        const conv1 = await createConversation(prisma)
-        const conv2 = await createConversation(prisma)
-        await appendAssistantMessage(prisma, conv1.id, 'a', { inputTokens: 1, outputTokens: 2, totalTokens: 3 }, model.id)
-        await appendAssistantMessage(prisma, conv2.id, 'b', { inputTokens: 100, outputTokens: 200, totalTokens: 300 }, model.id)
+        const msgs = await listMessages(prisma, conv.id)
+        expect(msgs[0].content).toBe('')
+    })
 
-        const u1 = await aggregateUsage(prisma, conv1.id)
-        expect(u1?.totalTokens).toBe(3)
+    it('parts with JSON special chars round-trip correctly', async () => {
+        const { conv, modelId } = await makeConv()
+        const parts = [{ type: 'text', text: '{"key":"value with }braces{"}' }]
+        await upsertAssistantMessage(prisma, {
+            id: 'run-json-1',
+            conversationId: conv.id,
+            parts,
+            usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
+            modelIdAtTime: modelId,
+        })
+        const msgs = await listMessages(prisma, conv.id)
+        expect(msgs[0].parts).toEqual(parts)
     })
 })
 
-describe('listMessages', () => {
-    it('returns messages in createdAt order', async () => {
+describe('listMessages parts field', () => {
+    it('M1 legacy message (no parts) returns parts=null', async () => {
         const conv = await createConversation(prisma)
-        await appendUserMessage(prisma, conv.id, 'first')
-        await appendUserMessage(prisma, conv.id, 'second')
+        await appendUserMessage(prisma, conv.id, 'hi')
+        // 直接 create 模拟旧 M1 消息（不设 parts）
+        await prisma.message.create({
+            data: { conversationId: conv.id, role: 'ASSISTANT', content: 'response' },
+        })
         const msgs = await listMessages(prisma, conv.id)
-        expect(msgs[0]!.content).toBe('first')
-        expect(msgs[1]!.content).toBe('second')
+        const assistant = msgs.find(m => m.role === 'ASSISTANT')
+        expect(assistant?.parts).toBeNull()
     })
 })

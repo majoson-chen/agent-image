@@ -1,6 +1,8 @@
 import type { ModelType, PrismaClient } from '../../generated/prisma/client'
 import type { LlmModelInput } from '../validation/llm-model-schema'
 import { llmModelInputSchema } from '../validation/llm-model-schema'
+import type { SearchModelInput } from '../validation/search-model-schema'
+import { searchModelInputSchema } from '../validation/search-model-schema'
 
 export async function listModels(prisma: PrismaClient, type?: ModelType) {
     return prisma.model.findMany({
@@ -51,4 +53,30 @@ export async function updateLlmModel(
 
 export async function deleteModel(prisma: PrismaClient, id: string) {
     return prisma.model.delete({ where: { id } })
+}
+
+export async function createSearchModel(prisma: PrismaClient, input: SearchModelInput) {
+    const parsed = searchModelInputSchema.parse(input)
+    return prisma.model.create({
+        data: {
+            type: 'SEARCH',
+            name: parsed.name,
+            providerType: parsed.providerType,
+            apiKey: parsed.apiKey,
+        },
+    })
+}
+
+export async function updateSearchModel(
+    prisma: PrismaClient,
+    id: string,
+    patch: Partial<Pick<SearchModelInput, 'name' | 'apiKey'>>,
+) {
+    return prisma.model.update({
+        where: { id },
+        data: {
+            ...(patch.name !== undefined && { name: patch.name }),
+            ...(patch.apiKey !== undefined && { apiKey: patch.apiKey }),
+        },
+    })
 }
