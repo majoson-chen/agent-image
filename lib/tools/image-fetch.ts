@@ -3,6 +3,7 @@ import { tool } from 'ai'
 import { z } from 'zod'
 import { createImage } from '../db/images'
 import { detectMime, isAllowedMime } from '../images/mime'
+import { readImageBuffer } from '../images/storage'
 import { assertPublicHttpUrl } from './ssrf-guard'
 import 'server-only'
 
@@ -92,6 +93,16 @@ export function createImageFetchTool({ prisma, conversationId }: CreateImageFetc
                 imageId: img.id,
                 mimeType: img.mimeType,
                 sizeBytes: img.sizeBytes,
+            }
+        },
+        toModelOutput: async ({ output }) => {
+            const { imageId, mimeType } = output as { imageId: string, mimeType: string }
+            try {
+                const buffer = await readImageBuffer(conversationId, imageId, mimeType)
+                return { type: 'content' as const, value: [{ type: 'image-data' as const, data: buffer.toString('base64'), mediaType: mimeType }] }
+            }
+            catch {
+                return { type: 'json' as const, value: output as never }
             }
         },
     })

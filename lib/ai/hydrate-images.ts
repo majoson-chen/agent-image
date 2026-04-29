@@ -1,4 +1,3 @@
-import type { Buffer } from 'node:buffer'
 import type { PrismaClient } from '../../generated/prisma/client'
 import * as fs from 'node:fs/promises'
 import { imagePath } from '../images/storage'
@@ -22,7 +21,7 @@ interface MessageLike {
 }
 
 type HydratedPart
-    = | { type: 'image', image: Buffer, mimeType: string }
+    = | { type: 'file', mediaType: string, url: string }
         | unknown
 
 /** 从 assistant tool-image-* output 中提取 imageId */
@@ -107,7 +106,7 @@ export async function hydrateImagesForLLM(
                 const buffer = await fs.readFile(filePath)
                 const preludeText = buildProvenanceText(image.source, image.id, image.originalUrl ?? null)
                 injectedParts.push({ type: 'text', text: preludeText })
-                injectedParts.push({ type: 'image', image: buffer, mimeType: image.mimeType })
+                injectedParts.push({ type: 'file', mediaType: image.mimeType, url: `data:${image.mimeType};base64,${buffer.toString('base64')}` })
             }
             catch (err) {
                 console.warn(`[hydrate-images] failed to load assistant image ${imageId}:`, err)
@@ -159,9 +158,9 @@ export async function hydrateImagesForLLM(
                     const filePath = imagePath(image.conversationId, image.id, image.mimeType)
                     const buffer = await fs.readFile(filePath)
                     hydratedParts.push({
-                        type: 'image',
-                        image: buffer,
-                        mimeType: image.mimeType,
+                        type: 'file',
+                        mediaType: image.mimeType,
+                        url: `data:${image.mimeType};base64,${buffer.toString('base64')}`,
                     })
                 }
                 catch (err) {

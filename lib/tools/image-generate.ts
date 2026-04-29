@@ -3,6 +3,7 @@ import type { ImageModelCapabilities } from '../validation/image-model-schema'
 import { tool } from 'ai'
 import { z } from 'zod'
 import { executeImageGeneration } from '../image-provider-factory'
+import { readImageBuffer } from '../images/storage'
 import prismaDefault from '../prisma'
 import 'server-only'
 
@@ -53,6 +54,16 @@ export function createImageGenerateTool({
                 prisma: prismaDefault,
                 abortSignal,
             })
+        },
+        toModelOutput: async ({ output }) => {
+            const { imageId, mimeType } = output as { imageId: string, mimeType: string }
+            try {
+                const buffer = await readImageBuffer(conversationId, imageId, mimeType)
+                return { type: 'content' as const, value: [{ type: 'image-data' as const, data: buffer.toString('base64'), mediaType: mimeType }] }
+            }
+            catch {
+                return { type: 'json' as const, value: output as never }
+            }
         },
     })
 }

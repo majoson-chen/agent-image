@@ -71,12 +71,10 @@ describe('hydrateImagesForLLM - existing user image-ref behavior', () => {
         const row = result[0]!
         expect(row.parts).toHaveLength(2)
         expect(row.parts[0]).toMatchObject({ type: 'text', text: 'see this' })
-        const imagePart = row.parts[1] as { type: string, image: Buffer | Uint8Array, mimeType: string }
-        expect(imagePart.type).toBe('image')
-        expect(imagePart.mimeType).toBe('image/png')
-        const img = imagePart.image
-        expect(Buffer.isBuffer(img) || (typeof img === 'object' && img !== null && img instanceof Uint8Array)).toBe(true)
-        expect(Buffer.from(img as Uint8Array).subarray(0, 4)).toEqual(pngBuffer.subarray(0, 4))
+        const imagePart = row.parts[1] as { type: string, mediaType: string, url: string }
+        expect(imagePart.type).toBe('file')
+        expect(imagePart.mediaType).toBe('image/png')
+        expect(imagePart.url).toMatch(/^data:image\/png;base64,/)
     })
 })
 
@@ -162,7 +160,7 @@ describe('hydrateImagesForLLM - U5 assistant image injection', () => {
         expect((lastUser.parts[0] as { type: string, text: string }).type).toBe('text')
         expect((lastUser.parts[0] as { text: string }).text).toContain('工具调用产出')
         expect((lastUser.parts[0] as { text: string }).text).toContain(image.id)
-        expect((lastUser.parts[1] as { type: string }).type).toBe('image')
+        expect((lastUser.parts[1] as { type: string }).type).toBe('file')
         expect((lastUser.parts[2] as { type: string, text: string }).text).toBe('check it')
 
         // 其他 message 不变

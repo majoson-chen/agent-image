@@ -4,7 +4,7 @@
  */
 import type { MockedFunction } from 'vitest'
 import type { createImage as CreateImageFn } from '../../lib/db/images'
-import type { writeImage as WriteImageFn } from '../../lib/images/storage'
+import type { readImageBuffer as ReadImageBufferFn, writeImage as WriteImageFn } from '../../lib/images/storage'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 // mock storage 和 db images，避免真实 IO
@@ -196,5 +196,50 @@ describe('createImageFetchTool - size limit', () => {
         await expect(
             (t.execute as Function)({ url: 'https://example.com/huge.png' }, { abortSignal: undefined }),
         ).rejects.toThrow(/too large/)
+    })
+})
+
+describe('createImageFetchTool - toModelOutput', () => {
+    afterEach(() => {
+        vi.clearAllMocks()
+    })
+
+    it('returns content with image-data when image file exists', async () => {
+        const { readImageBuffer } = await import('../../lib/images/storage')
+        ;(readImageBuffer as MockedFunction<typeof readImageBuffer>).mockResolvedValueOnce(pngMagic)
+
+        const { createImageFetchTool } = await import('../../lib/tools/image-fetch')
+        const t = createImageFetchTool({ prisma: makePrisma(), conversationId: 'conv-1' })
+
+        const toolOutput = { imageId: 'fetched-img-001', mimeType: 'image/png', sizeBytes: 8 }
+        const output = await (t as { toModelOutput?: (o: object) => Promise<unknown> }).toModelOutput!({
+            toolCallId: 'tc-1',
+            input: { url: 'https://example.com/img.png' },
+            output: toolOutput,
+        })
+
+        expect(output).toMatchObject({
+            type: 'content',
+            value: [
+                { type: 'image-data', data: pngMagic.toString('base64'), mediaType: 'image/png' },
+            ],
+        })
+    })
+
+    it('falls back to json when image file read fails', async () => {
+        const { readImageBuffer } = await import('../../lib/images/storage')
+        ;(readImageBuffer as MockedFunction<typeof readImageBuffer>).mockRejectedValueOnce(new Error('ENOENT'))
+
+        const { createImageFetchTool } = await import('../../lib/tools/image-fetch')
+        const t = createImageFetchTool({ prisma: makePrisma(), conversationId: 'conv-1' })
+
+        const toolOutput = { imageId: 'fetched-img-001', mimeType: 'image/png', sizeBytes: 8 }
+        const output = await (t as { toModelOutput?: (o: object) => Promise<unknown> }).toModelOutput!({
+            toolCallId: 'tc-1',
+            input: { url: 'https://example.com/img.png' },
+            output: toolOutput,
+        })
+
+        expect(output).toMatchObject({ type: 'json', value: toolOutput })
     })
 })
