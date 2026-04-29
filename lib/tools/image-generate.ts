@@ -7,7 +7,7 @@ import prismaDefault from '../prisma'
 import 'server-only'
 
 interface ImageModelRecord extends Model {
-    providerType: 'VOLCENGINE_SEEDREAM'
+    providerType: 'VOLCENGINE_SEEDREAM' | 'DASHSCOPE_WAN_IMAGE'
     capabilities: ImageModelCapabilities
 }
 

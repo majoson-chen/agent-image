@@ -235,6 +235,21 @@ describe('vOLCENGINE_SEEDREAM model (M3)', () => {
     })
 })
 
+describe('dASHSCOPE_WAN_IMAGE model', () => {
+    it('creates a DASHSCOPE_WAN_IMAGE model with IMAGE type', async () => {
+        const m = await prisma.model.create({
+            data: {
+                type: 'IMAGE',
+                name: 'wan2.7-image-pro',
+                providerType: 'DASHSCOPE_WAN_IMAGE',
+                apiKey: 'sk-dash',
+                capabilities: { supportedSizes: ['1024x1024', '2048x2048'], maxReferenceImages: 9, supportsSeed: true },
+            },
+        })
+        expect(m.providerType).toBe('DASHSCOPE_WAN_IMAGE')
+    })
+})
+
 describe('image table (M3)', () => {
     it('creates USER_UPLOAD Image and reads back', async () => {
         const conv = await prisma.conversation.create({ data: {} })

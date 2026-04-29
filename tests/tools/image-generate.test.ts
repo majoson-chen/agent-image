@@ -31,7 +31,7 @@ function makeModel(overrides: Partial<{
         id: overrides.id ?? 'model-1',
         type: 'IMAGE' as const,
         name: overrides.name ?? 'doubao-seedream-4-5-251128',
-        providerType: (overrides.providerType ?? 'VOLCENGINE_SEEDREAM') as 'VOLCENGINE_SEEDREAM',
+        providerType: (overrides.providerType ?? 'VOLCENGINE_SEEDREAM') as 'VOLCENGINE_SEEDREAM' | 'DASHSCOPE_WAN_IMAGE',
         apiKey: overrides.apiKey ?? 'test-key',
         baseURL: null,
         contextWindow: null,

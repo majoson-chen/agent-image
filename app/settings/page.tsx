@@ -40,7 +40,10 @@ export default async function SettingsPage() {
             <section className="mb-8">
                 <h2 className="mb-4 text-lg font-medium text-base-content">生图模型</h2>
                 <p className="mb-4 text-sm text-base-content/60">
-                    配置火山方舟 Seedream 生图模型，含支持的分辨率与参考图上限。
+                    为对话中的「主生图 / 次生图」配置图像生成后端。支持火山方舟 Seedream
+                    与阿里云百炼万相图像（DashScope）：分别填写 API Key、可选网关地址，
+                    以及本机可选分辨率（决定对话里可切换的尺寸）。
+                    本应用仅接入图像同步接口，不包含视频生成。
                 </p>
                 <Suspense fallback={<span className="loading loading-spinner" />}>
                     <ImageModelList />

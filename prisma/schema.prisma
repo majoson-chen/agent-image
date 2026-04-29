@@ -22,6 +22,7 @@ enum ProviderType {
   ALIBABA
   BRAVE_SEARCH
   VOLCENGINE_SEEDREAM
+  DASHSCOPE_WAN_IMAGE
 }
 
 enum ImageSource {

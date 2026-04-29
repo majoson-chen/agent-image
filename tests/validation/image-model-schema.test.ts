@@ -38,6 +38,34 @@ describe('imageModelInputSchema', () => {
         expect(r.success).toBe(false)
     })
 
+    it('accepts valid DashScope Wan image model input', () => {
+        const r = imageModelInputSchema.safeParse({
+            name: 'wan2.7-image-pro',
+            providerType: 'DASHSCOPE_WAN_IMAGE',
+            apiKey: 'sk-dash',
+            capabilities: {
+                supportedSizes: ['1024x1024'],
+                maxReferenceImages: 9,
+                supportsSeed: true,
+            },
+        })
+        expect(r.success).toBe(true)
+    })
+
+    it('rejects Wan maxReferenceImages > 9', () => {
+        const r = imageModelInputSchema.safeParse({
+            name: 'wan2.7-image',
+            providerType: 'DASHSCOPE_WAN_IMAGE',
+            apiKey: 'sk-dash',
+            capabilities: {
+                supportedSizes: ['1024x1024'],
+                maxReferenceImages: 10,
+                supportsSeed: false,
+            },
+        })
+        expect(r.success).toBe(false)
+    })
+
     it('rejects empty name', () => {
         const r = imageModelInputSchema.safeParse({ ...valid, name: '' })
         expect(r.success).toBe(false)

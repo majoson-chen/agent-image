@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { imageModelInputSchema } from './image-model-schema'
+import { seedreamImageModelSchema, wanImageModelSchema } from './image-model-schema'
 import { searchModelInputSchema } from './search-model-schema'
 
 // LLM 分支（含 type 鉴别字段，用于 discriminatedUnion）
@@ -34,7 +34,10 @@ const llmBranchSchema = z.object({
 })
 
 const searchBranchSchema = searchModelInputSchema.extend({ type: z.literal('SEARCH') })
-const imageBranchSchema = imageModelInputSchema.extend({ type: z.literal('IMAGE') })
+const imageBranchSchema = z.union([
+    seedreamImageModelSchema.extend({ type: z.literal('IMAGE') }),
+    wanImageModelSchema.extend({ type: z.literal('IMAGE') }),
+])
 
 export const modelInputSchema = z.union([llmBranchSchema, searchBranchSchema, imageBranchSchema])
 

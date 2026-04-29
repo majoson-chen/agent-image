@@ -79,7 +79,7 @@ describe('pOST /api/models', () => {
         expect(body.baseURL).toBeNull()
     })
 
-    it('creates IMAGE model with optional baseURL', async () => {
+    it('creates IMAGE Seedream model with optional baseURL', async () => {
         const res = await handleModelsPost(makeRequest('POST', {
             type: 'IMAGE',
             name: 'doubao-seedream-4-5-251128',
@@ -95,6 +95,23 @@ describe('pOST /api/models', () => {
         expect(res.status).toBe(201)
         const body = await res.json()
         expect(body.baseURL).toBe('https://ark.cn-beijing.volces.com/api/v3/images/generations')
+    })
+
+    it('creates IMAGE Wan model with DashScope provider', async () => {
+        const res = await handleModelsPost(makeRequest('POST', {
+            type: 'IMAGE',
+            name: 'wan2.7-image-pro',
+            providerType: 'DASHSCOPE_WAN_IMAGE',
+            apiKey: 'sk-dash',
+            capabilities: {
+                supportedSizes: ['2048x2048'],
+                maxReferenceImages: 4,
+                supportsSeed: true,
+            },
+        }), { prisma })
+        expect(res.status).toBe(201)
+        const body = await res.json()
+        expect(body.providerType).toBe('DASHSCOPE_WAN_IMAGE')
     })
 })
 

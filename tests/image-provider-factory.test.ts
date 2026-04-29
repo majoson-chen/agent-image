@@ -243,6 +243,145 @@ describe('executeImageGeneration - happy paths', () => {
     })
 })
 
+async function createWanModel(overrides: Record<string, unknown> = {}) {
+    return prisma.model.create({
+        data: {
+            type: 'IMAGE',
+            name: 'wan2.7-image-pro',
+            providerType: 'DASHSCOPE_WAN_IMAGE',
+            apiKey: 'sk-dash-test',
+            capabilities: { supportedSizes: ['1024x1024', '2048x2048'], maxReferenceImages: 9, supportsSeed: true },
+            ...overrides,
+        },
+    })
+}
+
+describe('executeImageGeneration — DashScope Wan', () => {
+    it('POSTs multimodal-generation body and maps 1024x1024 → 1K', async () => {
+        const model = await createWanModel()
+        const conv = await createConversation(prisma)
+        let capturedBody: unknown
+        let dashUrl = ''
+        const originalFetch = globalThis.fetch
+        let fetchCallCount = 0
+        globalThis.fetch = vi.fn(async (url: string | URL, init?: RequestInit) => {
+            fetchCallCount++
+            if (fetchCallCount === 1) {
+                dashUrl = String(url)
+                capturedBody = JSON.parse(init?.body as string)
+                return new Response(
+                    JSON.stringify({
+                        output: {
+                            choices: [{
+                                message: {
+                                    content: [
+                                        { image: 'https://oss.example.com/wan.png', type: 'image' },
+                                    ],
+                                },
+                            }],
+                        },
+                    }),
+                    { status: 200, headers: { 'Content-Type': 'application/json' } },
+                ) as Response
+            }
+            return new Response(pngBuffer, { status: 200, headers: { 'Content-Type': 'image/png' } }) as Response
+        }) as typeof fetch
+
+        try {
+            const executeImageGeneration = await getFactory()
+            const { WAN_IMAGE_DEFAULT_API_URL } = await import('../lib/image/wan-image-presets')
+            const result = await executeImageGeneration({
+                model,
+                prompt: '一间花店',
+                referenceImageIds: [],
+                size: '1024x1024',
+                conversationId: conv.id,
+                prisma,
+                abortSignal: new AbortController().signal,
+            })
+
+            expect(result.imageId).toBeTruthy()
+            expect(dashUrl).toBe(WAN_IMAGE_DEFAULT_API_URL)
+            const b = capturedBody as Record<string, unknown>
+            expect(b.model).toBe('wan2.7-image-pro')
+            expect((b.parameters as Record<string, unknown>).size).toBe('1K')
+            expect(Array.isArray((b.input as Record<string, unknown>).messages)).toBe(true)
+        }
+        finally {
+            globalThis.fetch = originalFetch
+        }
+    })
+
+    it('maps 1920x1080 to 1920*1080 in parameters.size', async () => {
+        const model = await createWanModel()
+        const conv = await createConversation(prisma)
+        let capturedBody: unknown
+        const originalFetch = globalThis.fetch
+        let fetchCallCount = 0
+        globalThis.fetch = vi.fn(async (_url: string | URL, init?: RequestInit) => {
+            fetchCallCount++
+            if (fetchCallCount === 1) {
+                capturedBody = JSON.parse(init?.body as string)
+                return new Response(JSON.stringify({
+                    output: {
+                        choices: [{
+                            message: {
+                                content: [{ image: 'https://oss.example.com/wan.png', type: 'image' }],
+                            },
+                        }],
+                    },
+                }), { status: 200, headers: { 'Content-Type': 'application/json' } }) as Response
+            }
+            return new Response(pngBuffer, { status: 200, headers: { 'Content-Type': 'image/png' } }) as Response
+        }) as typeof fetch
+
+        try {
+            const executeImageGeneration = await getFactory()
+            await executeImageGeneration({
+                model,
+                prompt: 'wide',
+                referenceImageIds: [],
+                size: '1920x1080',
+                conversationId: conv.id,
+                prisma,
+                abortSignal: new AbortController().signal,
+            })
+            expect(((capturedBody as Record<string, unknown>).parameters as Record<string, unknown>).size).toBe(
+                '1920*1080',
+            )
+        }
+        finally {
+            globalThis.fetch = originalFetch
+        }
+    })
+
+    it('throws DashScope on HTTP 401', async () => {
+        const model = await createWanModel()
+        const conv = await createConversation(prisma)
+
+        const originalFetch = globalThis.fetch
+        globalThis.fetch = vi.fn(async () => {
+            return new Response('Unauthorized', { status: 401 }) as Response
+        }) as typeof fetch
+
+        try {
+            const executeImageGeneration = await getFactory()
+            await expect(executeImageGeneration({
+                model,
+                prompt: 'test',
+                referenceImageIds: [],
+                size: '1024x1024',
+                conversationId: conv.id,
+                prisma,
+                abortSignal: new AbortController().signal,
+            })).rejects.toThrow(/DashScope 401/)
+        }
+        finally {
+            globalThis.fetch = originalFetch
+        }
+    })
+})
+
 function mockModel(overrides: Record<string, unknown> = {}) {
     return {
         id: 'mock-model-id',

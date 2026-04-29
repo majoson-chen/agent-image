@@ -1,6 +1,7 @@
 import type { PrismaClient } from '../generated/prisma/client'
 import { createImage, getImage } from './db/images'
 import { SEEDREAM_DEFAULT_API_BASE_URL } from './image/seedream-presets'
+import { WAN_IMAGE_DEFAULT_API_URL } from './image/wan-image-presets'
 import { detectMime } from './images/mime'
 import { readImageBuffer } from './images/storage'
 import 'server-only'
@@ -24,12 +25,15 @@ interface ExecuteImageGenerationInput {
 }
 
 export async function executeImageGeneration(input: ExecuteImageGenerationInput) {
-    const { model, prompt, referenceImageIds, size, conversationId, prisma, abortSignal } = input
+    const { model } = input
 
-    if (model.providerType !== 'VOLCENGINE_SEEDREAM')
-        throw new Error(`unsupported image provider: ${model.providerType}`)
+    if (model.providerType === 'VOLCENGINE_SEEDREAM')
+        return executeSeedream(input)
 
-    return executeSeedream({ model, prompt, referenceImageIds, size, conversationId, prisma, abortSignal })
+    if (model.providerType === 'DASHSCOPE_WAN_IMAGE')
+        return executeDashscopeWanImage(input)
+
+    throw new Error(`unsupported image provider: ${model.providerType}`)
 }
 
 async function executeSeedream(input: ExecuteImageGenerationInput) {
@@ -83,7 +87,7 @@ async function executeSeedream(input: ExecuteImageGenerationInput) {
     const json = await res.json() as Record<string, unknown>
 
     // 3. 提取 URL（兼容多种响应结构）
-    const url = extractUrl(json)
+    const url = extractSeedreamUrl(json)
     if (!url)
         throw new Error('Seedream response missing image URL')
 
@@ -108,8 +112,132 @@ async function executeSeedream(input: ExecuteImageGenerationInput) {
     return { imageId: image.id, mimeType, sizeBytes: buffer.length }
 }
 
-function extractUrl(json: Record<string, unknown>): string | null {
-    // 各种可能的响应结构
+/** 将对话中的 WxH 映射为百炼 parameters.size（1K/2K/4K 或 W*H） */
+function mapSizeToDashscopeParameter(size: string, modelName: string, hasReferenceImages: boolean): string {
+    const trimmedUpper = size.trim().toUpperCase()
+    const isPro = /^wan2\.7-image-pro$/i.test(modelName.trim())
+
+    if (trimmedUpper === '1K' || trimmedUpper === '2K' || trimmedUpper === '4K') {
+        if (trimmedUpper === '4K' && (!isPro || hasReferenceImages))
+            return '2K'
+        return trimmedUpper
+    }
+
+    const xy = /^(\d+)\s*[x×]\s*(\d+)$/i.exec(size.trim())
+    if (xy) {
+        const w = Number(xy[1])
+        const h = Number(xy[2])
+        if (w === h) {
+            if (w === 1024)
+                return '1K'
+            if (w === 2048)
+                return '2K'
+            if (w === 4096) {
+                if (!isPro || hasReferenceImages)
+                    return '2K'
+                return '4K'
+            }
+        }
+        return `${w}*${h}`
+    }
+
+    return '2K'
+}
+
+async function executeDashscopeWanImage(input: ExecuteImageGenerationInput) {
+    const { model, prompt, referenceImageIds, size, conversationId, prisma, abortSignal } = input
+
+    const timeoutSignal = AbortSignal.timeout(120_000)
+    const combinedSignal = abortSignal
+        ? AbortSignal.any([abortSignal, timeoutSignal])
+        : timeoutSignal
+
+    const content: Array<{ text?: string, image?: string }> = []
+
+    for (const id of referenceImageIds) {
+        const img = await getImage(prisma, id)
+        if (!img)
+            throw new Error(`reference image not found: ${id}`)
+        const buffer = await readImageBuffer(img.conversationId, img.id, img.mimeType)
+        content.push({ image: `data:${img.mimeType};base64,${buffer.toString('base64')}` })
+    }
+
+    content.push({ text: prompt })
+
+    const hasRefs = referenceImageIds.length > 0
+    const parameters: Record<string, unknown> = {
+        size: mapSizeToDashscopeParameter(size, model.name, hasRefs),
+        n: 1,
+        watermark: false,
+    }
+    if (!hasRefs)
+        parameters.thinking_mode = true
+
+    const body = {
+        model: model.name,
+        input: {
+            messages: [{
+                role: 'user',
+                content,
+            }],
+        },
+        parameters,
+    }
+
+    const apiUrl = model.baseURL?.trim() || WAN_IMAGE_DEFAULT_API_URL
+
+    const res = await fetch(apiUrl, {
+        method: 'POST',
+        signal: combinedSignal,
+        headers: {
+            'Authorization': `Bearer ${model.apiKey}`,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+    })
+
+    const rawText = await res.text().catch(() => '')
+    let json: Record<string, unknown>
+    try {
+        json = rawText ? JSON.parse(rawText) as Record<string, unknown> : {}
+    }
+    catch {
+        throw new Error(`DashScope ${res.status}: invalid JSON`)
+    }
+
+    if (!res.ok) {
+        const msg = typeof json.message === 'string' ? json.message : rawText
+        throw new Error(`DashScope ${res.status}: ${msg}`)
+    }
+
+    if (typeof json.code === 'string' && json.output == null && json.message != null) {
+        throw new Error(`DashScope ${json.code}: ${json.message}`)
+    }
+
+    const url = extractDashscopeImageUrl(json)
+    if (!url)
+        throw new Error('DashScope response missing image URL')
+
+    const downloadRes = await fetch(url, { signal: combinedSignal })
+    if (!downloadRes.ok)
+        throw new Error(`download ${downloadRes.status}`)
+
+    const dlBuffer = Buffer.from(await downloadRes.arrayBuffer())
+
+    const mimeType = detectMime(dlBuffer) ?? 'image/png'
+    const image = await createImage(prisma, {
+        conversationId,
+        source: 'GENERATED',
+        mimeType,
+        sizeBytes: dlBuffer.length,
+        modelIdAtTime: model.id,
+        buffer: dlBuffer,
+    })
+
+    return { imageId: image.id, mimeType, sizeBytes: dlBuffer.length }
+}
+
+function extractSeedreamUrl(json: Record<string, unknown>): string | null {
     const data = json.data as Array<Record<string, unknown>> | undefined
     if (data?.[0]?.url)
         return data[0].url as string
@@ -121,5 +249,16 @@ function extractUrl(json: Record<string, unknown>): string | null {
     if (typeof json.url === 'string')
         return json.url
 
+    return null
+}
+
+function extractDashscopeImageUrl(json: Record<string, unknown>): string | null {
+    const output = json.output as Record<string, unknown> | undefined
+    const choices = output?.choices as Array<Record<string, unknown>> | undefined
+    const message = choices?.[0]?.message as { content?: Array<{ image?: string, type?: string }> } | undefined
+    for (const part of message?.content ?? []) {
+        if (typeof part.image === 'string')
+            return part.image
+    }
     return null
 }

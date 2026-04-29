@@ -1,13 +1,19 @@
 'use client'
 
 import type { SeedreamPresetKey } from '@lib/image/seedream-presets'
+import type { WanImagePresetKey } from '@lib/image/wan-image-presets'
 import { cn } from '@lib/cn'
 import { getSeedreamPreset, SEEDREAM_PRESETS } from '@lib/image/seedream-presets'
+import { getWanImagePreset, WAN_IMAGE_PRESETS } from '@lib/image/wan-image-presets'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 
+type ImageVendor = 'seedream' | 'wan'
+
 interface FormState {
-    preset: SeedreamPresetKey
+    vendor: ImageVendor
+    seedreamPreset: SeedreamPresetKey
+    wanPreset: WanImagePresetKey
     name: string
     baseURL: string
     apiKey: string
@@ -17,15 +23,21 @@ interface FormState {
     supportsSeed: boolean
 }
 
-const initialState: FormState = {
-    preset: 'custom',
+const emptyCaps = {
     name: '',
     baseURL: '',
     apiKey: '',
     supportedSizesInput: '',
-    supportedSizes: [],
+    supportedSizes: [] as string[],
     maxReferenceImages: 0,
     supportsSeed: false,
+}
+
+const initialState: FormState = {
+    vendor: 'seedream',
+    seedreamPreset: 'custom',
+    wanPreset: 'custom',
+    ...emptyCaps,
 }
 
 export function AddImageModelForm() {
@@ -39,21 +51,59 @@ export function AddImageModelForm() {
         setForm(prev => ({ ...prev, [key]: value }))
     }
 
-    function applyPreset(p: SeedreamPresetKey) {
-        set('preset', p)
+    function applySeedreamPreset(p: SeedreamPresetKey) {
+        set('seedreamPreset', p)
         if (p === 'custom') {
+            setForm(prev => ({ ...prev, seedreamPreset: 'custom', ...emptyCaps }))
             return
         }
         const def = getSeedreamPreset(p)
         setForm(prev => ({
             ...prev,
-            preset: p,
+            seedreamPreset: p,
             name: def.modelId,
             supportedSizes: [...def.capabilities.supportedSizes],
             maxReferenceImages: def.capabilities.maxReferenceImages,
             supportsSeed: def.capabilities.supportsSeed,
             supportedSizesInput: '',
         }))
+    }
+
+    function applyWanPreset(p: WanImagePresetKey) {
+        set('wanPreset', p)
+        if (p === 'custom') {
+            setForm(prev => ({ ...prev, wanPreset: 'custom', ...emptyCaps }))
+            return
+        }
+        const def = getWanImagePreset(p)
+        setForm(prev => ({
+            ...prev,
+            wanPreset: p,
+            name: def.modelId,
+            supportedSizes: [...def.capabilities.supportedSizes],
+            maxReferenceImages: def.capabilities.maxReferenceImages,
+            supportsSeed: def.capabilities.supportsSeed,
+            supportedSizesInput: '',
+        }))
+    }
+
+    function setVendor(vendor: ImageVendor) {
+        if (vendor === form.vendor)
+            return
+        setForm({
+            ...initialState,
+            vendor,
+        })
+    }
+
+    function presetValue(): string {
+        return form.vendor === 'seedream' ? form.seedreamPreset : form.wanPreset
+    }
+
+    function onPresetChange(raw: string) {
+        if (form.vendor === 'seedream')
+            applySeedreamPreset(raw as SeedreamPresetKey)
+        else applyWanPreset(raw as WanImagePresetKey)
     }
 
     function addSize() {
@@ -88,9 +138,10 @@ export function AddImageModelForm() {
 
         setLoading(true)
 
+        const providerType = form.vendor === 'seedream' ? 'VOLCENGINE_SEEDREAM' : 'DASHSCOPE_WAN_IMAGE'
         const body: Record<string, unknown> = {
             type: 'IMAGE',
-            providerType: 'VOLCENGINE_SEEDREAM',
+            providerType,
             name: form.name.trim(),
             apiKey: form.apiKey.trim(),
             capabilities: {
@@ -100,9 +151,8 @@ export function AddImageModelForm() {
             },
         }
         const bu = form.baseURL.trim()
-        if (bu) {
+        if (bu)
             body.baseURL = bu
-        }
 
         const res = await fetch('/api/models', {
             method: 'POST',
@@ -126,6 +176,8 @@ export function AddImageModelForm() {
         router.refresh()
     }
 
+    const maxRefs = form.vendor === 'wan' ? 9 : 14
+
     if (!open) {
         return (
             <button
@@ -133,32 +185,53 @@ export function AddImageModelForm() {
                 className="btn btn-outline btn-sm"
                 onClick={() => setOpen(true)}
             >
-                + 添加 Seedream 生图模型
+                + 添加生图模型
             </button>
         )
     }
 
     return (
         <form onSubmit={handleSubmit} className="rounded-box border border-base-300 bg-base-100 p-4">
-            <p className="mb-3 font-medium text-base-content">添加 Seedream 生图模型</p>
+            <p className="mb-3 font-medium text-base-content">添加生图模型</p>
 
             {error && <div className="alert alert-error mb-3 py-2 text-sm">{error}</div>}
 
             <div className="grid gap-3">
                 <fieldset className="fieldset">
+                    <legend className="fieldset-legend">服务商</legend>
+                    <select
+                        className="select select-bordered w-full"
+                        value={form.vendor}
+                        onChange={e => setVendor(e.target.value as ImageVendor)}
+                    >
+                        <option value="seedream">火山引擎 · 方舟 Seedream</option>
+                        <option value="wan">阿里云 · 百炼万相图像（DashScope）</option>
+                    </select>
+                    <p className="fieldset-label mt-1 text-xs text-base-content/50">
+                        各服务商的 API Key 与网关须分别配置，并与控制台所选地域一致。此处仅文生图 / 图生图（图像），不含视频。
+                    </p>
+                </fieldset>
+
+                <fieldset className="fieldset">
                     <legend className="fieldset-legend">版本预设</legend>
                     <select
                         className="select select-bordered w-full"
-                        value={form.preset}
-                        onChange={e => applyPreset(e.target.value as SeedreamPresetKey)}
+                        value={presetValue()}
+                        onChange={e => onPresetChange(e.target.value)}
                     >
-                        <option value="custom">自定义（手填模型 ID 与能力）</option>
-                        {SEEDREAM_PRESETS.map(p => (
-                            <option key={p.key} value={p.key}>{p.label}</option>
-                        ))}
+                        <option value="custom">自定义（手动填写模型 ID 与能力）</option>
+                        {form.vendor === 'seedream'
+                            ? SEEDREAM_PRESETS.map(p => (
+                                    <option key={p.key} value={p.key}>{p.label}</option>
+                                ))
+                            : WAN_IMAGE_PRESETS.map(p => (
+                                    <option key={p.key} value={p.key}>{p.label}</option>
+                                ))}
                     </select>
                     <p className="fieldset-label mt-1 text-xs text-base-content/50">
-                        选好预设会自动填充下方字段；仍可按需微调。模型 ID 以方舟控制台为准。
+                        {form.vendor === 'seedream'
+                            ? '预设对应常见方舟模型 ID，仍以火山控制台为准，可再微调。'
+                            : '预设对应万相 2.7 图像模型 ID，仍以百炼控制台为准，可再微调。'}
                     </p>
                 </fieldset>
 
@@ -166,7 +239,11 @@ export function AddImageModelForm() {
                     <legend className="fieldset-legend">模型 ID</legend>
                     <input
                         className="input input-bordered w-full font-mono text-sm"
-                        placeholder="如 doubao-seedream-4-5-251128"
+                        placeholder={
+                            form.vendor === 'seedream'
+                                ? '例如 doubao-seedream-4-5-251128'
+                                : '例如 wan2.7-image-pro'
+                        }
                         value={form.name}
                         onChange={e => set('name', e.target.value)}
                         required
@@ -177,18 +254,29 @@ export function AddImageModelForm() {
                     <legend className="fieldset-legend">API Base URL（可选）</legend>
                     <input
                         className="input input-bordered w-full font-mono text-sm"
-                        placeholder="留空使用默认 LAS 网关；自定义方舟 v3 等路径时填写完整 URL"
+                        placeholder={
+                            form.vendor === 'seedream'
+                                ? '留空使用内置默认 LAS 地址；自管接入点时填完整 https URL'
+                                : '留空使用北京「多模态图像生成」默认地址；国际站等请填控制台完整 endpoint'
+                        }
                         value={form.baseURL}
                         onChange={e => set('baseURL', e.target.value)}
                     />
+                    {form.vendor === 'wan' && (
+                        <p className="fieldset-label mt-1 text-xs text-base-content/50">
+                            地域与 Key 必须同属北京或同属新加坡等国际区，勿混用。
+                        </p>
+                    )}
                 </fieldset>
 
                 <fieldset className="fieldset">
-                    <legend className="fieldset-legend">火山方舟 API Key</legend>
+                    <legend className="fieldset-legend">
+                        {form.vendor === 'seedream' ? '方舟 API Key' : '百炼 API Key（DashScope）'}
+                    </legend>
                     <input
                         type="password"
                         className="input input-bordered w-full font-mono text-sm"
-                        placeholder="API Key"
+                        placeholder={form.vendor === 'seedream' ? 'ARK API Key' : 'DASHSCOPE_API_KEY'}
                         value={form.apiKey}
                         onChange={e => set('apiKey', e.target.value)}
                         required
@@ -196,11 +284,11 @@ export function AddImageModelForm() {
                 </fieldset>
 
                 <fieldset className="fieldset">
-                    <legend className="fieldset-legend">支持的分辨率（至少一项）</legend>
+                    <legend className="fieldset-legend">可选分辨率（至少一项）</legend>
                     <div className="flex gap-2">
                         <input
                             className="input input-bordered flex-1 font-mono text-sm"
-                            placeholder="如 2048x2048"
+                            placeholder="例如 2048x2048"
                             value={form.supportedSizesInput}
                             onChange={e => set('supportedSizesInput', e.target.value)}
                             onKeyDown={(e) => {
@@ -214,6 +302,12 @@ export function AddImageModelForm() {
                             添加
                         </button>
                     </div>
+                    <p className="fieldset-label mt-1 text-xs text-base-content/50">
+                        格式为宽×高（如 1024x1024）；对话中仅能选择此处已添加的规格。
+                        {form.vendor === 'wan'
+                            ? ' 选用万相时，服务端会将常见正方形对齐为百炼文档中的 1K / 2K / 4K 等档位。'
+                            : ''}
+                    </p>
                     {form.supportedSizes.length > 0 && (
                         <div className="mt-2 flex flex-wrap gap-1">
                             {form.supportedSizes.map(s => (
@@ -232,12 +326,20 @@ export function AddImageModelForm() {
                         type="number"
                         className="input input-bordered w-full"
                         min={0}
-                        max={14}
+                        max={maxRefs}
                         value={form.maxReferenceImages}
-                        onChange={e => set('maxReferenceImages', Number(e.target.value))}
+                        onChange={(e) => {
+                            const n = Number(e.target.value)
+                            const clamped = Number.isFinite(n)
+                                ? Math.min(Math.max(0, n), maxRefs)
+                                : 0
+                            set('maxReferenceImages', clamped)
+                        }}
                     />
                     <p className="fieldset-label text-xs text-base-content/50">
-                        Seedream 4.5 / 5.0 lite 最多支持 14 张；设 0 表示不支持参考图
+                        {form.vendor === 'seedream'
+                            ? 'Seedream 常见型号最多约 14 张参考图；填 0 表示不向模型传参考图'
+                            : '万相图像接口单轮最多 9 张参考图；填 0 表示仅文生图、不使用参考图'}
                     </p>
                 </fieldset>
 
@@ -249,8 +351,7 @@ export function AddImageModelForm() {
                             checked={form.supportsSeed}
                             onChange={e => set('supportsSeed', e.target.checked)}
                         />
-                        <span className="text-sm">支持 seed 参数</span>
-                        <span className="text-xs text-base-content/50">（仅 doubao-seedream-3.0-t2i）</span>
+                        <span className="text-sm">模型支持 seed（当前对话工具未暴露 seed，此项仅作能力标注）</span>
                     </label>
                 </fieldset>
             </div>
