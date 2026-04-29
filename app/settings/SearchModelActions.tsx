@@ -1,5 +1,6 @@
 'use client'
 
+import { Trash2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 
@@ -23,7 +24,7 @@ export function SearchModelActions({ id }: { id: string }) {
             className="btn btn-ghost btn-xs text-error"
             aria-label="删除模型"
         >
-            {loading ? <span className="loading loading-spinner loading-xs" /> : '删除'}
+            {loading ? <span className="loading loading-spinner loading-xs" /> : <Trash2 className="size-3.5" strokeWidth={2} aria-hidden />}
         </button>
     )
 }

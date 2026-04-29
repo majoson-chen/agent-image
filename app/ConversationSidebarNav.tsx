@@ -1,5 +1,6 @@
 'use client'
 
+import { PencilLine, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useRef, useState } from 'react'
@@ -108,19 +109,19 @@ export function ConversationSidebarNav({ conversations }: { conversations: Sideb
                         <div className="flex shrink-0 items-center">
                             <button
                                 type="button"
-                                className="btn btn-ghost btn-xs px-1.5"
+                                className="btn btn-ghost btn-xs btn-square px-0"
                                 aria-label="重命名对话"
                                 onClick={() => openRename(c)}
                             >
-                                改名
+                                <PencilLine className="size-3.5" strokeWidth={2} aria-hidden />
                             </button>
                             <button
                                 type="button"
-                                className="btn btn-ghost btn-xs px-1.5 text-error"
+                                className="btn btn-ghost btn-xs btn-square px-0 text-error"
                                 aria-label="删除对话"
                                 onClick={() => openDelete(c.id)}
                             >
-                                删除
+                                <Trash2 className="size-3.5" strokeWidth={2} aria-hidden />
                             </button>
                         </div>
                     </div>

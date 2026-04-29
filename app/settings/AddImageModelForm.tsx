@@ -5,6 +5,7 @@ import type { WanImagePresetKey } from '@lib/image/wan-image-presets'
 import { cn } from '@lib/cn'
 import { getSeedreamPreset, SEEDREAM_PRESETS } from '@lib/image/seedream-presets'
 import { getWanImagePreset, WAN_IMAGE_PRESETS } from '@lib/image/wan-image-presets'
+import { Plus, X } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 
@@ -182,10 +183,11 @@ export function AddImageModelForm() {
         return (
             <button
                 type="button"
-                className="btn btn-outline btn-sm"
+                className="btn btn-outline btn-sm gap-1.5"
                 onClick={() => setOpen(true)}
             >
-                + 添加生图模型
+                <Plus className="size-4" strokeWidth={2} aria-hidden />
+                添加生图模型
             </button>
         )
     }
@@ -311,9 +313,11 @@ export function AddImageModelForm() {
                     {form.supportedSizes.length > 0 && (
                         <div className="mt-2 flex flex-wrap gap-1">
                             {form.supportedSizes.map(s => (
-                                <span key={s} className="badge badge-outline gap-1">
+                                <span key={s} className="badge badge-outline gap-1 pl-2 pr-1">
                                     {s}
-                                    <button type="button" className="ml-1 text-xs opacity-60 hover:opacity-100" onClick={() => removeSize(s)}>✕</button>
+                                    <button type="button" className="btn btn-ghost btn-xs size-6 min-h-0 p-0 opacity-70 hover:opacity-100" aria-label={`移除分辨率 ${s}`} onClick={() => removeSize(s)}>
+                                        <X className="size-3" strokeWidth={2.5} aria-hidden />
+                                    </button>
                                 </span>
                             ))}
                         </div>

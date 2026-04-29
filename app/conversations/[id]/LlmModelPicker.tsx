@@ -1,5 +1,6 @@
 'use client'
 
+import { ExternalLink } from 'lucide-react'
 import { useTransition } from 'react'
 import { setLlmSelectionAction } from './llmSelectionActions'
 
@@ -28,7 +29,8 @@ export function LlmModelPicker({ conversationId, currentModelId, availableModels
         return (
             <div className="flex min-w-32 flex-col gap-0.5">
                 <span className="text-xs text-base-content/50">LLM</span>
-                <a href="/settings" className="text-xs text-primary underline">
+                <a href="/settings" className="inline-flex items-center gap-1 text-xs text-primary underline">
+                    <ExternalLink className="size-3 shrink-0 opacity-70" aria-hidden />
                     前往设置添加
                 </a>
             </div>

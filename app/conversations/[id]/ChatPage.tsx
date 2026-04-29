@@ -6,6 +6,7 @@ import type { UIMessage } from 'ai'
 import type { ImageModelCapabilities } from '../../../lib/validation/image-model-schema'
 import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport, lastAssistantMessageIsCompleteWithApprovalResponses } from 'ai'
+import { Check, ChevronDown, ChevronUp, ImagePlus, Send, Square, X } from 'lucide-react'
 import { useState } from 'react'
 import { canUploadMore, getGateHint, getSubmitButtonState } from '../../../lib/chat-guard'
 import { cn } from '../../../lib/cn'
@@ -103,16 +104,18 @@ function ImageGenerateBlock({
                     <div className="flex gap-2 mt-2">
                         <button
                             type="button"
-                            className="btn btn-primary btn-sm"
+                            className="btn btn-primary btn-sm gap-1.5"
                             onClick={() => part.approval?.id && onApprove(part.approval.id)}
                         >
+                            <Check className="size-3.5" strokeWidth={2.5} aria-hidden />
                             确认
                         </button>
                         <button
                             type="button"
-                            className="btn btn-ghost btn-sm"
+                            className="btn btn-ghost btn-sm gap-1.5"
                             onClick={() => part.approval?.id && onDeny(part.approval.id)}
                         >
+                            <X className="size-3.5" strokeWidth={2.5} aria-hidden />
                             拒绝
                         </button>
                     </div>
@@ -204,6 +207,7 @@ function toolDisplayName(type: string): string {
         'web-search': '网页搜索',
         'image-search': '图像搜索',
         'web-fetch': '抓取网页',
+        'conversation-rename': '会话标题',
     }
     return map[name] ?? name
 }
@@ -239,9 +243,10 @@ function ToolCallBlock({ part }: { part: ToolPart }) {
                     <div>
                         <button
                             type="button"
-                            className="text-xs text-primary underline"
+                            className="btn btn-link btn-xs h-auto min-h-0 gap-1 p-0 text-primary underline"
                             onClick={() => setExpanded(v => !v)}
                         >
+                            {expanded ? <ChevronUp className="size-3.5" aria-hidden /> : <ChevronDown className="size-3.5" aria-hidden />}
                             {expanded ? '收起结果' : '查看结果'}
                         </button>
                         {expanded && (
@@ -472,15 +477,16 @@ export function ChatPage({
                     {uploadedImages.length > 0 && (
                         <div className="mb-2 flex flex-wrap gap-1">
                             {uploadedImages.map(img => (
-                                <span key={img.id} className="badge badge-outline gap-1 text-xs">
+                                <span key={img.id} className="badge badge-outline gap-1 px-1.5 py-1 text-xs">
                                     <img src={`/api/images/${img.id}`} className="h-4 w-4 rounded object-cover" alt="" />
-                                    {img.name}
+                                    <span className="max-w-[10rem] truncate">{img.name}</span>
                                     <button
                                         type="button"
-                                        className="ml-0.5 opacity-60 hover:opacity-100"
+                                        className="btn btn-ghost btn-xs size-6 min-h-0 p-0 opacity-70 hover:opacity-100"
+                                        aria-label="移除参考图"
                                         onClick={() => setUploadedImages(prev => prev.filter(x => x.id !== img.id))}
                                     >
-                                        ✕
+                                        <X className="size-3" strokeWidth={2.5} aria-hidden />
                                     </button>
                                 </span>
                             ))}
@@ -490,12 +496,16 @@ export function ChatPage({
                         {/* 上传按钮 */}
                         <label
                             className={cn(
-                                'btn btn-sm btn-outline px-2',
+                                'btn btn-sm btn-outline gap-0 px-2.5',
                                 (atRefLimit || !hasLlm) && 'btn-disabled opacity-40 cursor-not-allowed',
                             )}
                             title={atRefLimit ? `已达参考图上限 ${maxRefs} 张` : '添加参考图'}
                         >
-                            {uploading ? <span className="loading loading-spinner loading-xs" /> : '+'}
+                            {uploading
+                                ? <span className="loading loading-spinner loading-xs" />
+                                : (
+                                        <ImagePlus className="size-4" strokeWidth={2} aria-hidden />
+                                    )}
                             <input
                                 type="file"
                                 accept="image/*"
@@ -516,9 +526,21 @@ export function ChatPage({
                         <button
                             type="submit"
                             disabled={btnState.kind === 'send' && btnState.disabled}
-                            className={cn('btn btn-sm px-4', btnState.kind === 'stop' ? 'btn-error' : 'btn-primary')}
+                            className={cn('btn btn-sm gap-1.5 px-4', btnState.kind === 'stop' ? 'btn-error' : 'btn-primary')}
                         >
-                            {btnState.kind === 'stop' ? '停止' : '发送'}
+                            {btnState.kind === 'stop'
+                                ? (
+                                        <>
+                                            <Square className="size-3.5 fill-current" strokeWidth={0} aria-hidden />
+                                            停止
+                                        </>
+                                    )
+                                : (
+                                        <>
+                                            <Send className="size-3.5" strokeWidth={2} aria-hidden />
+                                            发送
+                                        </>
+                                    )}
                         </button>
                     </form>
                 </div>

@@ -1,5 +1,6 @@
 'use client'
 
+import { Plus } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { cn } from '../../lib/cn'
@@ -88,10 +89,11 @@ export function AddLlmModelForm() {
         return (
             <button
                 type="button"
-                className="btn btn-outline btn-sm"
+                className="btn btn-outline btn-sm gap-1.5"
                 onClick={() => setOpen(true)}
             >
-                + 添加 LLM 模型
+                <Plus className="size-4" strokeWidth={2} aria-hidden />
+                添加 LLM 模型
             </button>
         )
     }

@@ -1,5 +1,6 @@
 'use client'
 
+import { Plus } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 
@@ -23,7 +24,7 @@ export function NewConversationButton() {
             className="btn btn-ghost btn-xs"
             aria-label="新建对话"
         >
-            {loading ? <span className="loading loading-spinner loading-xs" /> : '+'}
+            {loading ? <span className="loading loading-spinner loading-xs" /> : <Plus className="size-4" strokeWidth={2} aria-hidden />}
         </button>
     )
 }
