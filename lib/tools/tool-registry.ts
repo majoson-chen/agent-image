@@ -5,6 +5,7 @@ import { getModel } from '../db/models'
 import { getAllBindings } from '../db/search-tool-bindings'
 import { getSelection } from '../db/selections'
 import { createConversationRenameTool } from './conversation-rename'
+import { createImageFetchTool } from './image-fetch'
 import { createImageGenerateTool } from './image-generate'
 import { createImageSearchTool } from './image-search'
 import { createWebFetchTool } from './web-fetch'
@@ -37,8 +38,9 @@ export async function buildAvailableTools(prisma: PrismaClient, conversationId: 
         tools['image-search'] = createImageSearchTool(model.apiKey)
     }
 
-    // web-fetch 始终可用，无绑定语义
+    // web-fetch / image-fetch 始终可用，无绑定语义
     tools['web-fetch'] = createWebFetchTool()
+    tools['image-fetch'] = createImageFetchTool({ prisma, conversationId })
 
     // 生图工具：按 conversation 级 IMAGE selection 暴露（R9）
     const primarySel = await getSelection(prisma, conversationId, 'IMAGE_PRIMARY')
