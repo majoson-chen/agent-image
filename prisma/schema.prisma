@@ -1,13 +1,96 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider   = "prisma-client"
+  output     = "../generated/prisma"
+  engineType = "client"
 }
 
 datasource db {
   provider = "sqlite"
+}
+
+// ——— 枚举 ———
+
+enum ModelType {
+  LLM
+  IMAGE
+  SEARCH
+}
+
+enum ProviderType {
+  OPENAI
+  OPENAI_COMPATIBLE
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+  SYSTEM
+}
+
+/// M1 仅写入 LLM；IMAGE_PRIMARY / IMAGE_SECONDARY 为 M3 占位
+enum SelectionRole {
+  LLM
+  IMAGE_PRIMARY
+  IMAGE_SECONDARY
+}
+
+// ——— 表 ———
+
+model Model {
+  id           String    @id @default(cuid())
+  type         ModelType
+  name         String
+  providerType ProviderType
+  /// LLM: 必须由 app 层校验非空；IMAGE/SEARCH: 按各自需求
+  baseURL      String?
+  apiKey       String
+  /// LLM 必填（app 层校验），其他类型 null
+  contextWindow Int?
+  extraHeaders Json?
+  capabilities Json?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  messages    Message[]
+  selections  ConversationModelSelection[]
+}
+
+model Conversation {
+  id        String    @id @default(cuid())
+  title     String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  messages   Message[]
+  selections ConversationModelSelection[]
+}
+
+model Message {
+  id                String      @id @default(cuid())
+  conversationId    String
+  role              MessageRole
+  content           String
+  usageInputTokens  Int?
+  usageOutputTokens Int?
+  usageTotalTokens  Int?
+  modelIdAtTime     String?
+  createdAt         DateTime    @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  /// 删除 Model 时保留历史消息，仅把引用清空
+  model        Model?       @relation(fields: [modelIdAtTime], references: [id], onDelete: SetNull)
+}
+
+model ConversationModelSelection {
+  id             String        @id @default(cuid())
+  conversationId String
+  role           SelectionRole
+  modelId        String
+  createdAt      DateTime      @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  /// 删除 Model 时，关联选择也一并删除，保持选择一致性
+  model        Model        @relation(fields: [modelId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, role])
 }

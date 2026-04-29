@@ -12,12 +12,16 @@
         "lint:fix": "eslint --fix"
     },
     "dependencies": {
+        "@ai-sdk/openai": "^3.0.54",
+        "@ai-sdk/openai-compatible": "^2.0.42",
+        "@ai-sdk/react": "^3.0.171",
         "@prisma/adapter-better-sqlite3": "^7.8.0",
         "@prisma/client": "^7.8.0",
         "ai": "^6.0.168",
         "clsx": "^2.1.1",
         "dotenv": "^17.4.2",
         "next": "^16.2.4",
+        "prisma-adapter-bun-sqlite": "^0.8.0",
         "react": "^19.2.5",
         "react-dom": "^19.2.5",
         "tailwind-merge": "^3.5.0",

@@ -1,5 +1,5 @@
 ---
-description: daisyUI 5 规则，用于组件和样式编写
+globs: *.tsx,*.css,*.html
 alwaysApply: false
 ---
 # daisyUI 5

@@ -1,6 +1,7 @@
 import { IBM_Plex_Mono, IBM_Plex_Sans } from 'next/font/google'
 import * as React from 'react'
 import { cn } from '../lib/cn'
+import { Sidebar } from './Sidebar'
 import './globals.css'
 
 const fontSans = IBM_Plex_Sans({
@@ -28,10 +29,15 @@ export default function RootLayout({
                 className={cn(
                     fontSans.variable,
                     fontMono.variable,
-                    'min-h-dvh bg-base-100 font-sans text-base-content antialiased',
+                    'bg-base-100 font-sans text-base-content antialiased',
                 )}
             >
-                {children}
+                <div className="flex h-dvh overflow-hidden">
+                    <Sidebar />
+                    <main className="flex-1 overflow-hidden">
+                        {children}
+                    </main>
+                </div>
             </body>
         </html>
     )
