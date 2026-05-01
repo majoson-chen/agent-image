@@ -29,7 +29,11 @@ export function ContextUsageBar({ totalTokens, contextWindow }: Props) {
 
     return (
         <div
-            className="tooltip tooltip-top tooltip-neutral flex max-w-full shrink-0 items-end pb-0.5"
+            className={cn(
+                'tooltip tooltip-top tooltip-neutral relative z-30 flex max-w-full shrink-0 items-end pb-0.5',
+                /* daisy 默认 ::before/::after 仅 z-index:2，易被同排后序控件（LLM 槽等）盖住 */
+                '[&::before]:z-100 [&::after]:z-100',
+            )}
             data-tip={tip}
         >
             <svg

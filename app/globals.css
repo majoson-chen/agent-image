@@ -9,7 +9,27 @@
 }
 
 /* next/font 在 body 上注入 --font-app-* */
-@theme {
+/* Streamdown 使用 shadcn 语义色（bg-background、border-border 等），这里桥接到 daisyUI 的 --color-*，随 light/dark 主题切换 */
+@theme inline {
     --font-sans: var(--font-app-sans), ui-sans-serif, system-ui, sans-serif;
     --font-mono: var(--font-app-mono), ui-monospace, monospace;
+
+    --color-background: var(--color-base-200);
+    --color-foreground: var(--color-base-content);
+    --color-card: var(--color-base-100);
+    --color-card-foreground: var(--color-base-content);
+    --color-muted: var(--color-base-300);
+    --color-muted-foreground: color-mix(in oklch, var(--color-base-content) 58%, transparent);
+    --color-border: color-mix(in oklch, var(--color-base-300) 90%, var(--color-base-content) 10%);
+    --color-input: var(--color-base-300);
+    --color-primary-foreground: var(--color-primary-content);
+    --color-sidebar: var(--color-base-200);
+    --color-sidebar-foreground: var(--color-base-content);
 }
+
+/* streamdown & plugins */
+@source "../node_modules/streamdown/dist/*.js";
+@source "../node_modules/@streamdown/code/dist/*.js";
+@source "../node_modules/@streamdown/math/dist/*.js";
+@source "../node_modules/@streamdown/mermaid/dist/*.js";
+@source "../node_modules/@streamdown/cjk/dist/*.js";

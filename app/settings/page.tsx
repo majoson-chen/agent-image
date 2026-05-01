@@ -17,7 +17,8 @@ export default async function SettingsPage() {
     ])
 
     return (
-        <main className="mx-auto max-w-2xl px-4 py-10">
+        <div className="min-h-0 flex-1 overflow-y-auto">
+            <main className="mx-auto max-w-2xl px-4 py-10">
             <h1 className="mb-6 flex items-center gap-2 text-2xl font-semibold text-base-content">
                 <SlidersHorizontal className="size-8 shrink-0 opacity-90" strokeWidth={2} aria-hidden />
                 设置
@@ -79,6 +80,7 @@ export default async function SettingsPage() {
                     currentImageSearch={bindings.IMAGE_SEARCH ?? null}
                 />
             </section>
-        </main>
+            </main>
+        </div>
     )
 }

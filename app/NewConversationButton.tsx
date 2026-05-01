@@ -10,10 +10,19 @@ export function NewConversationButton() {
 
     async function handleClick() {
         setLoading(true)
-        const res = await fetch('/api/conversations', { method: 'POST' })
-        const conv = await res.json() as { id: string }
-        router.push(`/conversations/${conv.id}`)
-        router.refresh()
+        try {
+            const res = await fetch('/api/conversations', { method: 'POST' })
+            const conv = await res.json() as { id?: string }
+            if (!res.ok || typeof conv.id !== 'string') {
+                window.alert(typeof (conv as { error?: string }).error === 'string' ? (conv as { error: string }).error : '创建对话失败')
+                return
+            }
+            router.push(`/conversations/${conv.id}`)
+            router.refresh()
+        }
+        finally {
+            setLoading(false)
+        }
     }
 
     return (

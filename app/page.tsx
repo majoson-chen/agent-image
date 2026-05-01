@@ -10,7 +10,7 @@ export default async function Page() {
 
     // 无对话时显示引导
     return (
-        <div className="flex h-full flex-col items-center justify-center px-6">
+        <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-6">
             <div className="flex max-w-sm flex-col items-center gap-3 text-center">
                 <MessageSquarePlus className="size-14 shrink-0 text-base-content/20" strokeWidth={1.25} aria-hidden />
                 <p className="text-sm text-base-content/50">

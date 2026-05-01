@@ -7,12 +7,20 @@ import type { UIMessage } from 'ai'
 import { useChat } from '@ai-sdk/react'
 import { getGateHint, getSubmitButtonState } from '@lib/chat-guard'
 import { cn } from '@lib/cn'
+import { cjk } from '@streamdown/cjk'
+import { code } from '@streamdown/code'
+import { math } from '@streamdown/math'
+import { mermaid } from '@streamdown/mermaid'
 import { DefaultChatTransport, lastAssistantMessageIsCompleteWithApprovalResponses } from 'ai'
 import { Check, ChevronDown, ChevronUp, Send, Square, X } from 'lucide-react'
 import { useState } from 'react'
+import { Streamdown } from 'streamdown'
 import { ComposerImageSlot } from './ComposerImageSlot'
 import { ComposerLlmSlot } from './ComposerLlmSlot'
 import { ContextUsageBar } from './ContextUsageBar'
+
+/** Streamdown 插件集（安装即用，与官方 README 一致） */
+const streamdownPlugins = { code, mermaid, math, cjk }
 
 interface MessageMetadata {
     usage?: { inputTokens: number, outputTokens: number, totalTokens: number }
@@ -291,6 +299,9 @@ export function ChatPage({
     const btnState = getSubmitButtonState({ status, llmSelected: hasLlm, inputEmpty: !input.trim() })
     const gateHint = getGateHint({ llmSelected: hasLlm })
 
+    const lastMessage = messages.at(-1)
+    const assistantStreaming = status === 'streaming' && lastMessage?.role === 'assistant'
+
     // 从最后一条 assistant 消息的 metadata 获取 usage
     const lastAssistant = [...messages].reverse().find(m => m.role === 'assistant')
     const totalTokens = (lastAssistant?.metadata as MessageMetadata | undefined)?.usage?.totalTokens ?? null
@@ -317,7 +328,7 @@ export function ChatPage({
     }
 
     return (
-        <div className="flex h-dvh flex-col bg-base-100">
+        <div className="flex min-h-0 flex-1 flex-col bg-base-100">
             {/* 错误 banner */}
             {error && (
                 <div className="alert alert-error rounded-none text-sm">
@@ -329,7 +340,7 @@ export function ChatPage({
             )}
 
             {/* 消息列表 */}
-            <div className="flex-1 overflow-y-auto px-4 py-6">
+            <div className="min-h-0 flex-1 overflow-y-auto px-4 py-6">
                 <div className="mx-auto flex max-w-2xl flex-col gap-4">
                     {messages.map(m => (
                         <div key={m.id} className={cn(m.role === 'user' ? 'flex justify-end' : 'flex flex-col gap-2')}>
@@ -359,9 +370,51 @@ export function ChatPage({
                                         <>
                                             {m.parts.map((part, i) => {
                                                 if (part.type === 'text') {
+                                                    const streamAnimating = assistantStreaming && m.id === lastMessage?.id
                                                     return (
-                                                        <div key={i} className="rounded-box max-w-prose bg-base-200 px-4 py-3 text-sm text-base-content">
-                                                            {part.text}
+                                                        <div
+                                                            key={i}
+                                                            className="rounded-box max-w-prose min-w-0 bg-base-200 px-4 py-3 text-sm text-base-content"
+                                                        >
+                                                            <Streamdown
+                                                                animated
+                                                                controls={{ table: true, code: true, mermaid: true }}
+                                                                isAnimating={streamAnimating}
+                                                                plugins={streamdownPlugins}
+                                                                translations={{
+                                                                    close: '关闭',
+                                                                    copied: '已复制',
+                                                                    copyCode: '复制代码',
+                                                                    copyLink: '复制链接',
+                                                                    copyTable: '复制表格',
+                                                                    copyTableAsCsv: '复制为 CSV',
+                                                                    copyTableAsMarkdown: '复制为 Markdown',
+                                                                    copyTableAsTsv: '复制为 TSV',
+                                                                    downloadDiagram: '下载图表',
+                                                                    downloadDiagramAsMmd: '下载 .mmd',
+                                                                    downloadDiagramAsPng: '下载 PNG',
+                                                                    downloadDiagramAsSvg: '下载 SVG',
+                                                                    downloadFile: '下载文件',
+                                                                    downloadImage: '下载图片',
+                                                                    downloadTable: '下载表格',
+                                                                    downloadTableAsCsv: '表格下载为 CSV',
+                                                                    downloadTableAsMarkdown: '表格下载为 Markdown',
+                                                                    exitFullscreen: '退出全屏',
+                                                                    externalLinkWarning: '即将打开外部链接，是否继续？',
+                                                                    imageNotAvailable: '图片不可用',
+                                                                    mermaidFormatMmd: 'Mermaid (.mmd)',
+                                                                    mermaidFormatPng: 'PNG',
+                                                                    mermaidFormatSvg: 'SVG',
+                                                                    openExternalLink: '打开',
+                                                                    openLink: '打开链接',
+                                                                    tableFormatCsv: 'CSV',
+                                                                    tableFormatMarkdown: 'Markdown',
+                                                                    tableFormatTsv: 'TSV',
+                                                                    viewFullscreen: '全屏查看',
+                                                                }}
+                                                            >
+                                                                {part.text}
+                                                            </Streamdown>
                                                         </div>
                                                     )
                                                 }
@@ -398,7 +451,7 @@ export function ChatPage({
             </div>
 
             {/* 输入区（设计稿：用量与 LLM | 主生图 | 次生图 在输入框上方同一带） */}
-            <div className="border-t border-base-300 bg-base-100 px-4 py-3">
+            <div className="relative z-10 shrink-0 overflow-visible border-t border-base-300 bg-base-100 px-4 py-3">
                 <div className="mx-auto max-w-2xl">
                     <div className="mb-3 flex flex-wrap items-end gap-x-4 gap-y-3 border-b border-base-300 pb-3">
                         {contextWindow && (

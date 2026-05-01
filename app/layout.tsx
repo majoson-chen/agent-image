@@ -4,6 +4,10 @@ import * as React from 'react'
 import { Sidebar } from './Sidebar'
 import './globals.css'
 
+// streamdown：动画 + KaTeX（@streamdown/math 依赖）
+import 'streamdown/styles.css'
+import 'katex/dist/katex.min.css'
+
 const fontSans = IBM_Plex_Sans({
     subsets: ['latin'],
     variable: '--font-app-sans',
@@ -34,7 +38,8 @@ export default function RootLayout({
             >
                 <div className="flex h-dvh">
                     <Sidebar />
-                    <main className="flex-1 overflow-y-auto">
+                    {/* main 勿用 overflow-y-auto：会裁切子树内 absolute 的 daisy tooltip */}
+                    <main className="flex min-h-0 min-w-0 flex-1 flex-col">
                         {children}
                     </main>
                 </div>
