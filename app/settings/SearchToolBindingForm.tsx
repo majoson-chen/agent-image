@@ -1,6 +1,6 @@
 'use client'
 
-import type { Model } from '../../generated/prisma/client'
+import type { Model } from '~/generated/prisma/client'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 

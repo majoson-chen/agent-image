@@ -1,13 +1,13 @@
-import type { PrismaClient } from '../../generated/prisma/client'
+import type { PrismaClient } from '~/generated/prisma/client'
 /**
  * U8 — 对话 CRUD API 行为测试（dependency injection）
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { handleDeleteConversation, handlePatchConversation } from '../../app/api/conversations/[id]/route'
+import { handleDeleteConversation, handlePatchConversation } from '@/api/conversations/[id]/route'
 import {
     handleConversationsGet,
     handleConversationsPost,
-} from '../../app/api/conversations/route'
+} from '@/api/conversations/route'
 import { createTestDb } from '../helpers/db'
 
 let prisma: PrismaClient

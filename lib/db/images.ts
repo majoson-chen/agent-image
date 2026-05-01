@@ -1,5 +1,5 @@
-import type { ImageSource, PrismaClient } from '../../generated/prisma/client'
-import { deleteConversationImages, deleteImage as deleteImageFile, writeImage } from '../images/storage'
+import type { ImageSource, PrismaClient } from '~/generated/prisma/client'
+import { deleteConversationImages, deleteImage as deleteImageFile, writeImage } from '@lib/images/storage'
 import 'server-only'
 
 interface CreateImageInput {

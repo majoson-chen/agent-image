@@ -1,4 +1,4 @@
-import type { PrismaClient, SearchTool } from '../../generated/prisma/client'
+import type { PrismaClient, SearchTool } from '~/generated/prisma/client'
 
 export async function getBinding(prisma: PrismaClient, tool: SearchTool) {
     return prisma.searchToolBinding.findUnique({ where: { tool } })

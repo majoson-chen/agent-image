@@ -1,9 +1,9 @@
 'use server'
 
+import { getModel } from '@lib/db/models'
+import { clearSelection, setSelection } from '@lib/db/selections'
+import prisma from '@lib/prisma'
 import { revalidatePath } from 'next/cache'
-import { getModel } from '../../../lib/db/models'
-import { clearSelection, setSelection } from '../../../lib/db/selections'
-import prisma from '../../../lib/prisma'
 
 export async function setImageSelectionAction(
     conversationId: string,

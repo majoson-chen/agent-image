@@ -1,7 +1,7 @@
+import { getMostRecent } from '@lib/db/conversations'
+import prisma from '@lib/prisma'
 import { MessageSquarePlus } from 'lucide-react'
 import { redirect } from 'next/navigation'
-import { getMostRecent } from '../lib/db/conversations'
-import prisma from '../lib/prisma'
 
 export default async function Page() {
     const recent = await getMostRecent(prisma)

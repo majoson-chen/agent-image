@@ -1,5 +1,5 @@
 import type { ProviderOptions } from '@ai-sdk/provider-utils'
-import type { Model } from '../generated/prisma/client'
+import type { Model } from '~/generated/prisma/client'
 
 /**
  * LLM capabilities：是否允许在会话中启用「思考模式」（阿里云等）。

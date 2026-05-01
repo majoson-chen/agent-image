@@ -1,7 +1,7 @@
+import { listConversations } from '@lib/db/conversations'
+import prisma from '@lib/prisma'
 import { MessageSquare, Settings } from 'lucide-react'
 import Link from 'next/link'
-import { listConversations } from '../lib/db/conversations'
-import prisma from '../lib/prisma'
 import { ConversationSidebarNav } from './ConversationSidebarNav'
 import { NewConversationButton } from './NewConversationButton'
 

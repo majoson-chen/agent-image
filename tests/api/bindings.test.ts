@@ -1,14 +1,14 @@
 /**
  * U3 — /api/bindings Route Handler 行为测试
  */
-import type { PrismaClient } from '../../generated/prisma/client'
+import type { PrismaClient } from '~/generated/prisma/client'
+import { createLlmModel, createSearchModel } from '@lib/db/models'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import {
     handleBindingsDelete,
     handleBindingsGet,
     handleBindingsPut,
-} from '../../app/api/bindings/route'
-import { createLlmModel, createSearchModel } from '../../lib/db/models'
+} from '@/api/bindings/route'
 import { createTestDb } from '../helpers/db'
 
 let prisma: PrismaClient

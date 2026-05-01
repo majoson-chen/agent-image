@@ -1,5 +1,4 @@
-import type { ImageModelCapabilities } from '../validation/image-model-schema'
-
+import type { ImageModelCapabilities } from '@lib/validation/image-model-schema'
 /** 北京地域同步文生图 / 图生图（与百炼文档一致；新加坡换 dashscope-intl 域名） */
 export const WAN_IMAGE_DEFAULT_API_URL
     = 'https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation'

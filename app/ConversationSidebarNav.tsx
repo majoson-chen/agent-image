@@ -1,10 +1,10 @@
 'use client'
 
+import { cn } from '@lib/cn'
 import { PencilLine, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useRef, useState } from 'react'
-import { cn } from '../lib/cn'
 
 export interface SidebarConversation {
     id: string

@@ -1,6 +1,6 @@
-import type { ImageModelCapabilities } from '../../lib/validation/image-model-schema'
-import { listModels } from '../../lib/db/models'
-import prisma from '../../lib/prisma'
+import type { ImageModelCapabilities } from '@lib/validation/image-model-schema'
+import { listModels } from '@lib/db/models'
+import prisma from '@lib/prisma'
 import { AddImageModelForm } from './AddImageModelForm'
 import { ImageModelActions } from './ImageModelActions'
 

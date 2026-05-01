@@ -2,12 +2,12 @@
  * U5/U7 — tool-registry 单测（test-first）
  * 验证根据 SearchToolBinding + IMAGE selection 动态拼装 tools 对象
  */
-import type { PrismaClient } from '../../generated/prisma/client'
+import type { PrismaClient } from '~/generated/prisma/client'
+import { createImageModel, createSearchModel } from '@lib/db/models'
+import { clearBinding, setBinding } from '@lib/db/search-tool-bindings'
+import { clearSelection, setSelection } from '@lib/db/selections'
+import { buildAvailableTools } from '@lib/tools/tool-registry'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { createImageModel, createSearchModel } from '../../lib/db/models'
-import { clearBinding, setBinding } from '../../lib/db/search-tool-bindings'
-import { clearSelection, setSelection } from '../../lib/db/selections'
-import { buildAvailableTools } from '../../lib/tools/tool-registry'
 import { createTestDb } from '../helpers/db'
 
 let prisma: PrismaClient

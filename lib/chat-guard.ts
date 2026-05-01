@@ -39,8 +39,3 @@ export function getSubmitButtonState({ status, llmSelected, inputEmpty }: Submit
     const disabled = !llmSelected || inputEmpty
     return { kind: 'send', disabled }
 }
-
-/** 判断是否还可以继续上传参考图 */
-export function canUploadMore({ count, max }: { count: number, max: number }): boolean {
-    return count < max
-}

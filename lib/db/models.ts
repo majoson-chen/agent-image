@@ -1,11 +1,11 @@
-import type { ModelType, PrismaClient } from '../../generated/prisma/client'
-import type { ImageModelInput } from '../validation/image-model-schema'
-import type { LlmModelInput } from '../validation/llm-model-schema'
-import type { SearchModelInput } from '../validation/search-model-schema'
-import { Prisma } from '../../generated/prisma/client'
-import { imageModelInputSchema } from '../validation/image-model-schema'
-import { llmModelInputSchema } from '../validation/llm-model-schema'
-import { searchModelInputSchema } from '../validation/search-model-schema'
+import type { ImageModelInput } from '@lib/validation/image-model-schema'
+import type { LlmModelInput } from '@lib/validation/llm-model-schema'
+import type { SearchModelInput } from '@lib/validation/search-model-schema'
+import type { ModelType, PrismaClient } from '~/generated/prisma/client'
+import { imageModelInputSchema } from '@lib/validation/image-model-schema'
+import { llmModelInputSchema } from '@lib/validation/llm-model-schema'
+import { searchModelInputSchema } from '@lib/validation/search-model-schema'
+import { Prisma } from '~/generated/prisma/client'
 
 export async function listModels(prisma: PrismaClient, type?: ModelType) {
     return prisma.model.findMany({

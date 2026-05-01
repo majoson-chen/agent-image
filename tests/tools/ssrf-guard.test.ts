@@ -1,8 +1,8 @@
+import { assertPublicHttpUrl } from '@lib/tools/ssrf-guard'
 /**
  * U4 — SSRF guard 单测（test-first）
  */
 import { describe, expect, it } from 'vitest'
-import { assertPublicHttpUrl } from '../../lib/tools/ssrf-guard'
 
 describe('assertPublicHttpUrl', () => {
     // 合法公网 URL

@@ -7,7 +7,7 @@ import * as fs from 'node:fs/promises'
 import * as os from 'node:os'
 import * as path from 'node:path'
 import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3'
-import { PrismaClient } from '../../generated/prisma/client'
+import { PrismaClient } from '~/generated/prisma/client'
 
 export async function createTestDb(): Promise<{
     prisma: PrismaClient

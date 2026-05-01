@@ -1,5 +1,5 @@
 import process from 'node:process'
-import { PrismaClient } from '../generated/prisma/client'
+import { PrismaClient } from '~/generated/prisma/client'
 
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient }
 
@@ -40,3 +40,5 @@ const lazyPrisma: PrismaClient = new Proxy({} as PrismaClient, {
 })
 
 export default lazyPrisma
+
+export type { PrismaClient }

@@ -1,12 +1,12 @@
+import type { ImageModelCapabilities } from '@lib/validation/image-model-schema'
 import type { UIMessage } from 'ai'
-import type { ImageModelCapabilities } from '../../../lib/validation/image-model-schema'
+import { mapDbMessagesToInitialMessages } from '@lib/conversations/initial-messages'
+import { getConversation } from '@lib/db/conversations'
+import { listMessages } from '@lib/db/messages'
+import { listModels } from '@lib/db/models'
+import { getAllSelections } from '@lib/db/selections'
+import prisma from '@lib/prisma'
 import { notFound } from 'next/navigation'
-import { getConversation } from '../../../lib/db/conversations'
-import { mapDbMessagesToInitialMessages } from '../../../lib/conversations/initial-messages'
-import { listMessages } from '../../../lib/db/messages'
-import { listModels } from '../../../lib/db/models'
-import { getAllSelections } from '../../../lib/db/selections'
-import prisma from '../../../lib/prisma'
 import { ChatPage } from './ChatPage'
 
 /** 与 ChatPage 内 MessageMetadata 对齐，供初始消息类型断言 */
@@ -60,9 +60,6 @@ export default async function ConversationPage({ params }: Props) {
             imageModels={imageModelList}
             primaryImageModelId={primarySel?.modelId ?? null}
             primaryImageSize={(primarySel?.params as { size?: string } | null)?.size ?? null}
-            primaryImageMaxRefs={primarySel?.model
-                ? ((primarySel.model.capabilities as ImageModelCapabilities | null)?.maxReferenceImages ?? 0)
-                : null}
             secondaryImageModelId={secondarySel?.modelId ?? null}
             secondaryImageSize={(secondarySel?.params as { size?: string } | null)?.size ?? null}
         />

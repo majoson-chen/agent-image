@@ -1,7 +1,7 @@
-import type { Model } from '../../generated/prisma/client'
-import { describe, expect, it } from 'vitest'
+import type { Model } from '~/generated/prisma/client'
+import { computeLlmChatProviderOptions, llmSupportsThinking } from '@lib/llm-chat-provider-options'
 
-import { computeLlmChatProviderOptions, llmSupportsThinking } from '../../lib/llm-chat-provider-options'
+import { describe, expect, it } from 'vitest'
 
 function alibabaLlm(over: Partial<Model> & Pick<Model, 'capabilities'>): Model {
     return {

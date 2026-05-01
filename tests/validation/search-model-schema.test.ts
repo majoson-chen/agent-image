@@ -1,8 +1,8 @@
+import { searchModelInputSchema } from '@lib/validation/search-model-schema'
 /**
  * U2 — search-model-schema zod 校验测试（test-first）
  */
 import { describe, expect, it } from 'vitest'
-import { searchModelInputSchema } from '../../lib/validation/search-model-schema'
 
 describe('searchModelInputSchema', () => {
     it('accepts valid Brave Search input', () => {

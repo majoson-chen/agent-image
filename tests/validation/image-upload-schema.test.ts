@@ -1,5 +1,5 @@
+import { imageUploadSchema, MAX_UPLOAD_BYTES } from '@lib/validation/image-upload-schema'
 import { describe, expect, it } from 'vitest'
-import { imageUploadSchema, MAX_UPLOAD_BYTES } from '../../lib/validation/image-upload-schema'
 
 describe('imageUploadSchema', () => {
     it('accepts valid PNG upload', () => {

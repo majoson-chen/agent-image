@@ -1,12 +1,12 @@
-import type { PrismaClient } from '../../generated/prisma/client'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import type { PrismaClient } from '~/generated/prisma/client'
 import {
     createLlmModel,
     deleteModel,
     getModel,
     listModels,
     updateLlmModel,
-} from '../../lib/db/models'
+} from '@lib/db/models'
+import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { createTestDb } from '../helpers/db'
 
 let prisma: PrismaClient

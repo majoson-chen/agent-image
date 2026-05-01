@@ -1,8 +1,8 @@
+import { modelInputSchema } from '@lib/validation/model-input-schema'
 /**
  * U2 — model-input-schema discriminated union 测试（test-first）
  */
 import { describe, expect, it } from 'vitest'
-import { modelInputSchema } from '../../lib/validation/model-input-schema'
 
 describe('modelInputSchema discriminated union', () => {
     it('accepts LLM input', () => {

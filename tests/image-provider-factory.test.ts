@@ -1,9 +1,9 @@
-import type { PrismaClient } from '../generated/prisma/client'
+import type { PrismaClient } from '~/generated/prisma/client'
 import * as fs from 'node:fs/promises'
 import * as os from 'node:os'
 import * as path from 'node:path'
+import { createConversation } from '@lib/db/conversations'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { createConversation } from '../lib/db/conversations'
 import { createTestDb } from './helpers/db'
 
 let prisma: PrismaClient
@@ -79,7 +79,6 @@ describe('executeImageGeneration - happy paths', () => {
             const result = await executeImageGeneration({
                 model,
                 prompt: '一只柯基',
-                referenceImageIds: [],
                 size: '1024x1024',
                 conversationId: conv.id,
                 prisma,
@@ -131,72 +130,12 @@ describe('executeImageGeneration - happy paths', () => {
             await executeImageGeneration({
                 model,
                 prompt: 'x',
-                referenceImageIds: [],
                 size: '1024x1024',
                 conversationId: conv.id,
                 prisma,
                 abortSignal: new AbortController().signal,
             })
             expect(seedreamRequestUrl).toBe(customUrl)
-        }
-        finally {
-            globalThis.fetch = originalFetch
-        }
-    })
-
-    it('includes reference images as base64 array in request', async () => {
-        const model = await createSeedreamModel()
-        const conv = await createConversation(prisma)
-
-        // 先创建两张参考图
-        const { createImage } = await import('../lib/db/images')
-        const ref1 = await createImage(prisma, {
-            conversationId: conv.id,
-            source: 'USER_UPLOAD',
-            mimeType: 'image/png',
-            sizeBytes: pngBuffer.length,
-            buffer: pngBuffer,
-        })
-        const ref2 = await createImage(prisma, {
-            conversationId: conv.id,
-            source: 'USER_UPLOAD',
-            mimeType: 'image/png',
-            sizeBytes: pngBuffer.length,
-            buffer: pngBuffer,
-        })
-
-        let capturedBody: unknown
-        const originalFetch = globalThis.fetch
-        let callIdx = 0
-        globalThis.fetch = vi.fn(async (url: string, init?: RequestInit) => {
-            callIdx++
-            if (callIdx === 1) {
-                capturedBody = JSON.parse(init?.body as string)
-                return new Response(
-                    JSON.stringify({ data: [{ url: 'https://oss.example.com/img.png' }] }),
-                    { status: 200, headers: { 'Content-Type': 'application/json' } },
-                ) as Response
-            }
-            return new Response(pngBuffer, { status: 200, headers: { 'Content-Type': 'image/png' } }) as Response
-        }) as typeof fetch
-
-        try {
-            const executeImageGeneration = await getFactory()
-            await executeImageGeneration({
-                model,
-                prompt: 'test',
-                referenceImageIds: [ref1.id, ref2.id],
-                size: '1024x1024',
-                conversationId: conv.id,
-                prisma,
-                abortSignal: new AbortController().signal,
-            })
-
-            const body = capturedBody as Record<string, unknown>
-            expect(Array.isArray(body.image)).toBe(true)
-            const imgs = body.image as string[]
-            expect(imgs).toHaveLength(2)
-            expect(imgs[0]).toMatch(/^data:image\/png;base64,/)
         }
         finally {
             globalThis.fetch = originalFetch
@@ -228,7 +167,6 @@ describe('executeImageGeneration - happy paths', () => {
             await executeImageGeneration({
                 model,
                 prompt: 'test',
-                referenceImageIds: [],
                 size: '1024x1024',
                 conversationId: conv.id,
                 prisma,
@@ -293,7 +231,6 @@ describe('executeImageGeneration — DashScope Wan', () => {
             const result = await executeImageGeneration({
                 model,
                 prompt: '一间花店',
-                referenceImageIds: [],
                 size: '1024x1024',
                 conversationId: conv.id,
                 prisma,
@@ -340,7 +277,6 @@ describe('executeImageGeneration — DashScope Wan', () => {
             await executeImageGeneration({
                 model,
                 prompt: 'wide',
-                referenceImageIds: [],
                 size: '1920x1080',
                 conversationId: conv.id,
                 prisma,
@@ -369,7 +305,6 @@ describe('executeImageGeneration — DashScope Wan', () => {
             await expect(executeImageGeneration({
                 model,
                 prompt: 'test',
-                referenceImageIds: [],
                 size: '1024x1024',
                 conversationId: conv.id,
                 prisma,
@@ -414,7 +349,6 @@ describe('executeImageGeneration - error paths', () => {
             await expect(executeImageGeneration({
                 model,
                 prompt: 'test',
-                referenceImageIds: [],
                 size: '1024x1024',
                 conversationId: conv.id,
                 prisma,
@@ -441,7 +375,6 @@ describe('executeImageGeneration - error paths', () => {
             await expect(executeImageGeneration({
                 model,
                 prompt: 'test',
-                referenceImageIds: [],
                 size: '1024x1024',
                 conversationId: conv.id,
                 prisma,
@@ -475,7 +408,6 @@ describe('executeImageGeneration - error paths', () => {
             await expect(executeImageGeneration({
                 model,
                 prompt: 'test',
-                referenceImageIds: [],
                 size: '1024x1024',
                 conversationId: conv.id,
                 prisma,
@@ -495,7 +427,6 @@ describe('executeImageGeneration - error paths', () => {
         await expect(executeImageGeneration({
             model,
             prompt: 'test',
-            referenceImageIds: [],
             size: '1024x1024',
             conversationId: conv.id,
             prisma,

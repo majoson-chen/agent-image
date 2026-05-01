@@ -1,3 +1,4 @@
+import { buildLlmModel } from '@lib/llm-provider-factory'
 /**
  * U4 — LLM Provider 工厂测试
  *
@@ -9,7 +10,6 @@
  * 5. OPENAI_COMPATIBLE 缺少 baseURL 时抛出
  */
 import { describe, expect, it } from 'vitest'
-import { buildLlmModel } from '../../lib/llm-provider-factory'
 
 const OPENAI_MODEL = {
     id: 'test',

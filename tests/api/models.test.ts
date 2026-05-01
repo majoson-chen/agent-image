@@ -1,10 +1,10 @@
-import type { PrismaClient } from '../../generated/prisma/client'
+import type { PrismaClient } from '~/generated/prisma/client'
 /**
  * U3 — /api/models Route Handler 行为测试（dependency injection）
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { handleDeleteModel, handlePatchModel } from '../../app/api/models/[id]/route'
-import { handleModelsGet, handleModelsPost } from '../../app/api/models/route'
+import { handleDeleteModel, handlePatchModel } from '@/api/models/[id]/route'
+import { handleModelsGet, handleModelsPost } from '@/api/models/route'
 import { createTestDb } from '../helpers/db'
 
 let prisma: PrismaClient

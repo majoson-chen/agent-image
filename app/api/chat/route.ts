@@ -1,10 +1,19 @@
 import type { LanguageModel, ToolSet } from 'ai'
 import type { PrismaClient } from '~/generated/prisma/client'
 import { buildAgent } from '@lib/ai/build-agent'
-import { hydrateImagesForLLM } from '@lib/ai/hydrate-images'
+import {
+    buildVisionUserModelMessage,
+    buildVisionUserUiParts,
+    extractImageFetchBatchesFromStep,
+} from '@lib/ai/image-fetch-vision-injection'
 import { appendStepToParts, patchToolResultsFromResponseMessages } from '@lib/ai/step-to-parts'
 import { buildSystemPrompt } from '@lib/ai/system-prompt'
-import { listMessages, syncIncomingClientUserMessages, upsertAssistantMessage } from '@lib/db/messages'
+import {
+    createUserMessageWithParts,
+    listMessages,
+    syncIncomingClientUserMessages,
+    upsertAssistantMessage,
+} from '@lib/db/messages'
 import { getModel } from '@lib/db/models'
 import { getSelection } from '@lib/db/selections'
 import { computeLlmChatProviderOptions } from '@lib/llm-chat-provider-options'
@@ -81,9 +90,6 @@ export async function handleChatPost(req: Request, deps: ChatPostDeps = {}) {
         })
     }
 
-    // 多模态 hydrate：把 user message 中的 image-ref parts 转为 image bytes
-    const hydratedMessages = await hydrateImagesForLLM(uiMessages, db)
-
     // 构建可用工具集（传 conversationId 以按 IMAGE selection 暴露生图工具）
     const { tools, descriptors } = deps.toolsOverride
         ? { tools: deps.toolsOverride, descriptors: Object.keys(deps.toolsOverride) }
@@ -114,11 +120,27 @@ export async function handleChatPost(req: Request, deps: ChatPostDeps = {}) {
         runningParts = []
     }
 
+    const modelInjectedImageFetchToolCallIds = new Set<string>()
+    const dbPersistedImageFetchToolCallIds = new Set<string>()
+
     const agent = buildAgent({
         model: llmModel,
         tools,
         instructions,
         ...(providerOptions ? { providerOptions } : {}),
+        prepareStep: async ({ steps, messages }) => {
+            if (steps.length === 0)
+                return {}
+            const lastStep = steps[steps.length - 1]!
+            const batches = extractImageFetchBatchesFromStep(lastStep)
+            const pending = batches.filter(b => !modelInjectedImageFetchToolCallIds.has(b.toolCallId))
+            if (pending.length === 0)
+                return {}
+            const visionUser = await buildVisionUserModelMessage(db, conversationId, pending)
+            for (const b of pending)
+                modelInjectedImageFetchToolCallIds.add(b.toolCallId)
+            return { messages: [...messages, visionUser] }
+        },
         onStepFinish: async (step) => {
             runningParts = appendStepToParts(runningParts, step as never)
             // 用 response.messages 里的 tool-result 回填跨步骤/跨请求的 input-available parts
@@ -143,12 +165,32 @@ export async function handleChatPost(req: Request, deps: ChatPostDeps = {}) {
                 },
                 modelIdAtTime: selection.modelId,
             })
+
+            const fetchBatches = extractImageFetchBatchesFromStep(step)
+            const toPersist = fetchBatches.filter(b => !dbPersistedImageFetchToolCallIds.has(b.toolCallId))
+            if (toPersist.length > 0) {
+                try {
+                    const uiParts = await buildVisionUserUiParts(db, conversationId, toPersist)
+                    await createUserMessageWithParts(db, conversationId, uiParts)
+                    for (const b of toPersist)
+                        dbPersistedImageFetchToolCallIds.add(b.toolCallId)
+                }
+                catch (e) {
+                    const toolCallIds = toPersist.map(b => b.toolCallId).join(', ')
+                    const detail = e instanceof Error ? e.message : String(e)
+                    console.warn(
+                        `[chat] image-fetch 合成 user 持久化失败：conversationId=${conversationId} toolCallIds=[${toolCallIds}]；`
+                        + '模型本轮已通过 prepareStep 获得图像，但 DB 中缺少对应 user 消息，重载会话后视觉上下文可能不一致。',
+                        detail,
+                    )
+                }
+            }
         },
     })
 
     return createAgentUIStreamResponse({
         agent,
-        uiMessages: hydratedMessages,
+        uiMessages,
         abortSignal: req.signal,
         messageMetadata: ({ part }) => {
             if (part.type !== 'finish')

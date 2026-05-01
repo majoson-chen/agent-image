@@ -1,4 +1,4 @@
-import type { PrismaClient } from '../../generated/prisma/client'
+import type { PrismaClient } from '~/generated/prisma/client'
 
 interface UsageInput {
     inputTokens: number | null
@@ -40,7 +40,24 @@ export async function appendUserMessage(
     })
 }
 
-/** 客户端传来的 USER UIMessage id/parts 与本地会话对齐创建或更新（单机自用契约）。 */
+/** 服务端插入一条带 parts 的用户消息（如 image-fetch 后的视觉上下文）。 */
+export async function createUserMessageWithParts(
+    prisma: PrismaClient,
+    conversationId: string,
+    parts: object[],
+) {
+    const content = extractTextContent(parts)
+    return prisma.message.create({
+        data: {
+            id: crypto.randomUUID(),
+            conversationId,
+            role: 'USER',
+            content,
+            parts,
+        },
+    })
+}
+
 export async function upsertUserMessageParts(
     prisma: PrismaClient,
     conversationId: string,

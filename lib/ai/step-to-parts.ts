@@ -109,10 +109,12 @@ export function patchToolResultsFromResponseMessages(
     const resultByCallId = new Map<string, UIMessagePart['output']>()
 
     for (const msg of responseMessages) {
-        if (msg.role !== 'tool') continue
+        if (msg.role !== 'tool')
+            continue
         const toolMsg = msg as ToolResultMessage
         for (const part of toolMsg.content) {
-            if (part.type !== 'tool-result') continue
+            if (part.type !== 'tool-result')
+                continue
             const { toolCallId, output } = part
             if (output.type === 'json' || output.type === 'text') {
                 resultByCallId.set(toolCallId, { _resolved: output.value ?? output })
@@ -126,14 +128,17 @@ export function patchToolResultsFromResponseMessages(
         }
     }
 
-    if (resultByCallId.size === 0) return runningParts
+    if (resultByCallId.size === 0)
+        return runningParts
 
     return runningParts.map((part) => {
         const p = part as Record<string, unknown>
-        if (p.state !== 'input-available' || !p.toolCallId) return part
+        if (p.state !== 'input-available' || !p.toolCallId)
+            return part
 
         const result = resultByCallId.get(p.toolCallId as string)
-        if (!result) return part
+        if (!result)
+            return part
 
         const r = result as Record<string, unknown>
         if (r._denied) {

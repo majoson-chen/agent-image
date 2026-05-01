@@ -1,9 +1,9 @@
+import { appendStepToParts } from '@lib/ai/step-to-parts'
 /**
  * U5 — step-to-parts 纯函数单测（test-first）
  * 验证 StepResult.content → UIMessagePart[] 转换逻辑
  */
 import { describe, expect, it } from 'vitest'
-import { appendStepToParts } from '../../lib/ai/step-to-parts'
 
 // 最小化 StepResult 工厂
 function makeStep(content: unknown[]) {

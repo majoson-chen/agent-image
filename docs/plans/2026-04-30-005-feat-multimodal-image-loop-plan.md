@@ -32,8 +32,8 @@ origin: docs/brainstorms/2026-04-30-multimodal-image-loop-requirements.md
 - **R-II-1**（SSR 重载保留 user parts）→ U1
 - **R-II-2**（assistant tool 调用持久化保留 output）→ U2
 
-**Origin actors:** A1（终端用户）、A2（Agent）  
-**Origin flows:** F1（生图自检闭环）、F2（候选图谱拉回）、F3（历史会话重载）  
+**Origin actors:** A1（终端用户）、A2（Agent）
+**Origin flows:** F1（生图自检闭环）、F2（候选图谱拉回）、F3（历史会话重载）
 **Origin acceptance examples:** AE1（R-I-1 + R-I-3）、AE2（R-I-2 + R-I-3 + F2）、AE3（R-I-2）、AE4（R-I-2 + R-I-4）、AE5（R-I-1 + R-I-5 + R7 + R16）、AE6（R-II-1）、AE7（R-II-2）
 
 ---
@@ -112,7 +112,7 @@ origin: docs/brainstorms/2026-04-30-multimodal-image-loop-requirements.md
 
 ## High-Level Technical Design
 
-> *以下示意图说明意图，非实现规范。*
+> _以下示意图说明意图，非实现规范。_
 
 ```mermaid
 sequenceDiagram
@@ -138,6 +138,7 @@ sequenceDiagram
 ```
 
 数据流要点：
+
 - **图像可见性真源**：`Image` 表（DB）+ 文件系统；`Message.parts` 中的 `tool-image-*` 仅作为 reference，由 hydrate 解析为真正 image part
 - **去重锚**：imageId（同一 imageId 在同一 LLM 请求中至多一次）
 - **失败语义**：单图读取/解码失败 → log + skip；不阻断该轮请求
@@ -157,19 +158,23 @@ sequenceDiagram
 **Dependencies:** None
 
 **Files:**
+
 - Modify: `app/conversations/[id]/page.tsx`
 - Test: `tests/conversations/conversation-page-initial-messages.test.ts`（新建；若已有 `tests/conversations/` 同向测试文件可合并）
 
 **Approach:**
+
 - 删除 `if (role === 'user') { ... text-only ... }` 早返；user / assistant 共用同一段 `m.parts !== null ? m.parts : [{ type:'text', text: m.content }]` 兜底
 - 类型断言处复用现有 `UIMessage<ChatMessageMetadata>[]`
 
 **Execution note:** characterization-first —— 先写一条捕获当前坏行为的失败测试（user message DB 中存了 `image-ref` part 但 SSR 后 `parts` 只剩 text），再修。
 
 **Patterns to follow:**
+
 - 同文件第 58-60 行 assistant 路径（直接复用其 ternary）
 
 **Test scenarios:**
+
 - Covers AE6. Happy path：DB 中 user message 持久化为 `parts: [{ type:'text', text:'foo' }, { type:'image-ref', imageId:'abc' }]` → SSR 后 `initialMessages[0].parts` 应保留两个 part 不被塌成 text-only
 - Edge case：user message DB `parts` 为 `null` 且 `content` 非空 → fallback 到 `[{ type:'text', text: m.content }]`，不抛错
 - Edge case：user message DB `parts` 为空数组 `[]` → 直接传 `[]`（不 fallback 到 text，因为 `parts !== null`）
@@ -187,12 +192,14 @@ sequenceDiagram
 **Dependencies:** None（与 U1 可并行）
 
 **Files:**
+
 - Modify: `lib/ai/step-to-parts.ts`（或废弃改用新路径，见 Approach）
 - Modify: `app/api/chat/route.ts`（onStepFinish 调用点可能改）
 - Test: `tests/ai/step-to-parts.test.ts`（已存在则扩展；不存在则新建）
 - Test: `tests/api/chat-assistant-persistence.test.ts`（集成测，新建）
 
 **Approach:**
+
 - **首选 (b)**：实现时先在 `node_modules/ai/src/generate-text/` 与 `node_modules/ai/docs/03-agents/` 确认 AI SDK v5 是否在 `onStepFinish` step 对象上提供 `response.messages` 或等价权威 messages 数组（含跨 step 已就位的 tool-result）。若是 → 把 `runningParts` 推导从手动累积改为基于该字段重写；丢弃 `appendStepToParts` 中"同 step 找 result"的耦合
 - **回退 (a)**：若无权威字段 → 在 chat route 维持跨 step 的 `Map<toolCallId, { name, input, partIndex }>`，step N+1 收到 `tool-result` 时定位并 patch `runningParts[index]` 的 `state` + `output`，再 upsert
 - 任一路径下，最后一次 `onStepFinish`（已无未决 call）的 upsert 必须把所有 `tool-image-generate-*` part 写为 `output-available`
@@ -200,7 +207,7 @@ sequenceDiagram
 **Execution note:** characterization-first —— 先写集成测试模拟「Agent 调一次主生图工具，成功落盘」，断言 DB 中该条 assistant message 的 `parts` 末尾有一个 `tool-image-generate-primary` part 且 `state === 'output-available'` 与 `output.imageId` 非空。当前实现下该测试应失败。
 
 **Technical design:**
-*(directional, not specification)*
+_(directional, not specification)_
 
 ```text
 路径 (b)（首选）：
@@ -221,10 +228,12 @@ sequenceDiagram
 ```
 
 **Patterns to follow:**
+
 - 现有 `lib/ai/step-to-parts.ts:30-67` 的同 step 闭合分支（happy path 仍保留作为优化）
 - `app/api/chat/route.ts:104-123` 的 `onStepFinish` 调用形态
 
 **Test scenarios:**
+
 - Covers AE7. Happy path：mock 一次主生图工具，断言 onStepFinish 完成后 DB 中 assistant message 的最末 tool part 有 `state: 'output-available'` 与非空 `output.imageId`
 - Edge case：跨 step 场景——step 1 仅有 tool-call，step 2 仅有 tool-result；最终 part 仍是 `output-available`
 - Error path：工具执行失败（mock 抛错）→ part 写为 `state: 'output-error'`，`errorText` 非空
@@ -246,22 +255,26 @@ sequenceDiagram
 **Dependencies:** None（可与 U1/U2 并行；但 U4 依赖此）
 
 **Files:**
+
 - Modify: `prisma/schema.prisma`（`enum ImageSource { USER_UPLOAD GENERATED URL_FETCHED }`）
 - Create: `prisma/migrations/<timestamp>_add_url_fetched_image_source/migration.sql`（由 `prisma migrate dev --name add_url_fetched_image_source` 自动生成）
 - Modify: `lib/db/images.ts` 中 `createImage` 的入参类型（自动通过 Prisma generate 更新）
 - Test: `tests/db/images.test.ts`（已存在则扩展；新增 source 类型 round-trip）
 
 **Approach:**
+
 - SQLite 下枚举存储为 TEXT，扩枚举对历史数据无破坏；不需要 data backfill
 - `Image` 表已有 `originalUrl: String?` 字段则直接复用；否则在同一迁移内 `originalUrl String?` 与 enum 扩展一并加入（plan 阶段不预设 schema 细节，实现时确认）
 
 **Execution note:** test-first —— 先写一条针对 `createImage({ source: 'URL_FETCHED', ... })` 能成功插入并 round-trip 的失败测试（当前 enum 不含该值，应失败）。
 
 **Patterns to follow:**
+
 - `prisma/migrations/` 现有迁移命名与目录结构
 - AGENTS.md 中 Prisma migrate 指令：`bun --bun run prisma migrate dev`
 
 **Test scenarios:**
+
 - Happy path：`createImage` 接受 `source: 'URL_FETCHED'` + `originalUrl` 字段（若引入），写入后 `getImage` 读回 source 与 url 一致
 - Edge case：传入未知 source 值 → Prisma type error 在编译期捕获
 
@@ -278,20 +291,22 @@ sequenceDiagram
 **Dependencies:** U3
 
 **Files:**
+
 - Create: `lib/tools/image-fetch.ts`
 - Modify: `lib/tools/tool-registry.ts`（注册新 descriptor + 工具实例）
 - Modify: `lib/ai/system-prompt.ts`（若 system-prompt 按 descriptor 自动展开，则无需改；否则补一段 image-fetch 用法说明）
 - Test: `tests/tools/image-fetch.test.ts`
 
 **Approach:**
+
 - 入参：`z.object({ url: z.string().url() })`
-- 流程：`assertPublicHttpUrl` → 自定义 `fetchWithRedirectGuard(url, { maxHops: 3, timeoutMs: 30_000, abortSignal })` 内循环 fetch + `redirect: 'manual'`，3xx 时读 `Location` 头并对绝对/相对 URL `new URL(loc, currentUrl)` 后**重过 `assertPublicHttpUrl`** → 命中 200 后读 `Content-Type` 校验 ∈ 白名单 MIME → `arrayBuffer()` 并校验 `byteLength <= 10 MB`（`AbortController` 在 size 超限时中止读取） → `detectMime(buffer)` magic-byte 校验，与 `Content-Type` 的家族（image/*）一致 → `writeImage` + `createImage({ source: 'URL_FETCHED', originalUrl, ... })` → 返回 `{ imageId, mimeType, sizeBytes }`
+- 流程：`assertPublicHttpUrl` → 自定义 `fetchWithRedirectGuard(url, { maxHops: 3, timeoutMs: 30_000, abortSignal })` 内循环 fetch + `redirect: 'manual'`，3xx 时读 `Location` 头并对绝对/相对 URL `new URL(loc, currentUrl)` 后**重过 `assertPublicHttpUrl`** → 命中 200 后读 `Content-Type` 校验 ∈ 白名单 MIME → `arrayBuffer()` 并校验 `byteLength <= 10 MB`（`AbortController` 在 size 超限时中止读取） → `detectMime(buffer)` magic-byte 校验，与 `Content-Type` 的家族（image/\*）一致 → `writeImage` + `createImage({ source: 'URL_FETCHED', originalUrl, ... })` → 返回 `{ imageId, mimeType, sizeBytes }`
 - `needsApproval: false`（与 web-fetch / image-search 同档；origin Key Decisions 已决）
 
 **Execution note:** test-first —— 每条 acceptance scenario 先做一条失败测试。
 
 **Technical design:**
-*(directional)*
+_(directional)_
 
 ```text
 async function fetchWithRedirectGuard(url, opts) {
@@ -311,12 +326,14 @@ async function fetchWithRedirectGuard(url, opts) {
 ```
 
 **Patterns to follow:**
+
 - `lib/tools/web-fetch.ts` 整体形态（timeout + abortSignal 组合、`redirect: 'manual'`、`User-Agent` 头）
 - `lib/tools/ssrf-guard.ts:assertPublicHttpUrl` 复用作为 baseline
 - `lib/images/storage.ts:writeImage` 落盘
 - `lib/db/images.ts:createImage` DB 行（plan 阶段未预设是否需要扩展支持 `originalUrl`，U3 已统一）
 
 **Test scenarios:**
+
 - Covers AE2. Happy path：mock fetch 返回 PNG bytes + `Content-Type: image/png` + magic-byte 一致 → 工具返回 `{ imageId, mimeType: 'image/png', sizeBytes }`，`Image` 表新增 `URL_FETCHED` 行
 - Covers AE3. Error path：mock fetch 返回 `Content-Type: text/html` → 工具失败抛错（"not an image MIME"）
 - Error path：`Content-Type: image/png` 但响应体首字节是 HTML → magic-byte 不一致 → 工具失败
@@ -343,11 +360,13 @@ async function fetchWithRedirectGuard(url, opts) {
 **Dependencies:** U3（依赖新 source 在 DB 出现，但 hydrate 不直接 case 区分 source；只是通过 Image 表的 imageId 寻址，所以 U3 完成即可）。U4 不阻塞 U5 完成（U5 的实现可独立测试，只要 Image 表里有 URL_FETCHED 行即可——可在测试 fixture 直接构造）
 
 **Files:**
+
 - Modify: `lib/ai/hydrate-images.ts`
 - Modify: `app/api/chat/route.ts:84-90`（hydrate 调用点签名可能扩展为接收/返回 provenance 上下文）
 - Test: `tests/ai/hydrate-images.test.ts`（已存在则扩展；新增 assistant 端扫描 + 去重 + provenance + URL_FETCHED 来源 case）
 
 **Approach:**
+
 - **扫描范围**：遍历所有 messages 所有 parts，收集形如 `tool-image-generate-*` 的 `output.imageId(s)` 与 `tool-image-fetch` 的 `output.imageId`；同时扫描 user 端已有的 `image-ref` part 收集 imageId（仅为去重计数，不重复注入）
 - **去重**：用 `Set<imageId>`；同 imageId 重复出现仅注入一次
 - **避免重复**：user message 内已 `image-ref` 形式承载的图像，**不**再被注入为额外 part（依赖前端 user message parts 已通过 R-II-1 修复，DB 持久化的 user.parts 完整可信）
@@ -359,10 +378,12 @@ async function fetchWithRedirectGuard(url, opts) {
 **Execution note:** test-first —— 每条 acceptance + edge 先写失败测试。
 
 **Patterns to follow:**
+
 - 现有 `hydrate-images.ts:46-72` 的 `image-ref` 解析与 `readFile` 调用形态（直接扩展循环逻辑）
 - `app/api/chat/route.ts:84-90` 的 `hydrateImagesForLLM(uiMessages, db)` 调用形态（保签名兼容；扩展返回值若需要 provenance 元数据）
 
 **Test scenarios:**
+
 - Covers AE1. Happy path：mock 一段对话——user A → assistant tool-image-generate(output.imageId=g1) → user B → 调 hydrate；返回的 messages 在最末 user B 的 parts 之前应有 2 个新 part：text "以下图像来自上一轮工具调用产出..." + image with buffer 等于 g1 的实际 bytes
 - Happy path：assistant tool-image-fetch(output.imageId=f1) 也被扫描到并注入 prelude 文案为 URL 抓取
 - Edge case：连续两轮 assistant 都生图 g1、g2 → hydrate 注入两组 (text + image)，按对话时间线顺序排列
@@ -390,13 +411,13 @@ async function fetchWithRedirectGuard(url, opts) {
 
 ## Risks & Dependencies
 
-| Risk | Mitigation |
-|---|---|
-| AI SDK v5 没有稳定的 `response.messages` 字段，U2 (b) 路径不可行 | U2 Approach 已声明回退 (a)；实现时先验证；不阻塞 |
-| provider 兼容子集中某家拒绝注入形态（如要求 image_url 字段） | U5 注入位置选 user message image part 是覆盖最广方案；实测发现差异时可在 plan 之外开短跟进 PR 适配（保留 `experimental_download` 作演进路径） |
-| token 暴涨导致单机自用体验明显下降 | origin 已识别并放入 Deferred「图像窗口策略」；若 v1 实测撞墙过快再开窗口策略 follow-up plan |
-| ssrf-guard 字面量校验被 DNS rebinding 绕过 | origin 已承认为单机 toy 残余风险；不在本 plan 消化 |
-| U4 上游 Image 表无 `originalUrl` 字段 | U3 在迁移时一并补该字段（plan 阶段未预设；实现时确认） |
+| Risk                                                             | Mitigation                                                                                                                                    |
+| ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| AI SDK v5 没有稳定的 `response.messages` 字段，U2 (b) 路径不可行 | U2 Approach 已声明回退 (a)；实现时先验证；不阻塞                                                                                              |
+| provider 兼容子集中某家拒绝注入形态（如要求 image_url 字段）     | U5 注入位置选 user message image part 是覆盖最广方案；实测发现差异时可在 plan 之外开短跟进 PR 适配（保留 `experimental_download` 作演进路径） |
+| token 暴涨导致单机自用体验明显下降                               | origin 已识别并放入 Deferred「图像窗口策略」；若 v1 实测撞墙过快再开窗口策略 follow-up plan                                                   |
+| ssrf-guard 字面量校验被 DNS rebinding 绕过                       | origin 已承认为单机 toy 残余风险；不在本 plan 消化                                                                                            |
+| U4 上游 Image 表无 `originalUrl` 字段                            | U3 在迁移时一并补该字段（plan 阶段未预设；实现时确认）                                                                                        |
 
 ---
 

@@ -1,5 +1,5 @@
-import type { PrismaClient, SelectionRole } from '../../generated/prisma/client'
-import { Prisma } from '../../generated/prisma/client'
+import type { PrismaClient, SelectionRole } from '~/generated/prisma/client'
+import { Prisma } from '~/generated/prisma/client'
 
 export async function getSelection(
     prisma: PrismaClient,

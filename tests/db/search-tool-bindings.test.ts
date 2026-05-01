@@ -1,15 +1,15 @@
 /**
  * U2 — SearchToolBinding CRUD 测试（test-first）
  */
-import type { PrismaClient } from '../../generated/prisma/client'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { createSearchModel } from '../../lib/db/models'
+import type { PrismaClient } from '~/generated/prisma/client'
+import { createSearchModel } from '@lib/db/models'
 import {
     clearBinding,
     getAllBindings,
     getBinding,
     setBinding,
-} from '../../lib/db/search-tool-bindings'
+} from '@lib/db/search-tool-bindings'
+import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { createTestDb } from '../helpers/db'
 
 let prisma: PrismaClient

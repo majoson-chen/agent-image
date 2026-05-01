@@ -1,5 +1,5 @@
 import type { LanguageModel } from 'ai'
-import type { Model } from '../generated/prisma/client'
+import type { Model } from '~/generated/prisma/client'
 import { createAlibaba } from '@ai-sdk/alibaba'
 import { createOpenAI } from '@ai-sdk/openai'
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible'

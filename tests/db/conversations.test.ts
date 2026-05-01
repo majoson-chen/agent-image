@@ -1,12 +1,12 @@
-import type { PrismaClient } from '../../generated/prisma/client'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import type { PrismaClient } from '~/generated/prisma/client'
 import {
     createConversation,
     deleteConversation,
     getConversation,
     getMostRecent,
     listConversations,
-} from '../../lib/db/conversations'
+} from '@lib/db/conversations'
+import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { createTestDb } from '../helpers/db'
 
 let prisma: PrismaClient

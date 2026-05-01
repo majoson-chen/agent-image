@@ -1,11 +1,11 @@
 'use client'
 
-import type { ImageModelCapabilities } from '../../../lib/validation/image-model-schema'
+import type { ImageModelCapabilities } from '@lib/validation/image-model-schema'
+import { cn } from '@lib/cn'
 import { ExternalLink, Images } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useRef, useState, useTransition } from 'react'
-import { cn } from '../../../lib/cn'
 import { setImageSelectionAction } from './imageSelectionActions'
 
 export interface ComposerImageModelOption {

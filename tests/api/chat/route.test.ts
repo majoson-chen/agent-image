@@ -9,16 +9,16 @@
  * 4. 无 LLM 选型时返回 400
  */
 import type { LanguageModel } from 'ai'
-import type { PrismaClient } from '../../../generated/prisma/client'
+import type { PrismaClient } from '~/generated/prisma/client'
+import { createConversation } from '@lib/db/conversations'
+import { aggregateUsage, appendUserMessage, listMessages } from '@lib/db/messages'
+import { createLlmModel } from '@lib/db/models'
+import { setSelection } from '@lib/db/selections'
 import { tool } from 'ai'
 import { convertArrayToReadableStream, MockLanguageModelV3 } from 'ai/test'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { z } from 'zod'
-import { handleChatPost } from '../../../app/api/chat/route'
-import { createConversation } from '../../../lib/db/conversations'
-import { aggregateUsage, appendUserMessage, listMessages } from '../../../lib/db/messages'
-import { createLlmModel } from '../../../lib/db/models'
-import { setSelection } from '../../../lib/db/selections'
+import { handleChatPost } from '@/api/chat/route'
 import { createTestDb } from '../../helpers/db'
 
 let prisma: PrismaClient

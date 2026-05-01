@@ -2,14 +2,14 @@
 
 /* eslint-disable next/no-img-element, react/no-array-index-key -- 对话区同源 /api/images；UIMessage.parts 子项无统一稳定 key */
 
+import type { ImageModelCapabilities } from '@lib/validation/image-model-schema'
 import type { UIMessage } from 'ai'
-import type { ImageModelCapabilities } from '../../../lib/validation/image-model-schema'
 import { useChat } from '@ai-sdk/react'
+import { getGateHint, getSubmitButtonState } from '@lib/chat-guard'
+import { cn } from '@lib/cn'
 import { DefaultChatTransport, lastAssistantMessageIsCompleteWithApprovalResponses } from 'ai'
-import { Check, ChevronDown, ChevronUp, ImagePlus, Send, Square, X } from 'lucide-react'
+import { Check, ChevronDown, ChevronUp, Send, Square, X } from 'lucide-react'
 import { useState } from 'react'
-import { canUploadMore, getGateHint, getSubmitButtonState } from '../../../lib/chat-guard'
-import { cn } from '../../../lib/cn'
 import { ComposerImageSlot } from './ComposerImageSlot'
 import { ComposerLlmSlot } from './ComposerLlmSlot'
 import { ContextUsageBar } from './ContextUsageBar'
@@ -31,7 +31,7 @@ interface ImageGeneratePart {
     type: string // 'tool-image-generate-primary' | 'tool-image-generate-secondary'
     state: 'input-streaming' | 'input-available' | 'approval-requested' | 'executing' | 'output-available' | 'output-error'
     toolCallId?: string
-    input?: { prompt?: string, referenceImageIds?: string[] }
+    input?: { prompt?: string }
     output?: { imageId?: string, imageIds?: string[] }
     errorText?: string
     approval?: { id: string }
@@ -91,14 +91,6 @@ function ImageGenerateBlock({
                         <p className="text-xs text-base-content/60 line-clamp-3">
                             提示词：
                             {part.input.prompt}
-                        </p>
-                    )}
-                    {part.input?.referenceImageIds && part.input.referenceImageIds.length > 0 && (
-                        <p className="text-xs text-base-content/50">
-                            参考图：
-                            {part.input.referenceImageIds.length}
-                            {' '}
-                            张
                         </p>
                     )}
                     <div className="flex gap-2 mt-2">
@@ -197,7 +189,6 @@ interface Props {
     imageModels?: ImageModelInfo[]
     primaryImageModelId?: string | null
     primaryImageSize?: string | null
-    primaryImageMaxRefs?: number | null
     secondaryImageModelId?: string | null
     secondaryImageSize?: string | null
 }
@@ -274,15 +265,11 @@ export function ChatPage({
     imageModels = [],
     primaryImageModelId = null,
     primaryImageSize = null,
-    primaryImageMaxRefs = null,
     secondaryImageModelId = null,
     secondaryImageSize = null,
 }: Props) {
     const [input, setInput] = useState('')
     const [abortedMessageIds, setAbortedMessageIds] = useState<Set<string>>(() => new Set())
-    const [uploadedImages, setUploadedImages] = useState<Array<{ id: string, name: string }>>([])
-    const [uploading, setUploading] = useState(false)
-    const [uploadError, setUploadError] = useState<string | null>(null)
 
     const { messages, sendMessage, stop, status, error, clearError, addToolApprovalResponse } = useChat<UIMessage<MessageMetadata>>({
         id: conversationId,
@@ -301,9 +288,6 @@ export function ChatPage({
         },
     })
 
-    const maxRefs = primaryImageMaxRefs ?? Infinity
-    const atRefLimit = !canUploadMore({ count: uploadedImages.length, max: maxRefs })
-
     const btnState = getSubmitButtonState({ status, llmSelected: hasLlm, inputEmpty: !input.trim() })
     const gateHint = getGateHint({ llmSelected: hasLlm })
 
@@ -321,39 +305,9 @@ export function ChatPage({
             if (error)
                 clearError()
             const parts: object[] = [{ type: 'text', text: input }]
-            for (const img of uploadedImages) {
-                parts.push({ type: 'image-ref', imageId: img.id })
-            }
             sendMessage({ parts } as Parameters<typeof sendMessage>[0])
             setInput('')
-            setUploadedImages([])
         }
-    }
-
-    async function handleFileUpload(files: FileList | null) {
-        if (!files || files.length === 0)
-            return
-        setUploading(true)
-        setUploadError(null)
-        for (const file of Array.from(files)) {
-            const form = new FormData()
-            form.append('file', file)
-            form.append('conversationId', conversationId)
-            try {
-                const res = await fetch('/api/images', { method: 'POST', body: form })
-                if (!res.ok) {
-                    const data = await res.json().catch(() => ({}))
-                    setUploadError(data.error ?? '上传失败')
-                    continue
-                }
-                const data = await res.json()
-                setUploadedImages(prev => [...prev, { id: data.id, name: file.name }])
-            }
-            catch {
-                setUploadError('上传失败')
-            }
-        }
-        setUploading(false)
     }
 
     function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -383,17 +337,17 @@ export function ChatPage({
                                 ? (
                                         <div className="rounded-box max-w-prose bg-primary px-4 py-3 text-sm text-primary-content">
                                             {m.parts.map((part, i) => {
-                                                const p = part as { type: string, text?: string, imageId?: string }
+                                                const p = part as { type: string, text?: string, url?: string, mediaType?: string }
                                                 if (p.type === 'text')
                                                     return <span key={i}>{p.text}</span>
-                                                if (p.type === 'image-ref' && p.imageId) {
+                                                if (p.type === 'file' && typeof p.url === 'string' && p.url.startsWith('data:image/')) {
                                                     return (
                                                         <img
                                                             key={i}
-                                                            src={`/api/images/${p.imageId}`}
+                                                            src={p.url}
                                                             loading="lazy"
-                                                            className="mt-1 max-h-24 rounded object-contain"
-                                                            alt="参考图"
+                                                            className="mt-1 max-h-48 rounded object-contain border border-base-300"
+                                                            alt=""
                                                         />
                                                     )
                                                 }
@@ -474,51 +428,7 @@ export function ChatPage({
                     {gateHint && (
                         <p className="mb-2 text-xs text-warning">{gateHint}</p>
                     )}
-                    {uploadError && (
-                        <div className="alert alert-error mb-2 py-1 text-xs">{uploadError}</div>
-                    )}
-                    {/* 已上传图片 chips */}
-                    {uploadedImages.length > 0 && (
-                        <div className="mb-2 flex flex-wrap gap-1">
-                            {uploadedImages.map(img => (
-                                <span key={img.id} className="badge badge-outline gap-1 px-1.5 py-1 text-xs">
-                                    <img src={`/api/images/${img.id}`} className="h-4 w-4 rounded object-cover" alt="" />
-                                    <span className="max-w-[10rem] truncate">{img.name}</span>
-                                    <button
-                                        type="button"
-                                        className="btn btn-ghost btn-xs size-6 min-h-0 p-0 opacity-70 hover:opacity-100"
-                                        aria-label="移除参考图"
-                                        onClick={() => setUploadedImages(prev => prev.filter(x => x.id !== img.id))}
-                                    >
-                                        <X className="size-3" strokeWidth={2.5} aria-hidden />
-                                    </button>
-                                </span>
-                            ))}
-                        </div>
-                    )}
                     <form onSubmit={handleSubmit} className="flex gap-2">
-                        {/* 上传按钮 */}
-                        <label
-                            className={cn(
-                                'btn btn-sm btn-outline gap-0 px-2.5',
-                                (atRefLimit || !hasLlm) && 'btn-disabled opacity-40 cursor-not-allowed',
-                            )}
-                            title={atRefLimit ? `已达参考图上限 ${maxRefs} 张` : '添加参考图'}
-                        >
-                            {uploading
-                                ? <span className="loading loading-spinner loading-xs" />
-                                : (
-                                        <ImagePlus className="size-4" strokeWidth={2} aria-hidden />
-                                    )}
-                            <input
-                                type="file"
-                                accept="image/*"
-                                multiple
-                                hidden
-                                disabled={atRefLimit || !hasLlm}
-                                onChange={e => handleFileUpload(e.target.files)}
-                            />
-                        </label>
                         <input
                             className="input input-bordered flex-1 text-sm"
                             placeholder={hasLlm ? '输入消息…' : '请先选择 LLM 模型'}

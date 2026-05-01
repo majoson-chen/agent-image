@@ -1,15 +1,15 @@
+import { mapDbMessagesToInitialMessages } from '@lib/conversations/initial-messages'
 /**
  * U1 — SSR 重载 user.parts 丢失的 characterization 测试
  *
  * 当前坏行为：page.tsx 中对 role=user 的消息强制返回 text-only parts，
- * 忽略 DB 中已持久化的 m.parts（含 image-ref 等富类型 part）。
+ * 忽略 DB 中已持久化的富类型 parts 时 SSR 会变 text-only——本测试断言 map 如实保留 DB parts。
  * 修复后行为：user 与 assistant 路径共用同一段 ternary，DB parts 优先。
  */
 import { describe, expect, it } from 'vitest'
-import { mapDbMessagesToInitialMessages } from '../../lib/conversations/initial-messages'
 
 describe('mapDbMessagesToInitialMessages', () => {
-    it('user message with DB parts (image-ref) — preserves parts, not text-only', () => {
+    it('user message with DB parts — preserves multiple parts, not text-only', () => {
         const dbMessages = [
             {
                 id: 'msg-1',
@@ -17,7 +17,7 @@ describe('mapDbMessagesToInitialMessages', () => {
                 content: 'see this',
                 parts: [
                     { type: 'text', text: 'see this' },
-                    { type: 'image-ref', imageId: 'abc' },
+                    { type: 'text', text: 'continuation' },
                 ],
             },
         ]
@@ -26,7 +26,7 @@ describe('mapDbMessagesToInitialMessages', () => {
 
         expect(result[0]!.parts).toHaveLength(2)
         expect(result[0]!.parts[0]).toMatchObject({ type: 'text', text: 'see this' })
-        expect(result[0]!.parts[1]).toMatchObject({ type: 'image-ref', imageId: 'abc' })
+        expect(result[0]!.parts[1]).toMatchObject({ type: 'text', text: 'continuation' })
     })
 
     it('user message with null parts — fallback to text-only', () => {

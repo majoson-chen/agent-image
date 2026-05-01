@@ -1,5 +1,5 @@
+import { getSeedreamPreset, SEEDREAM_DEFAULT_API_BASE_URL, SEEDREAM_PRESETS } from '@lib/image/seedream-presets'
 import { describe, expect, it } from 'vitest'
-import { getSeedreamPreset, SEEDREAM_DEFAULT_API_BASE_URL, SEEDREAM_PRESETS } from '../../lib/image/seedream-presets'
 
 describe('seedream-presets', () => {
     it('exports non-empty preset list', () => {

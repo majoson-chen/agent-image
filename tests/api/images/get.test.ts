@@ -1,11 +1,11 @@
-import type { PrismaClient } from '../../../generated/prisma/client'
+import type { PrismaClient } from '~/generated/prisma/client'
 import * as fs from 'node:fs/promises'
 import * as os from 'node:os'
 import * as path from 'node:path'
+import { createConversation } from '@lib/db/conversations'
+import { createImage } from '@lib/db/images'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
-import { handleGetImage } from '../../../app/api/images/[id]/route'
-import { createConversation } from '../../../lib/db/conversations'
-import { createImage } from '../../../lib/db/images'
+import { handleGetImage } from '@/api/images/[id]/route'
 import { createTestDb } from '../../helpers/db'
 
 let prisma: PrismaClient

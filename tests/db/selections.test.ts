@@ -1,8 +1,8 @@
-import type { PrismaClient } from '../../generated/prisma/client'
+import type { PrismaClient } from '~/generated/prisma/client'
+import { createConversation } from '@lib/db/conversations'
+import { createLlmModel } from '@lib/db/models'
+import { getAllSelections, getSelection, setSelection } from '@lib/db/selections'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { createConversation } from '../../lib/db/conversations'
-import { createLlmModel } from '../../lib/db/models'
-import { getAllSelections, getSelection, setSelection } from '../../lib/db/selections'
 import { createTestDb } from '../helpers/db'
 
 let prisma: PrismaClient

@@ -1,8 +1,8 @@
+import { createImageSearchTool } from '@lib/tools/image-search'
 /**
  * U4 — image-search 工具单测（test-first）
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { createImageSearchTool } from '../../lib/tools/image-search'
 
 const BRAVE_IMAGE_RESPONSE = {
     results: [

@@ -1,6 +1,6 @@
+import { cn } from '@lib/cn'
 import { IBM_Plex_Mono, IBM_Plex_Sans } from 'next/font/google'
 import * as React from 'react'
-import { cn } from '../lib/cn'
 import { Sidebar } from './Sidebar'
 import './globals.css'
 

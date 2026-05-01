@@ -1,8 +1,8 @@
+import { createWebFetchTool } from '@lib/tools/web-fetch'
 /**
  * U4 — web-fetch 工具单测（test-first）
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { createWebFetchTool } from '../../lib/tools/web-fetch'
 
 let fetchSpy: ReturnType<typeof vi.spyOn>
 

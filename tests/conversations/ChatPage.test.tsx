@@ -1,13 +1,13 @@
 /**
  * U8 — ChatPage 组件测试（test-first）
  * @vitest-environment jsdom
- * 覆盖 approval 状态、上传 UI、image-ref 渲染
+ * 覆盖 approval 状态与生图输出
  */
 import type { UIMessage } from 'ai'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { ChatPage } from '../../app/conversations/[id]/ChatPage'
+import { ChatPage } from '@/conversations/[id]/ChatPage'
 
 const mockChat = vi.hoisted(() => ({
     messages: [] as UIMessage[],
@@ -157,54 +157,6 @@ describe('chatPage - output-available state', () => {
         renderChatPage()
         const img = document.querySelector('img[src="/api/images/img-123"]')
         expect(img).not.toBeNull()
-    })
-})
-
-describe('chatPage - image-ref in user message', () => {
-    it('renders img with /api/images/:id for image-ref parts', () => {
-        mockChat.messages = [
-            {
-                id: 'msg-1',
-                role: 'user',
-                parts: [
-                    { type: 'text', text: 'see this image' },
-                    { type: 'image-ref', imageId: 'ref-img-001' } as unknown as UIMessage['parts'][number],
-                ],
-            } as UIMessage,
-        ]
-
-        renderChatPage()
-        const img = document.querySelector('img[src="/api/images/ref-img-001"]')
-        expect(img).not.toBeNull()
-    })
-})
-
-describe('chatPage - upload UI', () => {
-    it('renders + button for file upload', () => {
-        renderChatPage({ hasLlm: true })
-        // + 号按钮（label 包含 input[type=file]）
-        const fileInput = document.querySelector('input[type="file"]')
-        expect(fileInput).not.toBeNull()
-    })
-
-    it('upload + button is disabled when at ref limit', () => {
-        // maxRefs=2, uploadedImages已经2张（通过模拟达到上限）
-        // 由于 state 初始为空，直接测试 maxRefs=0 时 + 号 disabled
-        renderChatPage({
-            hasLlm: true,
-            primaryImageMaxRefs: 0,
-        })
-        const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
-        expect(fileInput?.disabled).toBe(true)
-    })
-
-    it('upload + button not disabled when maxRefs not reached', () => {
-        renderChatPage({
-            hasLlm: true,
-            primaryImageMaxRefs: 14,
-        })
-        const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
-        expect(fileInput?.disabled).toBe(false)
     })
 })
 

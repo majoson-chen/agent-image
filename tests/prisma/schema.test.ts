@@ -9,7 +9,7 @@ import * as os from 'node:os'
 import * as path from 'node:path'
 import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { PrismaClient } from '../../generated/prisma/client'
+import { PrismaClient } from '~/generated/prisma/client'
 
 let tmpDir: string
 let dbPath: string

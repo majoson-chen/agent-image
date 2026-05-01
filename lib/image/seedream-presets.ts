@@ -1,5 +1,4 @@
-import type { ImageModelCapabilities } from '../validation/image-model-schema'
-
+import type { ImageModelCapabilities } from '@lib/validation/image-model-schema'
 /** 方舟 OpenAPI/LAS 等路径皆可；沿用现有工厂默认以保持兼容 */
 export const SEEDREAM_DEFAULT_API_BASE_URL
     = 'https://operator.las.cn-beijing.volces.com/api/v1/online/images/generations'

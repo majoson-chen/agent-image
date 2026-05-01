@@ -1,8 +1,8 @@
+import { createWebSearchTool } from '@lib/tools/web-search'
 /**
  * U4 — web-search 工具单测（test-first）
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { createWebSearchTool } from '../../lib/tools/web-search'
 
 const BRAVE_RESPONSE = {
     web: {

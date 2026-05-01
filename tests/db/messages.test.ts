@@ -2,11 +2,11 @@
  * U2 — messages DB 层测试（扩展 M1）
  * 验证 upsertAssistantMessage 的 INSERT / UPDATE / parts 序列化往返行为
  */
-import type { PrismaClient } from '../../generated/prisma/client'
+import type { PrismaClient } from '~/generated/prisma/client'
+import { createConversation } from '@lib/db/conversations'
+import { appendUserMessage, listMessages, upsertAssistantMessage } from '@lib/db/messages'
+import { createLlmModel } from '@lib/db/models'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { createConversation } from '../../lib/db/conversations'
-import { appendUserMessage, listMessages, upsertAssistantMessage } from '../../lib/db/messages'
-import { createLlmModel } from '../../lib/db/models'
 import { createTestDb } from '../helpers/db'
 
 let prisma: PrismaClient

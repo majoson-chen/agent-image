@@ -1,5 +1,5 @@
+import { detectMime, isAllowedMime, mimeToExt } from '@lib/images/mime'
 import { describe, expect, it } from 'vitest'
-import { detectMime, isAllowedMime, mimeToExt } from '../../lib/images/mime'
 
 // PNG magic bytes: 89 50 4E 47 0D 0A 1A 0A
 const pngBuffer = Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00])

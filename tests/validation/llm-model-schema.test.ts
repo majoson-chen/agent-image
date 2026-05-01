@@ -1,5 +1,5 @@
+import { llmModelInputSchema } from '@lib/validation/llm-model-schema'
 import { describe, expect, it } from 'vitest'
-import { llmModelInputSchema } from '../../lib/validation/llm-model-schema'
 
 describe('llmModelInputSchema', () => {
     it('accepts valid OPENAI model', () => {

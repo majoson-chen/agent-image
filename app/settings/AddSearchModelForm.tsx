@@ -1,9 +1,9 @@
 'use client'
 
+import { cn } from '@lib/cn'
 import { Plus } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { cn } from '../../lib/cn'
 
 interface FormState {
     name: string

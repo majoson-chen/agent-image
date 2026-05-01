@@ -1,3 +1,4 @@
+import { appendStepToParts, patchToolResultsFromResponseMessages } from '@lib/ai/step-to-parts'
 /**
  * U2 — assistant tool-image-generate 持久化丢失 output 的 characterization 测试
  *
@@ -10,7 +11,6 @@
  * step.response.messages 中的 tool-result 回写到 runningParts。
  */
 import { describe, expect, it } from 'vitest'
-import { appendStepToParts, patchToolResultsFromResponseMessages } from '../../lib/ai/step-to-parts'
 
 describe('patchToolResultsFromResponseMessages', () => {
     it('cross-step: patches input-available part with output from response.messages', () => {

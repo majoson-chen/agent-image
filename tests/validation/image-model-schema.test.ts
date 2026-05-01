@@ -1,5 +1,5 @@
+import { imageModelInputSchema } from '@lib/validation/image-model-schema'
 import { describe, expect, it } from 'vitest'
-import { imageModelInputSchema } from '../../lib/validation/image-model-schema'
 
 describe('imageModelInputSchema', () => {
     const valid = {

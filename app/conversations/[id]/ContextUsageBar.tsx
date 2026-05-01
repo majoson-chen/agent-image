@@ -1,7 +1,7 @@
 'use client'
 
-import { cn } from '../../../lib/cn'
-import { calcUsagePercent, formatUsage } from '../../../lib/usage-calc'
+import { cn } from '@lib/cn'
+import { calcUsagePercent, formatUsage } from '@lib/usage-calc'
 
 interface Props {
     totalTokens: number | null

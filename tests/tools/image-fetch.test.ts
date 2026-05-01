@@ -1,13 +1,22 @@
 /**
- * U4 — image-fetch tool 单测（test-first）
- * 覆盖 SSRF、MIME 校验、redirect 跳数、大小限制、超时、正常落盘
+ * U1 / U4 — image-fetch：`sources[]`（url | imageId）、批量逐项结果、SSRF/MIME/redirect/大小
  */
-import type { MockedFunction } from 'vitest'
-import type { createImage as CreateImageFn } from '../../lib/db/images'
-import type { readImageBuffer as ReadImageBufferFn, writeImage as WriteImageFn } from '../../lib/images/storage'
+import type { ImageFetchInput, ImageFetchToolOutput } from '@lib/tools/image-fetch'
+import {
+    IMAGE_FETCH_MAX_SOURCES,
+    imageFetchInputSchema,
+} from '@lib/tools/image-fetch'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-// mock storage 和 db images，避免真实 IO
+async function execImageFetch(
+    tool: { execute?: (input: ImageFetchInput, options: { abortSignal?: AbortSignal }) => Promise<ImageFetchToolOutput> },
+    input: ImageFetchInput,
+): Promise<ImageFetchToolOutput> {
+    if (!tool.execute)
+        throw new Error('missing execute')
+    return tool.execute(input, { abortSignal: undefined })
+}
+
 vi.mock('../../lib/images/storage', () => ({
     writeImage: vi.fn().mockResolvedValue(undefined),
     readImageBuffer: vi.fn(),
@@ -16,23 +25,27 @@ vi.mock('../../lib/images/storage', () => ({
     deleteConversationImages: vi.fn(),
 }))
 
+let createImageSeq = 0
 vi.mock('../../lib/db/images', () => ({
-    createImage: vi.fn().mockImplementation((_prisma: unknown, input: { conversationId: string, mimeType: string, sizeBytes: number }) => ({
-        id: 'fetched-img-001',
-        conversationId: input.conversationId,
-        source: 'URL_FETCHED',
-        mimeType: input.mimeType,
-        sizeBytes: input.sizeBytes,
-        originalUrl: null,
-    })),
+    createImage: vi.fn().mockImplementation((_prisma: unknown, input: { conversationId: string, mimeType: string, sizeBytes: number }) => {
+        createImageSeq += 1
+        return Promise.resolve({
+            id: `new-img-${createImageSeq}`,
+            conversationId: input.conversationId,
+            source: 'URL_FETCHED',
+            mimeType: input.mimeType,
+            sizeBytes: input.sizeBytes,
+            originalUrl: null,
+        })
+    }),
     getImage: vi.fn(),
     listImages: vi.fn(),
     deleteImage: vi.fn(),
     cleanupConversationImages: vi.fn(),
 }))
 
-const pngMagic = Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, ...new Array(100).fill(0)])
-const jpegMagic = Buffer.from([0xFF, 0xD8, 0xFF, 0xE0, ...new Array(100).fill(0)])
+const pngMagic = Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, ...Array.from({ length: 100 }).fill(0)])
+const jpegMagic = Buffer.from([0xFF, 0xD8, 0xFF, 0xE0, ...Array.from({ length: 100 }).fill(0)])
 const htmlBytes = Buffer.from('<html>hello</html>')
 
 function makePrisma() {
@@ -47,9 +60,10 @@ function makeResponse(opts: {
 }) {
     const { status = 200, contentType = 'image/png', body = pngMagic, location } = opts
     const headers = new Headers()
-    if (contentType) headers.set('content-type', contentType)
-    if (location) headers.set('location', location)
-    // 用 slice 确保 arrayBuffer() 返回的是该 Buffer 自己的独立 ArrayBuffer
+    if (contentType)
+        headers.set('content-type', contentType)
+    if (location)
+        headers.set('location', location)
     const buf = typeof body === 'string' ? Buffer.from(body) : body
     const ownArrayBuffer = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength)
     return {
@@ -60,132 +74,174 @@ function makeResponse(opts: {
     } as unknown as Response
 }
 
-describe('createImageFetchTool - happy path', () => {
+describe('imageFetchInputSchema', () => {
+    it(`rejects > ${IMAGE_FETCH_MAX_SOURCES} sources`, () => {
+        const sources = Array.from({ length: IMAGE_FETCH_MAX_SOURCES + 1 }, () => ({ url: 'https://example.com/x.png' }))
+        const r = imageFetchInputSchema.safeParse({ sources })
+        expect(r.success).toBe(false)
+    })
+
+    it('rejects item with both url and imageId', () => {
+        const r = imageFetchInputSchema.safeParse({
+            sources: [{ url: 'https://a.com/p.png', imageId: 'abc' }],
+        })
+        expect(r.success).toBe(false)
+    })
+
+    it('rejects item with neither url nor imageId', () => {
+        const r = imageFetchInputSchema.safeParse({
+            sources: [{}],
+        })
+        expect(r.success).toBe(false)
+    })
+})
+
+describe('createImageFetchTool - url sources', () => {
     beforeEach(() => {
         vi.stubGlobal('fetch', vi.fn())
+        createImageSeq = 0
     })
     afterEach(() => {
         vi.unstubAllGlobals()
         vi.clearAllMocks()
     })
 
-    it('fetches PNG, validates MIME and magic bytes, creates DB row', async () => {
-        const fetchMock = vi.mocked(globalThis.fetch)
-        fetchMock.mockResolvedValueOnce(makeResponse({ contentType: 'image/png', body: pngMagic }))
+    it('returns items for single url PNG', async () => {
+        vi.mocked(globalThis.fetch).mockResolvedValueOnce(makeResponse({ contentType: 'image/png', body: pngMagic }))
 
         const { createImageFetchTool } = await import('../../lib/tools/image-fetch')
         const t = createImageFetchTool({ prisma: makePrisma(), conversationId: 'conv-1' })
-        const result = await (t.execute as Function)({ url: 'https://example.com/img.png' }, { abortSignal: undefined })
+        const result = await execImageFetch(t, { sources: [{ url: 'https://example.com/img.png' }] })
 
-        expect(result.imageId).toBeTruthy()
-        expect(result.mimeType).toBe('image/png')
-        expect(result.sizeBytes).toBeGreaterThan(0)
+        expect(result.items).toHaveLength(1)
+        expect(result.items[0]).toMatchObject({ index: 0, ok: true, mimeType: 'image/png' })
+        expect(result.items[0].ok && result.items[0].imageId).toBeTruthy()
+        expect(result.notice).toMatch(/紧随其后的一条 role=user/)
+        expect(result.notice).toMatch(/请先不要/)
     })
 
-    it('fetches JPEG successfully', async () => {
-        const fetchMock = vi.mocked(globalThis.fetch)
-        fetchMock.mockResolvedValueOnce(makeResponse({ contentType: 'image/jpeg', body: jpegMagic }))
+    it('returns items in order for multiple urls', async () => {
+        vi.mocked(globalThis.fetch)
+            .mockResolvedValueOnce(makeResponse({ contentType: 'image/png', body: pngMagic }))
+            .mockResolvedValueOnce(makeResponse({ contentType: 'image/jpeg', body: jpegMagic }))
 
         const { createImageFetchTool } = await import('../../lib/tools/image-fetch')
         const t = createImageFetchTool({ prisma: makePrisma(), conversationId: 'conv-1' })
-        const result = await (t.execute as Function)({ url: 'https://example.com/img.jpg' }, { abortSignal: undefined })
+        const result = await execImageFetch(t, {
+            sources: [
+                { url: 'https://example.com/a.png' },
+                { url: 'https://example.com/b.jpg' },
+            ],
+        })
 
-        expect(result.mimeType).toBe('image/jpeg')
+        expect(result.items).toHaveLength(2)
+        expect(result.items[0]).toMatchObject({ index: 0, ok: true, mimeType: 'image/png' })
+        expect(result.items[1]).toMatchObject({ index: 1, ok: true, mimeType: 'image/jpeg' })
+        expect(result.notice).toMatch(/共有 2 项 sources 成功/)
     })
-})
 
-describe('createImageFetchTool - SSRF rejection', () => {
-    it('rejects private IPv4 URL (192.168.x.x)', async () => {
+    it('partial failure: first item ok, second SSRF error becomes ok:false item', async () => {
+        vi.mocked(globalThis.fetch).mockResolvedValueOnce(makeResponse({ contentType: 'image/png', body: pngMagic }))
+
         const { createImageFetchTool } = await import('../../lib/tools/image-fetch')
         const t = createImageFetchTool({ prisma: makePrisma(), conversationId: 'conv-1' })
-        await expect(
-            (t.execute as Function)({ url: 'https://192.168.1.1/img.png' }, { abortSignal: undefined }),
-        ).rejects.toThrow(/private network not allowed/)
+        const result = await execImageFetch(t, {
+            sources: [
+                { url: 'https://example.com/good.png' },
+                { url: 'https://192.168.1.1/bad.png' },
+            ],
+        })
+
+        expect(result.items[0]).toMatchObject({ index: 0, ok: true })
+        expect(result.items[1]).toMatchObject({ index: 1, ok: false })
+        expect(String((result.items[1] as { error: string }).error)).toMatch(/private network|192/i)
+        expect(result.notice).toMatch(/共有 1 项 sources 成功/)
     })
 
-    it('rejects localhost URL', async () => {
-        const { createImageFetchTool } = await import('../../lib/tools/image-fetch')
-        const t = createImageFetchTool({ prisma: makePrisma(), conversationId: 'conv-1' })
-        await expect(
-            (t.execute as Function)({ url: 'https://localhost/img.png' }, { abortSignal: undefined }),
-        ).rejects.toThrow(/private network not allowed/)
-    })
-
-    it('rejects ftp:// URL', async () => {
-        const { createImageFetchTool } = await import('../../lib/tools/image-fetch')
-        const t = createImageFetchTool({ prisma: makePrisma(), conversationId: 'conv-1' })
-        await expect(
-            (t.execute as Function)({ url: 'ftp://example.com/img.png' }, { abortSignal: undefined }),
-        ).rejects.toThrow(/only http\/https allowed/)
-    })
-})
-
-describe('createImageFetchTool - MIME validation', () => {
-    afterEach(() => {
-        vi.unstubAllGlobals()
-        vi.clearAllMocks()
-    })
-
-    it('rejects text/html Content-Type', async () => {
+    it('MIME error on item returns ok:false instead of throwing', async () => {
         vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(
             makeResponse({ contentType: 'text/html', body: htmlBytes }),
         ))
         const { createImageFetchTool } = await import('../../lib/tools/image-fetch')
         const t = createImageFetchTool({ prisma: makePrisma(), conversationId: 'conv-1' })
-        await expect(
-            (t.execute as Function)({ url: 'https://example.com/page' }, { abortSignal: undefined }),
-        ).rejects.toThrow(/not an image MIME/)
-    })
-
-    it('rejects when Content-Type says image/png but magic bytes are HTML', async () => {
-        vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(
-            makeResponse({ contentType: 'image/png', body: htmlBytes }),
-        ))
-        const { createImageFetchTool } = await import('../../lib/tools/image-fetch')
-        const t = createImageFetchTool({ prisma: makePrisma(), conversationId: 'conv-1' })
-        await expect(
-            (t.execute as Function)({ url: 'https://example.com/img.png' }, { abortSignal: undefined }),
-        ).rejects.toThrow(/magic bytes/)
+        const result = await execImageFetch(t, { sources: [{ url: 'https://example.com/page' }] })
+        expect(result.items).toHaveLength(1)
+        expect(result.items[0]).toMatchObject({ index: 0, ok: false })
+        expect((result.items[0] as { error: string }).error).toMatch(/not an image MIME/)
+        expect(result.notice).toMatch(/没有任何成功/)
     })
 })
 
-describe('createImageFetchTool - redirect guard', () => {
+describe('createImageFetchTool - imageId sources', () => {
+    beforeEach(() => {
+        createImageSeq = 0
+        vi.clearAllMocks()
+    })
+
+    it('resolves imageId in same conversation', async () => {
+        const { readImageBuffer } = await import('../../lib/images/storage')
+        vi.mocked(readImageBuffer).mockResolvedValueOnce(pngMagic)
+        const images = await import('../../lib/db/images')
+        vi.mocked(images.getImage).mockResolvedValueOnce({
+            id: 'gen-1',
+            conversationId: 'conv-1',
+            mimeType: 'image/png',
+            sizeBytes: 100,
+        } as never)
+
+        const { createImageFetchTool } = await import('../../lib/tools/image-fetch')
+        const t = createImageFetchTool({ prisma: makePrisma(), conversationId: 'conv-1' })
+        const result = await execImageFetch(t, { sources: [{ imageId: 'gen-1' }] })
+
+        expect(result.items).toHaveLength(1)
+        expect(result.items[0]).toEqual({
+            index: 0,
+            ok: true,
+            imageId: 'gen-1',
+            mimeType: 'image/png',
+            sizeBytes: 100,
+        })
+        expect(images.createImage).not.toHaveBeenCalled()
+        expect(result.notice).toMatch(/共有 1 项/)
+    })
+
+    it('wrong conversation imageId returns ok:false', async () => {
+        const images = await import('../../lib/db/images')
+        vi.mocked(images.getImage).mockResolvedValueOnce({
+            id: 'x',
+            conversationId: 'other',
+            mimeType: 'image/png',
+            sizeBytes: 1,
+        } as never)
+
+        const { createImageFetchTool } = await import('../../lib/tools/image-fetch')
+        const t = createImageFetchTool({ prisma: makePrisma(), conversationId: 'conv-1' })
+        const result = await execImageFetch(t, { sources: [{ imageId: 'x' }] })
+
+        expect(result.items[0]).toMatchObject({ index: 0, ok: false })
+        expect((result.items[0] as { error: string }).error).toMatch(/不属于当前会话/)
+        expect(result.notice).toMatch(/没有任何成功/)
+    })
+})
+
+describe('createImageFetchTool - redirect / size', () => {
     afterEach(() => {
         vi.unstubAllGlobals()
         vi.clearAllMocks()
     })
 
-    it('rejects redirect to private IP', async () => {
-        vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(
-            makeResponse({ status: 302, location: 'http://10.0.0.1/img.png', contentType: '' }),
-        ))
-        const { createImageFetchTool } = await import('../../lib/tools/image-fetch')
-        const t = createImageFetchTool({ prisma: makePrisma(), conversationId: 'conv-1' })
-        await expect(
-            (t.execute as Function)({ url: 'https://evil.com/img.png' }, { abortSignal: undefined }),
-        ).rejects.toThrow(/private network not allowed/)
-    })
-
-    it('rejects after too many redirects (4 hops)', async () => {
+    it('redirect chain too long → ok:false item', async () => {
         vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
             makeResponse({ status: 302, location: 'https://a.com/img.png', contentType: '' }),
         ))
         const { createImageFetchTool } = await import('../../lib/tools/image-fetch')
         const t = createImageFetchTool({ prisma: makePrisma(), conversationId: 'conv-1' })
-        await expect(
-            (t.execute as Function)({ url: 'https://a.com/img.png' }, { abortSignal: undefined }),
-        ).rejects.toThrow(/too many redirects/)
-    })
-})
-
-describe('createImageFetchTool - size limit', () => {
-    afterEach(() => {
-        vi.unstubAllGlobals()
-        vi.clearAllMocks()
+        const result = await execImageFetch(t, { sources: [{ url: 'https://a.com/start.png' }] })
+        expect(result.items[0]).toMatchObject({ ok: false })
+        expect((result.items[0] as { error: string }).error).toMatch(/too many redirects/)
     })
 
-    it('rejects response body > 10 MB', async () => {
-        // 创建一个 11 MB 的 PNG-magic-prefixed buffer
+    it('body too large → ok:false item', async () => {
         const largeBody = Buffer.alloc(11 * 1024 * 1024)
         pngMagic.copy(largeBody)
         vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(
@@ -193,53 +249,50 @@ describe('createImageFetchTool - size limit', () => {
         ))
         const { createImageFetchTool } = await import('../../lib/tools/image-fetch')
         const t = createImageFetchTool({ prisma: makePrisma(), conversationId: 'conv-1' })
-        await expect(
-            (t.execute as Function)({ url: 'https://example.com/huge.png' }, { abortSignal: undefined }),
-        ).rejects.toThrow(/too large/)
+        const result = await execImageFetch(t, { sources: [{ url: 'https://example.com/huge.png' }] })
+        expect(result.items[0]).toMatchObject({ ok: false })
+        expect((result.items[0] as { error: string }).error).toMatch(/too large/)
     })
 })
 
-describe('createImageFetchTool - toModelOutput', () => {
+describe('createImageFetchTool - mixed url + imageId', () => {
+    beforeEach(() => {
+        vi.stubGlobal('fetch', vi.fn())
+        createImageSeq = 0
+    })
     afterEach(() => {
+        vi.unstubAllGlobals()
         vi.clearAllMocks()
     })
 
-    it('returns content with image-data when image file exists', async () => {
+    it('runs url then imageId in sequence', async () => {
+        vi.mocked(globalThis.fetch).mockResolvedValueOnce(makeResponse({ contentType: 'image/png', body: pngMagic }))
+
         const { readImageBuffer } = await import('../../lib/images/storage')
-        ;(readImageBuffer as MockedFunction<typeof readImageBuffer>).mockResolvedValueOnce(pngMagic)
+        vi.mocked(readImageBuffer).mockResolvedValueOnce(jpegMagic)
+        const images = await import('../../lib/db/images')
+        vi.mocked(images.getImage).mockResolvedValueOnce({
+            id: 'existing-1',
+            conversationId: 'conv-9',
+            mimeType: 'image/jpeg',
+            sizeBytes: 50,
+        } as never)
 
         const { createImageFetchTool } = await import('../../lib/tools/image-fetch')
-        const t = createImageFetchTool({ prisma: makePrisma(), conversationId: 'conv-1' })
-
-        const toolOutput = { imageId: 'fetched-img-001', mimeType: 'image/png', sizeBytes: 8 }
-        const output = await (t as { toModelOutput?: (o: object) => Promise<unknown> }).toModelOutput!({
-            toolCallId: 'tc-1',
-            input: { url: 'https://example.com/img.png' },
-            output: toolOutput,
-        })
-
-        expect(output).toMatchObject({
-            type: 'content',
-            value: [
-                { type: 'image-data', data: pngMagic.toString('base64'), mediaType: 'image/png' },
+        const t = createImageFetchTool({ prisma: makePrisma(), conversationId: 'conv-9' })
+        const result = await execImageFetch(t, {
+            sources: [
+                { url: 'https://example.com/f.png' },
+                { imageId: 'existing-1' },
             ],
         })
-    })
 
-    it('falls back to json when image file read fails', async () => {
-        const { readImageBuffer } = await import('../../lib/images/storage')
-        ;(readImageBuffer as MockedFunction<typeof readImageBuffer>).mockRejectedValueOnce(new Error('ENOENT'))
-
-        const { createImageFetchTool } = await import('../../lib/tools/image-fetch')
-        const t = createImageFetchTool({ prisma: makePrisma(), conversationId: 'conv-1' })
-
-        const toolOutput = { imageId: 'fetched-img-001', mimeType: 'image/png', sizeBytes: 8 }
-        const output = await (t as { toModelOutput?: (o: object) => Promise<unknown> }).toModelOutput!({
-            toolCallId: 'tc-1',
-            input: { url: 'https://example.com/img.png' },
-            output: toolOutput,
+        expect(result.items[0].ok).toBe(true)
+        expect(result.items[1]).toMatchObject({
+            index: 1,
+            ok: true,
+            imageId: 'existing-1',
+            mimeType: 'image/jpeg',
         })
-
-        expect(output).toMatchObject({ type: 'json', value: toolOutput })
     })
 })

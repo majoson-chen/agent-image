@@ -1,11 +1,11 @@
 'use client'
 
+import { cn } from '@lib/cn'
+import { llmSupportsThinking } from '@lib/llm-chat-provider-options'
 import { Cpu, ExternalLink } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useRef, useState, useTransition } from 'react'
-import { cn } from '../../../lib/cn'
-import { llmSupportsThinking } from '../../../lib/llm-chat-provider-options'
 import { setLlmSelectionAction } from './llmSelectionActions'
 
 export interface ComposerLlmModelOption {

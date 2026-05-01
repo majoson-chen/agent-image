@@ -1,9 +1,9 @@
-import type { PrismaClient } from '../../generated/prisma/client'
+import type { PrismaClient } from '~/generated/prisma/client'
+import { renameConversation } from '@lib/db/conversations'
+import prismaDefault from '@lib/prisma'
+import { CONVERSATION_TITLE_MAX, parseConversationTitle } from '@lib/validation/conversation-title'
 import { tool } from 'ai'
 import { z } from 'zod'
-import { renameConversation } from '../db/conversations'
-import prismaDefault from '../prisma'
-import { CONVERSATION_TITLE_MAX, parseConversationTitle } from '../validation/conversation-title'
 import 'server-only'
 
 interface Options {

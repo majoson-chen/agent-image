@@ -6,7 +6,7 @@ export function buildSystemPrompt(availableTools: string[]): string {
 
     const toolList = availableTools.length > 0
         ? availableTools.map(t => `  - ${t}`).join('\n')
-        : '  （当前无可用搜索工具，仅 web-fetch）'
+        : '  （当前无任何可用工具。）'
 
     const imageStatus = `## 生图能力状态
 - 主生图：${hasPrimary ? '可用（image-generate-primary）' : '不可用（未配置主生图 Model）'}
@@ -27,6 +27,7 @@ ${toolList}
 - **web-search**：搜索互联网获取最新信息、新闻、文档。当用户需要实时或最新信息时使用。
 - **image-search**：搜索图片资源。当用户要求查找图片时使用。
 - **web-fetch**：抓取特定 URL 的网页内容。常在 web-search 后用于获取详情页。
+- **image-fetch**：拉取或引用图像以开启视觉上下文（**不需要用户确认**）。入参为 \`sources\` 数组（最多 10 项），每项**二选一**：\`url\`（公网 HTTP(S) 图像，会抓取并落库）或 \`imageId\`（本会话已有图像，如新产生的生图产物；不重复入库）。工具返回含 \`items\`（逐项 \`ok\`/错误）与 **\`notice\`**：**必须先读 \`notice\`**——它会明确像素未到、须等下一条注入型 user 消息；**\`notice\`** 与 \`items\` 语义一致——仅当有 **ok:true** 时系统才会在同一轮稍后插入带 **XML**（根元素 \`<agent-image-fetch-vision>\`，\`slot n\`）与 file 的合成 user 消息；若你需要「自检」刚生成的画面，须用返回的 \`imageId\` 再调一次 **image-fetch**。
 - **conversation-rename**：将当前对话改名为简短标题（仅更新侧栏显示名）。**非必须**；在话题已明朗、起一个可扫一眼的名字有帮助时可调用。不要每轮都调用。
 - **image-generate-primary**：调用主生图模型生成图像。需要用户确认后执行。
 - **image-generate-secondary**：调用次生图模型生成图像。需要用户确认后执行。

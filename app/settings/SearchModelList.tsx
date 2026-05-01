@@ -1,5 +1,5 @@
-import { listModels } from '../../lib/db/models'
-import prisma from '../../lib/prisma'
+import { listModels } from '@lib/db/models'
+import prisma from '@lib/prisma'
 import { AddSearchModelForm } from './AddSearchModelForm'
 import { SearchModelActions } from './SearchModelActions'
 

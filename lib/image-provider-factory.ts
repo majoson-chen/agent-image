@@ -1,9 +1,8 @@
-import type { PrismaClient } from '../generated/prisma/client'
-import { createImage, getImage } from './db/images'
+import type { PrismaClient } from '~/generated/prisma/client'
+import { createImage } from './db/images'
 import { SEEDREAM_DEFAULT_API_BASE_URL } from './image/seedream-presets'
 import { WAN_IMAGE_DEFAULT_API_URL } from './image/wan-image-presets'
 import { detectMime } from './images/mime'
-import { readImageBuffer } from './images/storage'
 import 'server-only'
 
 interface ImageModelRecord {
@@ -17,7 +16,6 @@ interface ImageModelRecord {
 interface ExecuteImageGenerationInput {
     model: ImageModelRecord
     prompt: string
-    referenceImageIds: string[]
     size: string
     conversationId: string
     prisma: PrismaClient
@@ -37,7 +35,7 @@ export async function executeImageGeneration(input: ExecuteImageGenerationInput)
 }
 
 async function executeSeedream(input: ExecuteImageGenerationInput) {
-    const { model, prompt, referenceImageIds, size, conversationId, prisma, abortSignal } = input
+    const { model, prompt, size, conversationId, prisma, abortSignal } = input
 
     // 30s 超时复合 abortSignal
     const timeoutSignal = AbortSignal.timeout(30_000)
@@ -45,24 +43,7 @@ async function executeSeedream(input: ExecuteImageGenerationInput) {
         ? AbortSignal.any([abortSignal, timeoutSignal])
         : timeoutSignal
 
-    // 1. 把参考图解析为 base64
-    const images: string[] = []
-    for (const id of referenceImageIds) {
-        const img = await getImage(prisma, id)
-        if (!img)
-            throw new Error(`reference image not found: ${id}`)
-        const buffer = await readImageBuffer(img.conversationId, img.id, img.mimeType)
-        images.push(`data:${img.mimeType};base64,${buffer.toString('base64')}`)
-    }
-
-    // 2. 调用 Seedream API
     const body: Record<string, unknown> = { model: model.name, prompt, size }
-    if (images.length === 1) {
-        body.image = images[0]
-    }
-    else if (images.length > 1) {
-        body.image = images
-    }
 
     const apiUrl = model.baseURL?.trim() || SEEDREAM_DEFAULT_API_BASE_URL
 
@@ -113,12 +94,12 @@ async function executeSeedream(input: ExecuteImageGenerationInput) {
 }
 
 /** 将对话中的 WxH 映射为百炼 parameters.size（1K/2K/4K 或 W*H） */
-function mapSizeToDashscopeParameter(size: string, modelName: string, hasReferenceImages: boolean): string {
+function mapSizeToDashscopeParameter(size: string, modelName: string): string {
     const trimmedUpper = size.trim().toUpperCase()
     const isPro = /^wan2\.7-image-pro$/i.test(modelName.trim())
 
     if (trimmedUpper === '1K' || trimmedUpper === '2K' || trimmedUpper === '4K') {
-        if (trimmedUpper === '4K' && (!isPro || hasReferenceImages))
+        if (trimmedUpper === '4K' && !isPro)
             return '2K'
         return trimmedUpper
     }
@@ -133,7 +114,7 @@ function mapSizeToDashscopeParameter(size: string, modelName: string, hasReferen
             if (w === 2048)
                 return '2K'
             if (w === 4096) {
-                if (!isPro || hasReferenceImages)
+                if (!isPro)
                     return '2K'
                 return '4K'
             }
@@ -145,33 +126,21 @@ function mapSizeToDashscopeParameter(size: string, modelName: string, hasReferen
 }
 
 async function executeDashscopeWanImage(input: ExecuteImageGenerationInput) {
-    const { model, prompt, referenceImageIds, size, conversationId, prisma, abortSignal } = input
+    const { model, prompt, size, conversationId, prisma, abortSignal } = input
 
     const timeoutSignal = AbortSignal.timeout(120_000)
     const combinedSignal = abortSignal
         ? AbortSignal.any([abortSignal, timeoutSignal])
         : timeoutSignal
 
-    const content: Array<{ text?: string, image?: string }> = []
+    const content: Array<{ text?: string, image?: string }> = [{ text: prompt }]
 
-    for (const id of referenceImageIds) {
-        const img = await getImage(prisma, id)
-        if (!img)
-            throw new Error(`reference image not found: ${id}`)
-        const buffer = await readImageBuffer(img.conversationId, img.id, img.mimeType)
-        content.push({ image: `data:${img.mimeType};base64,${buffer.toString('base64')}` })
-    }
-
-    content.push({ text: prompt })
-
-    const hasRefs = referenceImageIds.length > 0
     const parameters: Record<string, unknown> = {
-        size: mapSizeToDashscopeParameter(size, model.name, hasRefs),
+        size: mapSizeToDashscopeParameter(size, model.name),
         n: 1,
         watermark: false,
+        thinking_mode: true,
     }
-    if (!hasRefs)
-        parameters.thinking_mode = true
 
     const body = {
         model: model.name,

@@ -1,8 +1,8 @@
+import { calcUsagePercent, formatUsage } from '@lib/usage-calc'
 /**
  * U7 — 上下文用量计算单元测试
  */
 import { describe, expect, it } from 'vitest'
-import { calcUsagePercent, formatUsage } from '../../lib/usage-calc'
 
 describe('calcUsagePercent', () => {
     it('returns 0 when no usage', () => {
