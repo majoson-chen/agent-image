@@ -22,6 +22,7 @@
 **文件名：** `架构总览.canvas.tsx`
 
 **内容：**
+
 - 仓库三层目录结构：`app/`（UI 层）→ `lib/`（业务逻辑层）→ `prisma/` + SQLite（数据层）
 - 六个核心模块的区块图，标出每个模块所在目录与主要入口文件
 - 一条简化请求生命周期：客户端 → `POST /api/chat` → Agent → stream → 前端
@@ -32,6 +33,7 @@
 **文件名：** `数据模型.canvas.tsx`
 
 **内容：**
+
 - Prisma schema 中的 6 张表：`Model`、`Conversation`、`Message`、`ConversationModelSelection`、`Image`、`SearchToolBinding`
 - 字段速览 + 表间关系（ER 结构）
 - 枚举取值速查：`ModelType`、`ProviderType`、`SelectionRole`、`ImageSource`、`SearchTool`、`MessageRole`
@@ -43,6 +45,7 @@
 **文件名：** `Provider工厂.canvas.tsx`
 
 **内容：**
+
 - LLM 工厂链：`lib/llm-provider-factory.ts` 的 `buildLlmModel()`，三个 `providerType` 分支（OPENAI / OPENAI_COMPATIBLE / ALIBABA）及其各自参数差异
 - 图像工厂链：`lib/image-provider-factory.ts` 的 `executeImageGeneration()`，两个执行路径（Seedream / DashScope WAN）及各自的 HTTP 交互方式与超时设置
 - Presets 文件（`lib/image/seedream-presets.ts`、`lib/image/wan-image-presets.ts`）的作用范围：默认 API URL 与参数映射逻辑
@@ -53,6 +56,7 @@
 **文件名：** `工具系统.canvas.tsx`
 
 **内容：**
+
 - `lib/tools/tool-registry.ts` 的 `buildAvailableTools()` 工作流：每次请求动态组装 `ToolSet`，组装结果直接影响 Agent 能力与 system prompt 内容
 - 三类工具的暴露条件（常驻 / 绑定驱动 / 选型驱动）及各工具的实现文件
 - 各工具的输入输出概览（参数签名、返回结构）
@@ -63,6 +67,7 @@
 **文件名：** `Agent运行时与消息Parts.canvas.tsx`
 
 **内容：**
+
 - `/api/chat` 的 `handleChatPost()` 主流程步骤：请求解析 → 选型读取 → 工具组装 → Agent 构建 → stream 返回
 - `lib/ai/build-agent.ts` 的 `buildAgent()`：对 AI SDK `ToolLoopAgent` 的薄封装，接受的参数结构
 - `onStepFinish` 回调链：每个 step 结束后 `appendStepToParts` → `patchToolResultsFromResponseMessages` → `upsertAssistantMessage`（中间态持久化）
@@ -75,6 +80,7 @@
 **文件名：** `视觉上下文注入.canvas.tsx`
 
 **内容：**
+
 - `lib/ai/image-fetch-vision-injection.ts` 的三个主要函数：`extractImageFetchBatchesFromStep`、`buildVisionUserModelMessage`、`buildVisionUserUiParts` 的职责与调用时机
 - `prepareStep` 钩子（在 `/api/chat` 中定义）：在每个新 step 启动前检测上一 step 是否有未注入的 image-fetch 结果，有则调用 `buildVisionUserModelMessage` 把图像 data URI 插入 AI SDK 消息链
 - `onStepFinish` 中的 DB 路径：调用 `buildVisionUserUiParts` + `createUserMessageWithParts` 把图像写入 DB 用于 UI 重载
