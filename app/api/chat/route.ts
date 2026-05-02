@@ -97,18 +97,22 @@ export async function handleChatPost(req: Request, deps: ChatPostDeps = {}) {
 
     const instructions = buildSystemPrompt(descriptors)
 
-    // 检测 continuation 请求（审批响应场景）：若客户端 messages 中含有 assistant 消息，
-    // 说明是对已有助手消息的续写（例如工具审批后继续执行），复用其 id 以更新同一行。
-    const existingAssistantMsg = clientMessagesOpt?.findLast(m => m.role.toLowerCase() === 'assistant')
+    // continuation（审批等）：仅当**最后一条**客户端消息为 assistant 时才复用其 id 更新同一 DB 行。
+    // 若用 findLast(assistant)，在新一轮用户追问（…user, assistant, user）时会误绑到上一轮 assistant，
+    // upsert 覆盖旧内容且 createdAt 不变，按 createdAt 排序会出现「assistant 排在最新 user 之前」的错位。
+    const lastClientMsg = clientMessagesOpt?.at(-1)
+    const continuingAssistant
+        = lastClientMsg != null && lastClientMsg.role.toLowerCase() === 'assistant'
+
     let runId: string
     let runningParts: UIMessagePart[]
     let runningUsage = { inputTokens: 0, outputTokens: 0, totalTokens: 0 }
 
-    if (existingAssistantMsg) {
-        runId = existingAssistantMsg.id
+    if (continuingAssistant) {
+        runId = lastClientMsg.id
         // 从 DB 加载已有 parts 作为续写起点（可能含 input-available 工具 part）
         const dbMsg = await db.message.findUnique({ where: { id: runId } })
-        runningParts = (dbMsg?.parts as UIMessagePart[] | null) ?? (existingAssistantMsg.parts as UIMessagePart[])
+        runningParts = (dbMsg?.parts as UIMessagePart[] | null) ?? (lastClientMsg.parts as UIMessagePart[])
         runningUsage = {
             inputTokens: dbMsg?.usageInputTokens ?? 0,
             outputTokens: dbMsg?.usageOutputTokens ?? 0,
@@ -188,10 +192,13 @@ export async function handleChatPost(req: Request, deps: ChatPostDeps = {}) {
         },
     })
 
+    // 与 upsertAssistantMessage 使用同一 id：当末条为 user 时 SDK 默认不给助手消息设 id（见 UIMessageStreamOptions.generateMessageId），
+    // useChat 会因缺少 id 合并流失败；延续轮末条为 assistant 时 SDK 会自带 id，此处返回同一 runId 仍安全。
     return createAgentUIStreamResponse({
         agent,
         uiMessages,
         abortSignal: req.signal,
+        generateMessageId: () => runId,
         messageMetadata: ({ part }) => {
             if (part.type !== 'finish')
                 return undefined

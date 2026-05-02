@@ -72,6 +72,64 @@ function makeRequest(body: unknown) {
 }
 
 describe('pOST /api/chat', () => {
+    it('new user turn after assistant uses fresh assistant row; DB order is chronological', async () => {
+        const llmModel = await createLlmModel(prisma, {
+            name: 'test-llm-two-turn',
+            providerType: 'OPENAI',
+            apiKey: 'sk-test',
+            contextWindow: 4096,
+        })
+        const conv = await createConversation(prisma)
+        await setSelection(prisma, conv.id, 'LLM', llmModel.id)
+
+        const user1Id = 'client-u-two-turn-1'
+        const res1 = await handleChatPost(
+            makeRequest({
+                conversationId: conv.id,
+                messages: [
+                    { id: user1Id, role: 'user', parts: [{ type: 'text', text: 'first' }] },
+                ],
+            }),
+            { prisma, model: makeStreamModel('Reply one') },
+        )
+        expect(res1.status).toBe(200)
+        const reader1 = res1.body!.getReader()
+        while (!(await reader1.read()).done) { /* drain */ }
+        await new Promise(r => setTimeout(r, 80))
+
+        let msgs = await listMessages(prisma, conv.id)
+        expect(msgs).toHaveLength(2)
+        expect(msgs[0].role).toBe('USER')
+        expect(msgs[1].role).toBe('ASSISTANT')
+        const asst1Id = msgs[1].id
+        const asst1Parts = msgs[1].parts as object[]
+
+        const user2Id = 'client-u-two-turn-2'
+        const res2 = await handleChatPost(
+            makeRequest({
+                conversationId: conv.id,
+                messages: [
+                    { id: user1Id, role: 'user', parts: [{ type: 'text', text: 'first' }] },
+                    { id: asst1Id, role: 'assistant', parts: asst1Parts },
+                    { id: user2Id, role: 'user', parts: [{ type: 'text', text: 'second' }] },
+                ],
+            }),
+            { prisma, model: makeStreamModel('Reply two') },
+        )
+        expect(res2.status).toBe(200)
+        const reader2 = res2.body!.getReader()
+        while (!(await reader2.read()).done) { /* drain */ }
+        await new Promise(r => setTimeout(r, 80))
+
+        msgs = await listMessages(prisma, conv.id)
+        expect(msgs).toHaveLength(4)
+        expect(msgs.map(m => m.role)).toEqual(['USER', 'ASSISTANT', 'USER', 'ASSISTANT'])
+        expect(msgs[1].id).toBe(asst1Id)
+        expect(msgs[1].content).toContain('Reply one')
+        expect(msgs[3].id).not.toBe(asst1Id)
+        expect(msgs[3].content).toContain('Reply two')
+    })
+
     it('persists user messages from POST body when messages provided', async () => {
         const llmModel = await createLlmModel(prisma, {
             name: 'test-llm-body',
