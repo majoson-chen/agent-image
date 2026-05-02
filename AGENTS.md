@@ -106,3 +106,10 @@ import SomeComponent from '~/xxx'
 - 与现有 ESLint、TypeScript 配置保持一致；优先小步提交、避免无关重构。
 - **Tailwind（`className`）**：拼条件类名、合并冲突工具类时统一使用 **`cn()`**（仓库根 `lib/cn.ts`，`clsx` + `tailwind-merge`；从 `app/` 内引用时用 `../lib/cn` 等相对路径），不要手写长模板字符串拼接或忽略冲突覆盖。
 - 用户规则要求中文沟通时，文档与注释可按团队习惯中英并存；本文件以中文为主便于本地阅读。
+
+## Cursor Canvas
+
+本项目使用 Cursor Canvas 作为「人类文档」的入口和交付物。
+
+- 【重要】所有的画布（Canvas 文件）存放在仓库根目录 **`canvases/`**（`*.canvas.tsx`）而非 Cursor 托管的 `canvases/`。
+- 【重要】修改和创建时请直接在仓库内编辑，不要写入 Cursor 托管的 `canvases/`。
