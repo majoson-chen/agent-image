@@ -15,11 +15,18 @@ export default function AgentImageArchitectureCanvas() {
                     ）与源码；画布不替代版本化文档。
                 </Text>
                 <Text tone="secondary" size="small">
-                    源文件在本仓库 canvases/（见 tsconfig exclude）；变更后运行
+                    Cursor 只会编译本机
                     {' '}
-                    <Code>bun sync:canvas</Code>
+                    <Code>~/.cursor/projects/…/canvases/</Code>
                     {' '}
-                    同步到 IDE 识别的托管目录。
+                    下的
+                    {' '}
+                    <Code>.canvas.tsx</Code>
+                    （见 Cursor
+                    {' '}
+                    <Code>canvas</Code>
+                    {' '}
+                    skill「Location」）。仓库内同名文件若存在，仅作 Git 归档；请以 IDE 实际打开的托管路径文件为准。
                 </Text>
             </Callout>
 
@@ -31,16 +38,75 @@ export default function AgentImageArchitectureCanvas() {
                 ；LLM / 生图 / Search 多 Provider；SQLite + Prisma；无全局单一 API Key。
             </Text>
 
+            <Divider />
+
+            <H2>系统边界与信任域</H2>
+            <Table
+                headers={['层', '职责 / 不信任边界']}
+                rows={[
+                    ['浏览器', 'React 对话 UI、 Composer 选型、`useChat` 消费 SSE；不配直连厂商密钥'],
+                    ['Next 服务端', 'Route Handler 校验、拼装 Agent、持久化 Message / Image meta、出站调用 LLM·工具链'],
+                    ['外部 Provider', '各 Model 记录的 baseURL + 明文密钥（单机玩具）；按调用点出网'],
+                    ['SQLite', '会话、消息 parts、选型、绑定、图像索引；字节在 storage 模块'],
+                ]}
+            />
+            <Text tone="secondary" size="small">
+                与人类对齐时优先盯住「谁在服务端持有秘密、谁写入 DB」这两点，可避免把客户端与路由职责混淆。
+            </Text>
+
+            <Divider />
+
+            <H2>端到端代码流动（主路径）</H2>
+            <Text tone="secondary" size="small">
+                以下为一轮 POST
+                {' '}
+                <Code>/api/chat</Code>
+                {' '}
+                的语义步骤，锚点文件
+                {' '}
+                <Code>app/api/chat/route.ts</Code>
+                {' '}
+                的
+                {' '}
+                <Code>handleChatPost</Code>
+                ；不涉及函数体细节。
+            </Text>
+            <Table
+                headers={['步骤', '发生什么', '锚点（模块）']}
+                rows={[
+                    ['1', '解析 JSON，Zod 校验 body', '`lib/validation/chat-post-schema.ts`'],
+                    ['2', '读本会话 LLM 选型；无选型 400', '`getSelection`、`getModel`（`lib/db/*`）'],
+                    ['3', '构造 `LanguageModel` 与可选 `providerOptions`', '`buildLlmModel`、`computeLlmChatProviderOptions`'],
+                    ['4', '组装本轮 UI 消息：若 body 带来 `messages` 则先同步入 DB；否则从 DB `listMessages` 回放', '`syncIncomingClientUserMessages` / `listMessages`'],
+                    ['5', '按会话暴露工具 + Mustache system prompt', '`buildAvailableTools`、`buildSystemPrompt`'],
+                    ['6', '决定 assistant 消息 id：`continuingAssistant` 时延续同 id，否则 `randomUUID`', '`handleChatPost` 内分枝'],
+                    ['7', '`buildAgent`：steps 中空则普通；若有 image-fetch batch，则在 `prepareStep` 追加 vision user 模型消息', '`lib/ai/image-fetch-vision-injection.ts`'],
+                    ['8', '每步结束：`appendStepToParts`、回填 tool-result、`upsertAssistantMessage`；可选写入 vision user 副本到 DB', '`lib/ai/step-to-parts.ts`、同名 route 回调'],
+                    ['9', '对流返回 UI stream，`generateMessageId` 与持久化 assistant id 对齐', '`createAgentUIStreamResponse`（`ai`）'],
+                ]}
+            />
+            <Callout tone="info" title="侧车：客户端门禁">
+                UI 何时可发送 / 停止、与工具确认（R15）/中断（R19）的协同，概要见
+                {' '}
+                <Code>lib/chat-guard.ts</Code>
+                {' '}
+                与需求文档；主链仍为「进到 route 以后」如上表。
+            </Callout>
+
+            <Divider />
+
             <H2>目录（Canvas 内导航）</H2>
             <Table
                 headers={['章节', '内容']}
                 rows={[
+                    ['系统边界', '浏览器 · 服务端 · Provider · SQLite'],
+                    ['端到端流动', 'POST `/api/chat` 主链 nine-step'],
                     ['技术栈', 'Bun / Next 16 / React 19 / AI SDK 6 / Prisma SQLite'],
                     ['界面', '对话页、侧栏、设置（Model CRUD）'],
                     ['API', 'chat、conversations、models、bindings、images'],
                     ['Agent', 'buildAgent + tools + Mustache prompt + vision / parts'],
                     ['数据', 'Model、Conversation、Message、Selection、Image、SearchToolBinding'],
-                    ['演进', 'M1 → M2 → M3 + docs/plans 专项'],
+                    ['横切与演进', '校验 / chat-guard / plans'],
                 ]}
             />
 
@@ -195,7 +261,14 @@ export default function AgentImageArchitectureCanvas() {
 
             <Divider />
 
-            <H2>docs/plans（13）</H2>
+            <H2>docs/plans（与仓库同步：共 13 份）</H2>
+            <Text tone="secondary" size="small">
+                列表来自
+                {' '}
+                <Code>docs/plans/</Code>
+                {' '}
+                目录扫描；若画布与目录不一致，以 Git 为准。
+            </Text>
             <Table
                 headers={['文件', '主题']}
                 rows={[
@@ -212,6 +285,20 @@ export default function AgentImageArchitectureCanvas() {
                     ['2026-04-30-007-feat-batch-image-fetch-and-vision-injection-plan.md', 'batch vision'],
                     ['2026-05-01-001-refactor-system-prompt-mustache-plan.md', 'Mustache'],
                     ['2026-05-02-001-feat-ce-canvas-workflow-plan.md', 'CE Canvas'],
+                ]}
+            />
+
+            <Divider />
+
+            <H2>专题画布（技术决策与代码模型）</H2>
+            <Table
+                headers={['文件', '内容']}
+                rows={[
+                    ['AI运行时与聊天接口.canvas.tsx', 'ToolLoopAgent、prepareStep、runId、onStepFinish'],
+                    ['消息与parts模型.canvas.tsx', 'parts 合同、patch、SSR 初始'],
+                    ['工具注册与审批.canvas.tsx', 'registry、R15、fetch'],
+                    ['模型工厂与会话选型.canvas.tsx', 'LLM/生图工厂、选型'],
+                    ['维护者手册.canvas.tsx', '命令与权威阅读顺序'],
                 ]}
             />
 
