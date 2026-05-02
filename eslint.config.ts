@@ -32,5 +32,6 @@ export default antfu({
 
     ignores: [
         'next-env.d.ts',
+        'canvases/**',
     ],
 })

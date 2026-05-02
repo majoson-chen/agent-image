@@ -177,10 +177,10 @@ lib/ai/system-prompt.ts # 加载、view、Mustache.render
 
 ## Risks & Dependencies
 
-| Risk | Mitigation |
-|------|------------|
-| 运行时 `cwd` 非仓库根导致读模板失败 | 实施后用 `next start` 烟测；失败则改 `import.meta.url` 基路径或其它 Next 兼容加载方式 |
-| Mustache `{{ }}` 与正文中的 `{` 冲突 | Mustache 使用 `{{!` 注释或调整文案；正文大段保持静态不插变量 |
+| Risk                                 | Mitigation                                                                            |
+| ------------------------------------ | ------------------------------------------------------------------------------------- |
+| 运行时 `cwd` 非仓库根导致读模板失败  | 实施后用 `next start` 烟测；失败则改 `import.meta.url` 基路径或其它 Next 兼容加载方式 |
+| Mustache `{{ }}` 与正文中的 `{` 冲突 | Mustache 使用 `{{!` 注释或调整文案；正文大段保持静态不插变量                          |
 
 ---
 
