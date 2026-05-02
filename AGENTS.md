@@ -79,6 +79,17 @@ import SomeComponent from '~/xxx'
 工作时应当主动识别用户意图并且调用工作流内相关技能。
 两个工作流存在较大功能重叠和冲突，以 CE 为主，SP 为补充。
 
+### CE 与 Cursor Canvas（可选可读交付）
+
+**Cursor Canvas** 是 IDE 侧与聊天并排打开的 **`.canvas.tsx`**（React + `cursor/canvas` SDK），用来呈现架构导读、对齐用总览或多段结构化说明；**不是** Next.js 路由或 `app/` 内业务代码，也不得使用 `@/*`、`@lib/*` 去实现画布。
+
+- **何时用：** 大范围 `ce-brainstorm` / `ce-plan` 对齐、复杂功能的里程碑导读、或将 `docs/plans/` 与关键代码路径做成可跳转分节阅览时；由用户或计划中显式要求时使用。
+- **与 CE 的衔接：** 在 **`ce-plan`** 中可将「产出／更新画布」写成独立 **Implementation Unit**（素材锚点为本仓库 **`docs/brainstorms/`、`docs/plans/`** 与约定源码路径）；**`ce-work`** 按该单元的 **Verification** 执行（画布可打开、章节与 TOC 对应、措辞与 Markdown 权威一致）。
+- **执行前必读：** 全局 **`canvas`** skill（路径、单文件、`cursor/canvas`、禁止网络请求等）；文档向排版再读 **`docs-canvas`** skill（Overview → 目录 → 分节正文 → References）。
+- **存放位置：** 默认写入 Cursor 为当前工作区托管的 **`canvases/`** 目录下的单个 `.canvas.tsx` 文件（具体路径以 **`canvas`** skill 为准）；**是否纳入 git 版本库由团队自定**，本仓库 AGENTS **不假定**画布文件必进分支。
+- **`/lfg` 相容：** Pipeline 仍可仅产生/修改仓库内 Markdown 计划与代码；若计划中包含画布单元，`ce-work` 在通过单元 **Verification** 后即可进入后续 review，画布本身通常无 Vitest 覆盖。
+- **层次关系：** 需求与计划的 **真伪与追溯以仓库 Markdown 与本仓库源码为准**；Canvas 为辅助阅览层，**不得**替代已签名的计划或需求段落。
+
 ## 实现时注意
 
 - 对话页须支持用户切换：**LLM**（必选）、**主生图**（可选）、**次生图**（可选）；新对话初始三项均未选，**至少选定 LLM** 后即可发消息。未选主生图时 Agent 不持有任何生图工具，需在用户表达生图意图时通过文本回复告知能力缺失（不在产品层做硬闸阻塞）。详细工具暴露规则见 R3 / R9。
