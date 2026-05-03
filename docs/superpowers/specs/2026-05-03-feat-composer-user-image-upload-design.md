@@ -53,6 +53,19 @@
 - 公开读图：`app/api/images`（GET 仍存在；上传需按本 spec 恢复）
 - 历史移除上传与 R6 背景：`docs/plans/2026-04-30-007-feat-batch-image-fetch-and-vision-injection-plan.md`
 
+## Canvas 同步（交付要求）
+
+本功能落地后，**须**将人类可读的架构画布与实现对齐，避免 `canvases/` 与源码脱节（见 `AGENTS.md` Cursor Canvas 约定）。
+
+| 画布文件 | 更新要点 |
+| --- | --- |
+| `canvases/Agent运行时与消息Parts.canvas.tsx` | 补充 Composer **独立附件区**、user 消息 **前置结构化说明 + file parts（`/api/images/{id}`）** 与发送路径；与纯文本-only 分支区分。 |
+| `canvases/视觉上下文注入.canvas.tsx` | 标明 **用户上传**与 `image-fetch` **非同一工具链**，但 **slot / imageId / 顺序** 契约可对照；避免读者以为「只有 fetch 才有视觉注入」。 |
+| `canvases/数据模型.canvas.tsx` | 若画布中 `ImageSource.USER_UPLOAD` 或上传入口描述仍写「已移除」，改为与 **`POST`/上传恢复** 后的真实路径一致。 |
+| `canvases/架构总览.canvas.tsx` | 仅需在请求/数据流一句中点到 **用户上传 → 落库 → chat**（若总览已有类似句式则轻量修订）。 |
+
+**时机：** 合并实现 PR 前或与之同批；若仅改 spec 未改代码，可暂不动画布，**代码合并后补更新**。
+
 ## 后续工作（不在本期 spec 内）
 
 - `image-generate-*` **`referenceImageIds`** 与 `lib/image-provider-factory.ts` Provider 参考图请求体。
