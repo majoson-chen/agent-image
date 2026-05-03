@@ -49,6 +49,18 @@ describe('getSubmitButtonState', () => {
             expect(state.disabled).toBe(true)
     })
 
+    it('status=ready + input empty + hasAttachments → send enabled', () => {
+        const state = getSubmitButtonState({
+            status: 'ready',
+            llmSelected: true,
+            inputEmpty: true,
+            hasAttachments: true,
+        })
+        expect(state.kind).toBe('send')
+        if (state.kind === 'send')
+            expect(state.disabled).toBe(false)
+    })
+
     it('status=ready + no LLM → send disabled', () => {
         const state = getSubmitButtonState({ status: 'ready', llmSelected: false, inputEmpty: false })
         expect(state.kind).toBe('send')

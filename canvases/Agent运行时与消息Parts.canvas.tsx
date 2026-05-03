@@ -35,7 +35,8 @@ export default function AgentRuntimeAndParts() {
                     ['组装工具集', 'buildAvailableTools(db, conversationId) → tools + descriptors'],
                     ['生成 system prompt', 'buildSystemPrompt(descriptors)，descriptors 决定 system prompt 中声明哪些工具'],
                     ['构建 Agent', 'buildAgent({ model, tools, instructions, onStepFinish, prepareStep, providerOptions })'],
-                    ['返回 stream', 'createAgentUIStreamResponse({ agent, uiMessages, generateMessageId: () => runId })'],
+                    ['展开用户附图给模型', 'hydrateApiImageFilePartsForModel(db, conversationId, uiMessages)：将 user 消息中 `/api/images/{id}` 的 file part 转为 data URL（仅传入 Agent 的副本；DB 与前端时间线仍存引用 URL）'],
+                    ['返回 stream', 'createAgentUIStreamResponse({ agent, uiMessages: uiMessagesForModel, generateMessageId: () => runId })'],
                 ]}
                 striped
             />
@@ -78,12 +79,30 @@ export default function AgentRuntimeAndParts() {
 
             <Divider />
 
+            <H2>Composer 用户上传附图（独立于 image-fetch 工具链）</H2>
+            <Text tone="secondary" size="small">`ComposerAttachments.tsx` · `POST /api/images` · `lib/ai/user-attach-xml.ts` · `lib/ai/normalize-user-image-parts.ts`</Text>
+            <Text>
+                对话页在「用量与选型」带之下另有独立附件区，与 `ComposerImageSlot`（主/次生图模型与尺寸）视觉分离。用户选图后先 `POST /api/images`（`conversationId` + `file`）校验并 `createImage`，`source = USER_UPLOAD`。发送时该轮 user 消息的 `parts` 依次为：前置结构化说明文本（`buildUserAttachXml`，根元素 `agent-image-user-attach`，slot / imageId / mimeType 与后续 file 顺序一致）、可选的用户自写正文、按 slot 顺序排列的 file part（长期真源为 `/api/images/[id]` 引用，不把大体积 base64 持久化在消息里）。`ChatPage` 渲染用户气泡时对 inject 文本做隐藏，对 `/api/images/` 与 `data:image/` 走图像展示分支。
+            </Text>
+            <Table
+                headers={['环节', '说明']}
+                rows={[
+                    ['上限与校验', '`lib/image-upload-limits.ts`：`USER_ATTACH_MAX_IMAGES` 等与抓取侧常量对齐思路；MIME / `MAX_IMAGE_BYTES` 与上传路由校验一致'],
+                    ['send 按钮', '`lib/chat-guard.ts`：`hasAttachments` 时允许纯图无字发送'],
+                    ['进模型前', '`hydrateApiImageFilePartsForModel` 在 `createAgentUIStreamResponse` 之前执行，避免 Provider 无法解析相对 `/api/images/...`'],
+                ]}
+                striped
+            />
+
+            <Divider />
+
             <H2>UIMessage Parts 结构</H2>
             <Text>`parts` 是 Message 表中的 JSON 数组，每个元素有 `type` 字段区分类型，多步推理的 parts 在同一 Message 行中累积追加。</Text>
             <Table
                 headers={['type', '关键字段', '写入时机']}
                 rows={[
-                    ['text', 'text: string', '模型输出纯文本时（可跨多步累积）'],
+                    ['text', 'text: string', '模型输出纯文本时（可跨多步累积）；用户消息也可含说明性 text（如 user-attach XML）'],
+                    ['file', 'url · mediaType 等（AI SDK file part）', '用户附图消息：持久化以 `/api/images/{id}` 为主；Assistant 侧亦可出现工具相关展示'],
                     ['tool-call', 'toolCallId · toolName · args', '模型发起工具调用时'],
                     ['tool-result', 'toolCallId · toolName · result · state', '工具执行完成后；state = "input-available" 写入，由 patchToolResultsFromResponseMessages() 更新为 "output-available"'],
                 ]}

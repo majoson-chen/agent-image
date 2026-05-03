@@ -5,6 +5,7 @@
 import type { ImageModelCapabilities } from '@lib/validation/image-model-schema'
 import type { UIMessage } from 'ai'
 import { useChat } from '@ai-sdk/react'
+import { buildUserAttachXml, isUserAttachInjectText } from '@lib/ai/user-attach-xml'
 import { getGateHint, getSubmitButtonState } from '@lib/chat-guard'
 import { cn } from '@lib/cn'
 import { cjk } from '@streamdown/cjk'
@@ -15,6 +16,7 @@ import { DefaultChatTransport, lastAssistantMessageIsCompleteWithApprovalRespons
 import { Check, ChevronDown, ChevronUp, Send, Square, X } from 'lucide-react'
 import { useState } from 'react'
 import { Streamdown } from 'streamdown'
+import { ComposerAttachments } from './ComposerAttachments'
 import { ComposerImageSlot } from './ComposerImageSlot'
 import { ComposerLlmSlot } from './ComposerLlmSlot'
 import { ContextUsageBar } from './ContextUsageBar'
@@ -277,6 +279,7 @@ export function ChatPage({
     secondaryImageSize = null,
 }: Props) {
     const [input, setInput] = useState('')
+    const [pendingAttachments, setPendingAttachments] = useState<{ id: string, mimeType: string }[]>([])
     const [abortedMessageIds, setAbortedMessageIds] = useState<Set<string>>(() => new Set())
 
     const { messages, sendMessage, stop, status, error, clearError, addToolApprovalResponse } = useChat<UIMessage<MessageMetadata>>({
@@ -296,7 +299,12 @@ export function ChatPage({
         },
     })
 
-    const btnState = getSubmitButtonState({ status, llmSelected: hasLlm, inputEmpty: !input.trim() })
+    const btnState = getSubmitButtonState({
+        status,
+        llmSelected: hasLlm,
+        inputEmpty: !input.trim(),
+        hasAttachments: pendingAttachments.length > 0,
+    })
     const gateHint = getGateHint({ llmSelected: hasLlm })
 
     const lastMessage = messages.at(-1)
@@ -315,9 +323,26 @@ export function ChatPage({
         if (btnState.kind === 'send' && !btnState.disabled) {
             if (error)
                 clearError()
-            const parts: object[] = [{ type: 'text', text: input }]
+            const parts: object[] = []
+            if (pendingAttachments.length > 0) {
+                parts.push({
+                    type: 'text',
+                    text: buildUserAttachXml(pendingAttachments.map(a => ({ imageId: a.id, mimeType: a.mimeType }))),
+                })
+            }
+            const trimmed = input.trim()
+            if (trimmed)
+                parts.push({ type: 'text', text: trimmed })
+            for (const a of pendingAttachments) {
+                parts.push({
+                    type: 'file',
+                    mediaType: a.mimeType,
+                    url: `/api/images/${a.id}`,
+                })
+            }
             sendMessage({ parts } as Parameters<typeof sendMessage>[0])
             setInput('')
+            setPendingAttachments([])
         }
     }
 
@@ -346,21 +371,37 @@ export function ChatPage({
                         <div key={m.id} className={cn(m.role === 'user' ? 'flex justify-end' : 'flex flex-col gap-2')}>
                             {m.role === 'user'
                                 ? (
-                                        <div className="rounded-box max-w-prose bg-primary px-4 py-3 text-sm text-primary-content">
+                                        <div className="rounded-box flex max-w-prose flex-col gap-2 bg-primary px-4 py-3 text-sm text-primary-content">
                                             {m.parts.map((part, i) => {
                                                 const p = part as { type: string, text?: string, url?: string, mediaType?: string }
-                                                if (p.type === 'text')
-                                                    return <span key={i}>{p.text}</span>
-                                                if (p.type === 'file' && typeof p.url === 'string' && p.url.startsWith('data:image/')) {
-                                                    return (
-                                                        <img
-                                                            key={i}
-                                                            src={p.url}
-                                                            loading="lazy"
-                                                            className="mt-1 max-h-48 rounded object-contain border border-base-300"
-                                                            alt=""
-                                                        />
-                                                    )
+                                                if (p.type === 'text') {
+                                                    if (typeof p.text === 'string' && isUserAttachInjectText(p.text))
+                                                        return null
+                                                    return <span key={i} className="whitespace-pre-wrap">{p.text}</span>
+                                                }
+                                                if (p.type === 'file' && typeof p.url === 'string') {
+                                                    if (p.url.startsWith('/api/images/')) {
+                                                        return (
+                                                            <img
+                                                                key={i}
+                                                                src={p.url}
+                                                                loading="lazy"
+                                                                className="max-h-48 rounded object-contain border border-base-300"
+                                                                alt=""
+                                                            />
+                                                        )
+                                                    }
+                                                    if (p.url.startsWith('data:image/')) {
+                                                        return (
+                                                            <img
+                                                                key={i}
+                                                                src={p.url}
+                                                                loading="lazy"
+                                                                className="max-h-48 rounded object-contain border border-base-300"
+                                                                alt=""
+                                                            />
+                                                        )
+                                                    }
                                                 }
                                                 return null
                                             })}
@@ -481,6 +522,12 @@ export function ChatPage({
                     {gateHint && (
                         <p className="mb-2 text-xs text-warning">{gateHint}</p>
                     )}
+                    <ComposerAttachments
+                        conversationId={conversationId}
+                        items={pendingAttachments}
+                        onChange={setPendingAttachments}
+                        disabled={!hasLlm || status === 'streaming' || status === 'submitted'}
+                    />
                     <form onSubmit={handleSubmit} className="flex gap-2">
                         <input
                             className="input input-bordered flex-1 text-sm"

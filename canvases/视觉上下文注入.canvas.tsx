@@ -19,7 +19,23 @@ export default function VisionInjection() {
                 <Text tone="secondary">
                     `image-fetch` 工具执行后只向 `ToolLoopAgent` 返回 `imageId` 字符串，LLM 无法直接感知图像内容。视觉注入机制通过两条独立路径解决这个问题：一条在推理时让 LLM 看到图像（Model 路径），另一条将图像消息写入 DB 使 UI 重载时可恢复视觉上下文（DB 路径）。
                 </Text>
+                <Text tone="secondary">
+                    Composer 用户上传不经过 `image-fetch`，也不走本页的 `extractImageFetchBatchesFromStep` / `buildVisionUserModelMessage` 链路：用户在客户端 `POST /api/images` 落库后，由常规 user 多模态消息（前置 `agent-image-user-attach` 说明 + 顺序一致的 file part）进入 `/api/chat`。与下表 image-fetch 工具链不同，但若需对齐「slot ↔ imageId ↔ mimeType ↔ file 顺序」的契约，可对照 `lib/ai/user-attach-xml.ts` 与 `lib/ai/vision-inject-xml.ts`（根元素名不必相同）。
+                </Text>
             </Stack>
+
+            <Divider />
+
+            <H2>用户上传 vs image-fetch（对照）</H2>
+            <Table
+                headers={['维度', 'Composer 用户上传', 'image-fetch 视觉注入（本文余下章节）']}
+                rows={[
+                    ['触发', '用户选图 → `POST /api/images` → 发送消息', '模型调用 `image-fetch` 工具'],
+                    ['LLM 看到图的方式', 'user 消息已含 file part；路由内 `hydrateApiImageFilePartsForModel` 展成 data URL 再交给 Agent', 'prepareStep 将 vision user 消息追加到当步 AI 消息链'],
+                    ['DB 用户消息', '同步进来的 USER 消息即含附图 parts（引用 URL）', 'onStepFinish 另写一条合成 USER 消息（image part）以便重载可见'],
+                ]}
+                striped
+            />
 
             <Divider />
 

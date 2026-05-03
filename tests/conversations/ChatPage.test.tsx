@@ -45,6 +45,10 @@ vi.mock('../../app/conversations/[id]/ComposerLlmSlot', () => ({
     ComposerLlmSlot: () => <div data-testid="composer-llm-slot" />,
 }))
 
+vi.mock('../../app/conversations/[id]/ComposerAttachments', () => ({
+    ComposerAttachments: () => <div data-testid="composer-attachments" />,
+}))
+
 afterEach(() => {
     cleanup()
     vi.clearAllMocks()

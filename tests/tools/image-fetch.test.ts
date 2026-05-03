@@ -1,11 +1,9 @@
+import type { ImageFetchInput, ImageFetchToolOutput } from '@lib/tools/image-fetch'
 /**
  * U1 / U4 — image-fetch：`sources[]`（url | imageId）、批量逐项结果、SSRF/MIME/redirect/大小
  */
-import type { ImageFetchInput, ImageFetchToolOutput } from '@lib/tools/image-fetch'
-import {
-    IMAGE_FETCH_MAX_SOURCES,
-    imageFetchInputSchema,
-} from '@lib/tools/image-fetch'
+import { IMAGE_FETCH_MAX_SOURCES } from '@lib/image-upload-limits'
+import { imageFetchInputSchema } from '@lib/tools/image-fetch'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 async function execImageFetch(

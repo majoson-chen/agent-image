@@ -6,6 +6,7 @@ import {
     buildVisionUserUiParts,
     extractImageFetchBatchesFromStep,
 } from '@lib/ai/image-fetch-vision-injection'
+import { hydrateApiImageFilePartsForModel } from '@lib/ai/normalize-user-image-parts'
 import { appendStepToParts, patchToolResultsFromResponseMessages } from '@lib/ai/step-to-parts'
 import { buildSystemPrompt } from '@lib/ai/system-prompt'
 import {
@@ -192,11 +193,13 @@ export async function handleChatPost(req: Request, deps: ChatPostDeps = {}) {
         },
     })
 
+    const uiMessagesForModel = await hydrateApiImageFilePartsForModel(db, conversationId, uiMessages)
+
     // 与 upsertAssistantMessage 使用同一 id：当末条为 user 时 SDK 默认不给助手消息设 id（见 UIMessageStreamOptions.generateMessageId），
     // useChat 会因缺少 id 合并流失败；延续轮末条为 assistant 时 SDK 会自带 id，此处返回同一 runId 仍安全。
     return createAgentUIStreamResponse({
         agent,
-        uiMessages,
+        uiMessages: uiMessagesForModel,
         abortSignal: req.signal,
         generateMessageId: () => runId,
         messageMetadata: ({ part }) => {

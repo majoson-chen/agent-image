@@ -75,7 +75,7 @@ export default function DataModel() {
                 <CardBody>
                     <Stack gap={8}>
                         <Text size="small">
-                            `parts` 字段存储 UIMessage 格式的结构化 JSON 数组（text / tool-call / tool-result 三种类型）。`id` 由 chat route 的 `runId` 控制，continuation 场景下多步推理复用同一行追写。`content` 字段为纯文本兜底，M2 起新建消息该字段为空字符串。
+                            `parts` 字段存储 UIMessage 格式的结构化 JSON 数组（含 text / file / tool-call / tool-result 等；用户多模态消息可含说明性 text 与多个 file part，file 以服务端 URL 引用为主）。`id` 由 chat route 的 `runId` 控制，continuation 场景下多步推理复用同一行追写。`content` 字段为纯文本兜底，M2 起新建消息该字段为空字符串。
                         </Text>
                         <Table
                             headers={['字段', '类型', '说明']}
@@ -121,7 +121,7 @@ export default function DataModel() {
                 <CardBody>
                     <Stack gap={8}>
                         <Text size="small">
-                            二进制文件落盘在 `data/images/` 目录（由 `lib/images/storage.ts` 管理），此表仅存元数据。`id` 同时用作 `/api/images/[id]` 路由参数，前端通过该路由展示图像。
+                            二进制文件落盘在 `data/images/` 目录（由 `lib/images/storage.ts` 管理），此表仅存元数据。`id` 同时用作 `/api/images/[id]` GET 参数与 POST 上传响应中的 `imageId`。`USER_UPLOAD` 由对话页 `POST /api/images`（`app/api/images/route.ts`）在完成 MIME / 大小校验并绑定 `conversationId` 后写入；前端在 user 消息 file part 中长期引用 `/api/images/[id]`，而非把 base64 当真源存入消息 JSON。
                         </Text>
                         <Table
                             headers={['字段', '类型', '说明']}

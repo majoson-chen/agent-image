@@ -1,5 +1,6 @@
 import type { PrismaClient } from '~/generated/prisma/client'
 import { createImage, getImage } from '@lib/db/images'
+import { IMAGE_FETCH_MAX_SOURCES, MAX_IMAGE_BYTES } from '@lib/image-upload-limits'
 import { detectMime, isAllowedMime } from '@lib/images/mime'
 import { readImageBuffer } from '@lib/images/storage'
 import { tool } from 'ai'
@@ -7,10 +8,7 @@ import { z } from 'zod'
 import { assertPublicHttpUrl } from './ssrf-guard'
 import 'server-only'
 
-/** 与计划 R2 一致：单次最多源数量 */
-export const IMAGE_FETCH_MAX_SOURCES = 10
-
-const MAX_SIZE_BYTES = 10 * 1024 * 1024
+export { IMAGE_FETCH_MAX_SOURCES }
 const FETCH_TIMEOUT_MS = 30_000
 const MAX_HOPS = 3
 
@@ -114,8 +112,8 @@ async function processUrlSource(
 
         const arrayBuf = await res.arrayBuffer()
         const buffer = Buffer.from(arrayBuf)
-        if (buffer.byteLength > MAX_SIZE_BYTES)
-            return { error: `response body too large: ${buffer.byteLength} bytes (max ${MAX_SIZE_BYTES})` }
+        if (buffer.byteLength > MAX_IMAGE_BYTES)
+            return { error: `response body too large: ${buffer.byteLength} bytes (max ${MAX_IMAGE_BYTES})` }
 
         const detectedMime = detectMime(buffer)
         if (!detectedMime || !detectedMime.startsWith('image/'))

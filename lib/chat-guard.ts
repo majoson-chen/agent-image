@@ -30,12 +30,20 @@ interface SubmitButtonOptions {
     status: ChatStatus
     llmSelected: boolean
     inputEmpty: boolean
+    /** 有待发送附件时允许无文字发送 */
+    hasAttachments?: boolean
 }
 
-export function getSubmitButtonState({ status, llmSelected, inputEmpty }: SubmitButtonOptions): SubmitButtonState {
+export function getSubmitButtonState({
+    status,
+    llmSelected,
+    inputEmpty,
+    hasAttachments = false,
+}: SubmitButtonOptions): SubmitButtonState {
     if (status === 'streaming' || status === 'submitted')
         return { kind: 'stop' }
     // ready 或 error 状态显示「发送」
-    const disabled = !llmSelected || inputEmpty
+    const inputEffectivelyEmpty = inputEmpty && !hasAttachments
+    const disabled = !llmSelected || inputEffectivelyEmpty
     return { kind: 'send', disabled }
 }

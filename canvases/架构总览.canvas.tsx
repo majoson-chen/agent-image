@@ -67,8 +67,8 @@ export default function ArchitectureOverview() {
                     <CardHeader trailing={<Pill size="sm">lib/ai/</Pill>}>AI 运行时</CardHeader>
                     <CardBody>
                         <Stack gap={4}>
-                            <Text size="small">Agent 构建、system prompt 生成、step 结果转换、视觉上下文注入。</Text>
-                            <Text size="small" tone="secondary">`build-agent.ts` · `system-prompt.ts` · `step-to-parts.ts` · `image-fetch-vision-injection.ts`</Text>
+                            <Text size="small">Agent 构建、system prompt 生成、step 结果转换、视觉上下文注入、用户附图 URL 展开（进模型前）。</Text>
+                            <Text size="small" tone="secondary">`build-agent.ts` · `system-prompt.ts` · `step-to-parts.ts` · `image-fetch-vision-injection.ts` · `user-attach-xml.ts` · `normalize-user-image-parts.ts`</Text>
                         </Stack>
                     </CardBody>
                 </Card>
@@ -103,7 +103,7 @@ export default function ArchitectureOverview() {
                     <CardHeader trailing={<Pill size="sm">app/api/</Pill>}>Route Handler</CardHeader>
                     <CardBody>
                         <Stack gap={4}>
-                            <Text size="small">`chat/route.ts` 是核心对话接口；`models/` · `conversations/` · `images/[id]/` · `bindings/` 提供 CRUD。</Text>
+                            <Text size="small">`chat/route.ts` 是核心对话接口；`models/` · `conversations/` · `images/`（GET 读图、POST 用户上传）· `bindings/` 等提供 CRUD。</Text>
                         </Stack>
                     </CardBody>
                 </Card>
@@ -111,7 +111,7 @@ export default function ArchitectureOverview() {
                     <CardHeader trailing={<Pill size="sm">app/</Pill>}>UI 页面</CardHeader>
                     <CardBody>
                         <Stack gap={4}>
-                            <Text size="small">`conversations/[id]/`：ChatPage、Composer、ContextUsageBar</Text>
+                            <Text size="small">`conversations/[id]/`：ChatPage、Composer、ComposerAttachments（用户附图）、ContextUsageBar</Text>
                             <Text size="small">`settings/`：模型管理（LLM / 图像 / 搜索）</Text>
                             <Text size="small">`Sidebar.tsx`：会话列表与导航</Text>
                         </Stack>
@@ -126,7 +126,7 @@ export default function ArchitectureOverview() {
             <Table
                 headers={['#', '位置', '操作']}
                 rows={[
-                    ['1', '前端 useChat', '提交消息，POST /api/chat，携带 conversationId 与 messages 数组'],
+                    ['1', '前端 useChat', '提交消息 POST /api/chat，携带 conversationId 与 messages；可先经 Composer POST /api/images 落库 USER_UPLOAD，再在 user parts 中带 `/api/images/{id}` 的 file part'],
                     ['2', 'app/api/chat/route.ts', '校验请求体（chatPostBodySchema），读取 LLM ConversationModelSelection'],
                     ['3', 'lib/tools/tool-registry.ts', 'buildAvailableTools()：按 selection + binding 组装 ToolSet + descriptors'],
                     ['4', 'lib/ai/system-prompt.ts', 'buildSystemPrompt(descriptors)：生成含工具声明的 system prompt'],
