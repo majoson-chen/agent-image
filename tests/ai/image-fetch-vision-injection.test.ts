@@ -127,9 +127,40 @@ describe('extractImageFetchBatchesFromStep', () => {
         })
         expect(batches).toHaveLength(0)
     })
+
+    it('resolves toolName from preceding tool-call when tool-result omits toolName', () => {
+        const batches = extractImageFetchBatchesFromStep({
+            content: [
+                { type: 'tool-call', toolName: 'image-fetch', toolCallId: 'call-x', input: {} },
+                {
+                    type: 'tool-result',
+                    toolCallId: 'call-x',
+                    output: { imageId: 'img-1', mimeType: 'image/png' },
+                },
+            ],
+        })
+        expect(batches).toHaveLength(1)
+        expect(batches[0]!.toolCallId).toBe('call-x')
+        expect(batches[0]!.images).toEqual([{ imageId: 'img-1', mimeType: 'image/png' }])
+    })
 })
 
 describe('extractImageFetchBatchesFromRunningParts', () => {
+    it('parses dynamic-tool image-fetch output-available parts', () => {
+        const batches = extractImageFetchBatchesFromRunningParts([
+            {
+                type: 'dynamic-tool',
+                toolName: 'image-fetch',
+                state: 'output-available',
+                toolCallId: 'dyn-1',
+                output: { imageId: 'a', mimeType: 'image/png' },
+            },
+        ])
+        expect(batches).toHaveLength(1)
+        expect(batches[0]!.toolCallId).toBe('dyn-1')
+        expect(batches[0]!.images).toEqual([{ imageId: 'a', mimeType: 'image/png' }])
+    })
+
     it('parses tool-image-fetch output-available parts', () => {
         const batches = extractImageFetchBatchesFromRunningParts([
             { type: 'step-start' },

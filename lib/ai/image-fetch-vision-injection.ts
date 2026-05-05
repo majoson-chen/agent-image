@@ -95,13 +95,26 @@ interface StepToolResultPart {
 /**
  * 从某一步的 step.content 中收集 image-fetch 成功后可注入的视觉批次。
  * 若整次调用无成功项则无批次（仅靠工具 JSON 告知失败）。
+ * tool-result 若缺 toolName，则回退到同 step 内 tool-call 的映射（兼容不同 SDK / provider 形态）。
  */
 export function extractImageFetchBatchesFromStep(step: { content: ReadonlyArray<StepToolResultPart> }): ImageFetchBatch[] {
+    const toolNameByCallId = new Map<string, string>()
+    for (const part of step.content) {
+        if (part.type !== 'tool-call' || !part.toolCallId)
+            continue
+        if (typeof part.toolName === 'string' && part.toolName.length > 0)
+            toolNameByCallId.set(part.toolCallId, part.toolName)
+    }
+
     const batches: ImageFetchBatch[] = []
     for (const part of step.content) {
-        if (part.type !== 'tool-result')
+        if (part.type !== 'tool-result' || !part.toolCallId)
             continue
-        if (part.toolName !== 'image-fetch' || !part.toolCallId)
+
+        const toolName = (typeof part.toolName === 'string' && part.toolName.length > 0)
+            ? part.toolName
+            : toolNameByCallId.get(part.toolCallId)
+        if (toolName !== 'image-fetch')
             continue
 
         const { successes, failureNotes } = parseImageFetchToolOutput(part.output)
@@ -117,16 +130,23 @@ export function extractImageFetchBatchesFromStep(step: { content: ReadonlyArray<
     return batches
 }
 
-/** UIMessage part（appendStepToParts 产出）中可解析的最小结构 */
+/** UIMessage part（appendStepToParts / 流式 UI）中可解析的最小结构 */
 interface RunningToolImageFetchPart {
     type: string
+    toolName?: string
     state?: string
     toolCallId?: string
     output?: unknown
 }
 
+function runningPartIsImageFetchTool(part: RunningToolImageFetchPart): boolean {
+    if (part.type === 'tool-image-fetch')
+        return true
+    return part.type === 'dynamic-tool' && part.toolName === 'image-fetch'
+}
+
 /**
- * 从已写入 Assistant parts 的 `tool-image-fetch`（output-available）反推批次。
+ * 从已写入 Assistant parts 的 `tool-image-fetch` 或 `dynamic-tool`（image-fetch，output-available）反推批次。
  * 若干 SDK 版本下 onStepFinish 的 `step.content` 不含裸 `tool-result`，仅靠此路径才能落库视觉 USER 消息。
  */
 export function extractImageFetchBatchesFromRunningParts(
@@ -134,7 +154,7 @@ export function extractImageFetchBatchesFromRunningParts(
 ): ImageFetchBatch[] {
     const batches: ImageFetchBatch[] = []
     for (const part of parts) {
-        if (part.type !== 'tool-image-fetch')
+        if (!runningPartIsImageFetchTool(part))
             continue
         if (part.state !== 'output-available' || typeof part.toolCallId !== 'string')
             continue
@@ -201,7 +221,7 @@ export async function buildVisionUserModelMessage(
     return { role: 'user', content } as ModelMessage
 }
 
-/** 持久化用的 UIMessage parts（file 使用 data URL，避免 JSON 存 Buffer） */
+/** 持久化用的 UIMessage parts（file 使用 `/api/images/{id}`，与 Composer 附件一致；请求模型前由 hydrateApiImageFilePartsForModel 展成 data URL） */
 export async function buildVisionUserUiParts(
     prisma: PrismaClient,
     conversationId: string,
@@ -213,13 +233,10 @@ export async function buildVisionUserUiParts(
             const row = await getImage(prisma, img.imageId)
             if (!row || row.conversationId !== conversationId)
                 throw new Error(`vision persist: image not in conversation: ${img.imageId}`)
-            const data = await readImageBuffer(row.conversationId, row.id, row.mimeType)
-            const base64 = data.toString('base64')
-            const url = `data:${img.mimeType};base64,${base64}`
             parts.push({
                 type: 'file',
                 mediaType: img.mimeType,
-                url,
+                url: `/api/images/${row.id}`,
             })
         }
     }

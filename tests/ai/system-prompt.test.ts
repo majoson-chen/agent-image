@@ -47,6 +47,12 @@ describe('buildSystemPrompt - image tools', () => {
         expect(prompt).toContain('imageId')
     })
 
+    it('image-fetch：说明持久化与刷新后仍在历史', () => {
+        const prompt = buildSystemPrompt(['web-fetch'])
+        expect(prompt).toContain('写入数据库')
+        expect(prompt).toContain('刷新页面')
+    })
+
     it('image-generate tools still in tool list section', () => {
         const prompt = buildSystemPrompt(['image-generate-primary', 'image-generate-secondary'])
         expect(prompt).toContain('image-generate-primary')

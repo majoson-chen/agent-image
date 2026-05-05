@@ -8,6 +8,7 @@ import {
     extractImageFetchBatchesFromStep,
     mergeImageFetchBatchesForPersist,
 } from '@lib/ai/image-fetch-vision-injection'
+import { interleaveImageFetchVisionForModel } from '@lib/ai/interleave-image-fetch-vision-for-model'
 import { hydrateApiImageFilePartsForModel } from '@lib/ai/normalize-user-image-parts'
 import { appendStepToParts, patchToolResultsFromResponseMessages } from '@lib/ai/step-to-parts'
 import { buildSystemPrompt } from '@lib/ai/system-prompt'
@@ -85,7 +86,7 @@ export async function handleChatPost(req: Request, deps: ChatPostDeps = {}) {
             throw e
         }
         const rows = await listMessages(db, conversationId)
-        uiMessages = dbRowsToUiMessagesForHydrate(rows)
+        uiMessages = interleaveImageFetchVisionForModel(dbRowsToUiMessagesForHydrate(rows))
         runId = crypto.randomUUID()
         runningParts = []
         runningUsage = { inputTokens: 0, outputTokens: 0, totalTokens: 0 }
@@ -106,7 +107,7 @@ export async function handleChatPost(req: Request, deps: ChatPostDeps = {}) {
             modelIdAtTime: pl.metadata?.modelIdAtTime ?? null,
         })
         const rows = await listMessages(db, conversationId)
-        uiMessages = dbRowsToUiMessagesForHydrate(rows)
+        uiMessages = interleaveImageFetchVisionForModel(dbRowsToUiMessagesForHydrate(rows))
         runId = data.assistantMessageId
         runningParts = newParts as UIMessagePart[]
         runningUsage = {
