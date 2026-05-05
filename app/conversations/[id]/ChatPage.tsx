@@ -420,45 +420,9 @@ export function ChatPage({
             {/* 消息列表 */}
             <div className="min-h-0 flex-1 overflow-y-auto px-4 py-6">
                 <div className="mx-auto flex max-w-2xl flex-col gap-4">
-                    {messages.map((m) => {
-                        if (m.role === 'user' && isImageFetchVisionPersistParts(m.parts)) {
-                            const fileParts = m.parts.filter(
-                                (p): p is { type: 'file', url?: string, mediaType?: string } =>
-                                    typeof p === 'object' && p !== null && (p as { type?: string }).type === 'file',
-                            )
-                            return (
-                                <div key={m.id} className="flex justify-center">
-                                    <div className="card card-compact w-full max-w-prose border border-base-300 bg-base-200">
-                                        <div className="card-body gap-2 py-3">
-                                            <p className="text-xs text-base-content/70">
-                                                此为已写入数据库的 image-fetch 合成 user 消息（非蓝气泡样式）。视觉上下文（
-                                                {fileParts.length}
-                                                张）随会话持久化，刷新后仍在；XML 说明已隐藏。
-                                            </p>
-                                            <div className="flex flex-wrap gap-2">
-                                                {fileParts.map((p, i) => {
-                                                    if (typeof p.url !== 'string')
-                                                        return null
-                                                    if (p.url.startsWith('/api/images/') || p.url.startsWith('data:image/')) {
-                                                        return (
-                                                            <img
-                                                                key={i}
-                                                                src={p.url}
-                                                                loading="lazy"
-                                                                className="max-h-32 rounded border border-base-300 object-contain"
-                                                                alt=""
-                                                            />
-                                                        )
-                                                    }
-                                                    return null
-                                                })}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            )
-                        }
-                        return (
+                    {messages
+                        .filter((m) => !(m.role === 'user' && isImageFetchVisionPersistParts(m.parts)))
+                        .map((m) => (
                             <div key={m.id} className={cn(m.role === 'user' ? 'flex justify-end' : 'flex flex-col gap-2')}>
                                 {m.role === 'user'
                                     ? (
@@ -574,8 +538,7 @@ export function ChatPage({
                                             </>
                                         )}
                             </div>
-                        )
-                    })}
+                        ))}
 
                     {status === 'streaming' && (
                         <span className="loading loading-dots loading-sm text-base-content/50" />

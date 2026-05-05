@@ -8,6 +8,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { ChatPage } from '@/conversations/[id]/ChatPage'
+import { VISION_INJECT_XML_TAG } from '@lib/ai/vision-inject-xml'
 
 const mockChat = vi.hoisted(() => ({
     messages: [] as UIMessage[],
@@ -161,6 +162,33 @@ describe('chatPage - output-available state', () => {
         renderChatPage()
         const img = document.querySelector('img[src="/api/images/img-123"]')
         expect(img).not.toBeNull()
+    })
+})
+
+describe('chatPage - image-fetch vision persist user (hidden)', () => {
+    it('does not render synthetic vision-inject user rows in the message list', () => {
+        mockChat.messages = [
+            {
+                id: 'vision-user-1',
+                role: 'user',
+                parts: [
+                    {
+                        type: 'text',
+                        text: `<${VISION_INJECT_XML_TAG} version="1"></${VISION_INJECT_XML_TAG}>`,
+                    },
+                    {
+                        type: 'file',
+                        url: '/api/images/hidden-vision',
+                        mediaType: 'image/png',
+                    },
+                ],
+            } as UIMessage,
+        ]
+
+        renderChatPage()
+
+        expect(document.querySelector('img[src="/api/images/hidden-vision"]')).toBeNull()
+        expect(screen.queryByText(/已写入数据库/)).toBeNull()
     })
 })
 

@@ -97,7 +97,7 @@ export default function VisionInjection() {
 
             <H2>onStepFinish 路径（DB 路径）</H2>
             <Text>
-                在 `onStepFinish` 回调末段执行（`upsertAssistantMessage()` 完成之后）。提取本步 `image-fetch` 批次，过滤掉已落库的（查询 `dbPersistedImageFetchToolCallIds`），调用 `buildVisionUserUiParts()` 得到 UIMessage parts，再通过 `createUserMessageWithParts()` 在 DB 中创建一条 `role = USER` 的消息记录。会话重载时，前端从 DB 读取这条消息恢复图像的视觉展示。
+                在 `onStepFinish` 回调末段执行（`upsertAssistantMessage()` 完成之后）。提取本步 `image-fetch` 批次，过滤掉已落库的（查询 `dbPersistedImageFetchToolCallIds`），调用 `buildVisionUserUiParts()` 得到 UIMessage parts，再通过 `createUserMessageWithParts()` 在 DB 中创建一条 `role = USER` 的消息记录。该条 **不在对话 UI 列表展示**（仅存 DB / hydrate，供会话重载后模型侧恢复视觉上下文；与 Composer 用户附图蓝气泡区分）。
             </Text>
 
             <Divider />
