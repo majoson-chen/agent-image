@@ -96,7 +96,7 @@ import SomeComponent from '~/xxx'
 
 - **纪律**：CE对测试先行只有弱提示；在本仓库内，对**可自动化验证的行为**（新功能、缺陷修复、重构、行为变更），默认遵循 **Superpowers `test-driven-development` 技能**的 TDD 哲学：先写**失败**测试并确认失败符合预期（RED），再写**最少**实现通过（GREEN），再重构（REFACTOR）；**未见过测试失败，不得认为测对了行为**。
 - **与计划的关系**：若 `ce-plan` 中实现单元带有 `Execution note`（如 test-first、characterization-first），**以该 note 为准**，并与本节一并遵守（更具体、更严者优先）。
-- **命令与栈**：`bun test`（Vitest）；组件测遵循 **Testing Library** 惯例。
+- **命令与栈**：**`bun run test`**（`package.json` 的 `vitest`，会加载 `vitest.config.ts`）。**勿用裸 `bun test`**：那是 Bun 内置 runner，不读 Vitest 配置（例如 `server-only` mock），且 `vi.stubGlobal` 等 API 不可用，会导致大批量误报失败。单次跑完可加 `bun run test -- run`。组件测遵循 **Testing Library** 惯例。
 - **务实豁免**（须在对话或 PR 中**简短声明**；拿不准时**不要**豁免，按 TDD 做）：
     - 纯样式 / 布局调整（如仅 Tailwind、daisyUI 类名）且无行为变化；
     - 仅改文案或注释；
