@@ -32,6 +32,7 @@ export default antfu({
 
     ignores: [
         'next-env.d.ts',
+        'docs/superpowers/plans/**',
         // 'canvases/**',
     ],
 })

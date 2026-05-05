@@ -52,31 +52,30 @@ enum SelectionRole {
 // ——— 表 ———
 
 model Model {
-  id           String    @id @default(cuid())
-  type         ModelType
-  name         String
-  providerType ProviderType
+  id            String       @id @default(cuid())
+  type          ModelType
+  name          String
+  providerType  ProviderType
   /// LLM: 必须由 app 层校验非空；IMAGE/SEARCH: 按各自需求
-  baseURL      String?
-  apiKey       String
+  baseURL       String?
+  apiKey        String
   /// LLM 必填（app 层校验），其他类型 null
   contextWindow Int?
-  extraHeaders Json?
-  capabilities Json?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  extraHeaders  Json?
+  capabilities  Json?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
 
-  messages        Message[]
   selections      ConversationModelSelection[]
   searchBindings  SearchToolBinding[]
   generatedImages Image[]
 }
 
 model Conversation {
-  id        String    @id @default(cuid())
+  id        String   @id @default(cuid())
   title     String?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   messages   Message[]
   selections ConversationModelSelection[]
@@ -84,21 +83,17 @@ model Conversation {
 }
 
 model Message {
-  id                String      @id @default(cuid())
-  conversationId    String
-  role              MessageRole
-  content           String
-  /// M2: UIMessage parts JSON；M1 旧消息保持 null
-  parts             Json?
-  usageInputTokens  Int?
-  usageOutputTokens Int?
-  usageTotalTokens  Int?
-  modelIdAtTime     String?
-  createdAt         DateTime    @default(now())
+  id             String      @id @default(cuid())
+  conversationId String
+  /// 冗余枚举列，与 payload.role 同步（SPEC §10.2）；便于测试与粗筛
+  role           MessageRole
+  /// SPEC §10：UIMessage 对齐子集 JSON
+  payload        Json
+  createdAt      DateTime    @default(now())
 
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  /// 删除 Model 时保留历史消息，仅把引用清空
-  model        Model?       @relation(fields: [modelIdAtTime], references: [id], onDelete: SetNull)
+
+  @@index([conversationId])
 }
 
 model ConversationModelSelection {

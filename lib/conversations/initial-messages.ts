@@ -1,11 +1,11 @@
 /** SSR 重载时把 DB Message 行转换为 UIMessage 初始值 */
 
-interface DbMessage {
+import { parseMessagePayload } from '@lib/db/message-payload'
+
+interface DbMessageRow {
     id: string
     role: string
-    content: string
-    /** Prisma Json? 字段；运行时可能是数组、标量或 null */
-    parts: unknown
+    payload: unknown
 }
 
 interface MappedMessage {
@@ -14,17 +14,13 @@ interface MappedMessage {
     parts: object[]
 }
 
-/**
- * 把 DB Message 行转为 ChatPage initialMessages。
- * user 与 assistant 共用同一段 ternary：DB parts 不为 null 时优先使用，
- * 否则 fallback 到 [{ type:'text', text: m.content }]。
- */
-export function mapDbMessagesToInitialMessages(messages: DbMessage[]): MappedMessage[] {
+export function mapDbMessagesToInitialMessages(messages: DbMessageRow[]): MappedMessage[] {
     return messages.map((m) => {
-        const role = m.role.toLowerCase() as 'user' | 'assistant'
-        const parts = Array.isArray(m.parts)
-            ? m.parts as object[]
-            : [{ type: 'text' as const, text: m.content }]
+        const payload = parseMessagePayload(m.payload)
+        const role = payload.role as 'user' | 'assistant'
+        const parts = Array.isArray(payload.parts)
+            ? payload.parts as object[]
+            : [{ type: 'text' as const, text: '' }]
         return { id: m.id, role, parts }
     })
 }

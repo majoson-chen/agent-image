@@ -58,16 +58,16 @@ related_components:
 
 ### Implementation snapshot（当前仓库）
 
-| 区域 | 路径 |
-|------|------|
-| 上传 Route | `app/api/images/route.ts` |
-| Hydrate | `lib/ai/normalize-user-image-parts.ts` → `app/api/chat/route.ts` |
-| XML 与标签 | `lib/ai/user-attach-xml.ts` |
-| 上限常量 | `lib/image-upload-limits.ts`（`image-fetch` 与之共用数值） |
-| 附件 UI | `app/conversations/[id]/ComposerAttachments.tsx`， wired in `ChatPage.tsx` |
-| 发送闸门 | `lib/chat-guard.ts` |
-| 模型说明 | `lib/ai/prompts/system.mustache.txt`（用户附件约定） |
-| 测试 | `tests/ai/normalize-user-image-parts.test.ts`、`tests/ai/user-attach-xml.test.ts`、`tests/api/images/post.test.ts`、`tests/conversations/ChatPage.test.tsx`、`tests/lib/chat-guard.test.ts`、`tests/tools/image-fetch.test.ts` |
+| 区域       | 路径                                                                                                                                                                                                                           |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 上传 Route | `app/api/images/route.ts`                                                                                                                                                                                                      |
+| Hydrate    | `lib/ai/normalize-user-image-parts.ts` → `app/api/chat/route.ts`                                                                                                                                                               |
+| XML 与标签 | `lib/ai/user-attach-xml.ts`                                                                                                                                                                                                    |
+| 上限常量   | `lib/image-upload-limits.ts`（`image-fetch` 与之共用数值）                                                                                                                                                                     |
+| 附件 UI    | `app/conversations/[id]/ComposerAttachments.tsx`， wired in `ChatPage.tsx`                                                                                                                                                     |
+| 发送闸门   | `lib/chat-guard.ts`                                                                                                                                                                                                            |
+| 模型说明   | `lib/ai/prompts/system.mustache.txt`（用户附件约定）                                                                                                                                                                           |
+| 测试       | `tests/ai/normalize-user-image-parts.test.ts`、`tests/ai/user-attach-xml.test.ts`、`tests/api/images/post.test.ts`、`tests/conversations/ChatPage.test.tsx`、`tests/lib/chat-guard.test.ts`、`tests/tools/image-fetch.test.ts` |
 
 ## Why This Matters
 

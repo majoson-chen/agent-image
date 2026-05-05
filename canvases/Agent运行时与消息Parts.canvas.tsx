@@ -24,19 +24,23 @@ export default function AgentRuntimeAndParts() {
 
             <H2>handleChatPost() 主流程</H2>
             <Text tone="secondary" size="small">`app/api/chat/route.ts` · `handleChatPost(req, deps)`</Text>
+            <Text tone="secondary" size="small">
+                客户端：`DefaultChatTransport` + `prepareSendMessagesRequest` → **`lib/chat/narrow-chat-transport-body.ts`** 只发 **user-turn**（末条 user 的 id + parts）或 **tool-approval**（assistantMessageId + approvals），**不** POST 整包 messages。
+            </Text>
             <Text>`deps` 用于测试注入（prisma / model / toolsOverride），生产路径三个参数均为空，使用默认实例。</Text>
             <Table
                 headers={['步骤', '操作']}
                 rows={[
-                    ['校验请求体', 'chatPostBodySchema.safeParse() 解析 conversationId 与 messages 数组；解析失败返回 400'],
+                    ['校验请求体', 'chatPostBodySchema：kind 为 user-turn | tool-approval；无效则 400'],
                     ['读取 LLM 选型', 'getSelection(db, conversationId, "LLM") + getModel()；未选型或模型不存在返回 4xx'],
-                    ['同步用户消息', 'clientMessages 存在时 syncIncomingClientUserMessages() 写 USER 消息；否则从 DB 加载历史消息'],
-                    ['Continuation 判断', '末条 clientMessage 为 assistant 时：复用其 id 为 runId，从 DB 加载已有 parts 作为续写起点'],
-                    ['组装工具集', 'buildAvailableTools(db, conversationId) → tools + descriptors'],
-                    ['生成 system prompt', 'buildSystemPrompt(descriptors)，descriptors 决定 system prompt 中声明哪些工具'],
-                    ['构建 Agent', 'buildAgent({ model, tools, instructions, onStepFinish, prepareStep, providerOptions })'],
-                    ['展开用户附图给模型', 'hydrateApiImageFilePartsForModel(db, conversationId, uiMessages)：将 user 消息中 `/api/images/{id}` 的 file part 转为 data URL（仅传入 Agent 的副本；DB 与前端时间线仍存引用 URL）'],
-                    ['返回 stream', 'createAgentUIStreamResponse({ agent, uiMessages: uiMessagesForModel, generateMessageId: () => runId })'],
+                    ['user-turn', 'upsertUserMessageParts(messageId, parts)；跨会话 id 冲突 → 400'],
+                    ['tool-approval', 'load assistant 行 → applyToolApprovalsToParts（批准→input-available；拒绝→output-denied + approval.reason）→ upsertAssistantMessage 写回 DB'],
+                    ['从 DB 构图', 'listMessages → dbRowsToUiMessagesForHydrate → hydrateApiImageFilePartsForModel（解析 `/api/images/`）'],
+                    ['runId / 续写起点', 'user-turn：新 runId + 空 runningParts；tool-approval：runId = assistantMessageId + DB 已合并后的 parts'],
+                    ['组装工具集', 'buildAvailableTools(db, conversationId)'],
+                    ['system prompt', 'buildSystemPrompt(descriptors)'],
+                    ['构建 Agent', 'buildAgent({ …, prepareStep：route 内联 image-fetch 视觉注入, onStepFinish, providerOptions })'],
+                    ['返回 stream', 'createAgentUIStreamResponse({ agent, uiMessages, generateMessageId: () => runId })'],
                 ]}
                 striped
             />
@@ -54,9 +58,8 @@ export default function AgentRuntimeAndParts() {
                     ['model', 'buildLlmModel(modelRecord)', 'AI SDK LanguageModel 实例'],
                     ['tools', 'buildAvailableTools()', '当前请求的 ToolSet'],
                     ['instructions', 'buildSystemPrompt(descriptors)', 'system prompt 字符串，含工具声明'],
-                    ['onStepFinish', 'chat route 内联定义', '每步结束回调，负责 Parts 累积与持久化'],
-                    ['prepareStep', 'chat route 内联定义', '每步开始前的消息预处理钩子（视觉注入用）'],
-                    ['providerOptions', 'computeLlmChatProviderOptions()', '可选，provider-level 附加参数（如 thinking mode）'],
+                    ['onStepFinish', 'chat route 内联定义', '每步结束：追加 parts、累加 usage、upsert assistant、image-fetch 合成 user 落库'],
+                    ['providerOptions', 'computeLlmChatProviderOptions()', '可选，provider 级附加参数（如 thinking mode）'],
                 ]}
                 striped
             />
@@ -97,7 +100,7 @@ export default function AgentRuntimeAndParts() {
             <Divider />
 
             <H2>UIMessage Parts 结构</H2>
-            <Text>`parts` 是 Message 表中的 JSON 数组，每个元素有 `type` 字段区分类型，多步推理的 parts 在同一 Message 行中累积追加。</Text>
+            <Text>`parts` 保存在 Message **`payload.parts`**（Json）中，每个元素有 `type` 字段；多步推理在同一 assistant 行中累积追加。</Text>
             <Table
                 headers={['type', '关键字段', '写入时机']}
                 rows={[
@@ -113,7 +116,7 @@ export default function AgentRuntimeAndParts() {
 
             <H2>Continuation（审批续写）</H2>
             <Text>
-                当用户在前端点击「确认」或「拒绝」工具调用时，`useChat` 将当前 Assistant 消息（含 `tool-call` part）连同审批结果作为末条 clientMessage（`role = assistant`）POST 回来。chat route 检测到末条消息为 assistant 后进入续写路径。
+                工具需审批时，用户确认/拒绝后 `useChat` 自动再发一轮；HTTP body 为 **`kind: tool-approval`**（`assistantMessageId` + `approvals`），由 **`buildNarrowChatPostBody`** 从末条 assistant 上 `approval-responded` 的 part 收集。服务端 **`applyToolApprovalsToParts`** 将 DB 中仍为 `approval-requested` 的 part 按 HTTP 决策推进，再 **`listMessages` 构图** 续跑 Agent。
             </Text>
             <Card>
                 <CardHeader>续写路径 vs. 新轮路径</CardHeader>
@@ -121,8 +124,8 @@ export default function AgentRuntimeAndParts() {
                     <Table
                         headers={['条件', 'runId', 'runningParts 初始值']}
                         rows={[
-                            ['末条 clientMessage.role = user（新一轮）', 'crypto.randomUUID()', '空数组 []'],
-                            ['末条 clientMessage.role = assistant（续写）', '= lastClientMsg.id', '从 DB 加载该 Message 的已有 parts'],
+                            ['kind = user-turn（新一轮用户发言）', 'crypto.randomUUID()', '空数组 []'],
+                            ['kind = tool-approval（审批后自动提交）', '= assistantMessageId', 'applyToolApprovalsToParts 之后写回 DB，再读出合并后的 parts'],
                         ]}
                         striped
                     />

@@ -1,5 +1,6 @@
 import {
     buildVisionInjectXml,
+    isImageFetchVisionPersistParts,
     isVisionInjectUserText,
     VISION_INJECT_XML_TAG,
 } from '@lib/ai/vision-inject-xml'
@@ -61,5 +62,27 @@ describe('isVisionInjectUserText', () => {
 
     it('false for normal user text', () => {
         expect(isVisionInjectUserText('你好')).toBe(false)
+    })
+})
+
+describe('isImageFetchVisionPersistParts', () => {
+    it('true when first part is vision inject XML and rest are text|file', () => {
+        expect(isImageFetchVisionPersistParts([
+            { type: 'text', text: `<${VISION_INJECT_XML_TAG} version="1"></${VISION_INJECT_XML_TAG}>` },
+            { type: 'file', mediaType: 'image/png', url: 'data:image/png;base64,xx' },
+        ])).toBe(true)
+    })
+
+    it('false when first part is not vision inject', () => {
+        expect(isImageFetchVisionPersistParts([
+            { type: 'text', text: 'hi' },
+        ])).toBe(false)
+    })
+
+    it('false when part type is unsupported', () => {
+        expect(isImageFetchVisionPersistParts([
+            { type: 'text', text: `<${VISION_INJECT_XML_TAG} version="1">` },
+            { type: 'tool-call', toolCallId: 'x' },
+        ])).toBe(false)
     })
 })

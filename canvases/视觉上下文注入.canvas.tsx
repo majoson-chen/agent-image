@@ -31,8 +31,8 @@ export default function VisionInjection() {
                 headers={['维度', 'Composer 用户上传', 'image-fetch 视觉注入（本文余下章节）']}
                 rows={[
                     ['触发', '用户选图 → `POST /api/images` → 发送消息', '模型调用 `image-fetch` 工具'],
-                    ['LLM 看到图的方式', 'user 消息已含 file part；路由内 `hydrateApiImageFilePartsForModel` 展成 data URL 再交给 Agent', 'prepareStep 将 vision user 消息追加到当步 AI 消息链'],
-                    ['DB 用户消息', '同步进来的 USER 消息即含附图 parts（引用 URL）', 'onStepFinish 另写一条合成 USER 消息（image part）以便重载可见'],
+                    ['LLM 看到图的方式', 'user 消息已含 file part；路由内 `hydrateApiImageFilePartsForModel` 展成 data URL 再交给 Agent', '`prepareStep`：在**下一步**模型调用前把上一 step 的 image-fetch 结果拼成 ModelMessage user（含 file Buffer），见 `buildVisionUserModelMessage`'],
+                    ['DB 用户消息', 'USER 消息即含附图 parts（引用 URL）', '`onStepFinish` 内 `buildVisionUserUiParts` + `createUserMessageWithParts`，刷新后 UI 可见'],
                 ]}
                 striped
             />
@@ -46,15 +46,15 @@ export default function VisionInjection() {
                 rows={[
                     [
                         'extractImageFetchBatchesFromStep(step)',
-                        'AI SDK step 事件',
-                        '{ toolCallId, imageIds[] }[] — 本步所有 image-fetch 工具调用的批次列表',
-                        'prepareStep 与 onStepFinish 均调用',
+                        'AI SDK step 的 `content`（含 tool-result）',
+                        '`ImageFetchBatch[]`',
+                        '`prepareStep`（注入模型）与 `onStepFinish` 内合并后持久化',
                     ],
                     [
                         'buildVisionUserModelMessage(prisma, conversationId, batches)',
                         '待注入批次列表',
-                        'AI SDK user message，content 含 image part（base64 data URI）',
-                        'prepareStep — 注入 AI 消息链（LLM 可见）',
+                        '`ModelMessage`（user，content 含 text + `file` Buffer）',
+                        '**`prepareStep`**（`app/api/chat/route.ts` 内联）：追加到**下一步**发往 provider 的 messages',
                     ],
                     [
                         'buildVisionUserUiParts(prisma, conversationId, batches)',
@@ -69,9 +69,17 @@ export default function VisionInjection() {
             <Divider />
 
             <H2>prepareStep 路径（Model 路径）</H2>
-            <Text tone="secondary" size="small">在 `app/api/chat/route.ts` 的 `buildAgent()` 调用中作为 `prepareStep` 钩子传入。</Text>
+            <Text tone="secondary" size="small">
+                在 `app/api/chat/route.ts` 的 `buildAgent(
+                { prepareStep }
+                )` 中传入。
+            </Text>
             <Text>
-                每个新 step 启动前执行。提取上一 step 的 `image-fetch` 工具调用批次，过滤掉已注入过的（查询 `modelInjectedImageFetchToolCallIds`），对剩余批次调用 `buildVisionUserModelMessage()` 构造含图像 base64 data URI 的 user message，追加到当前 AI 消息链末尾后返回给 `ToolLoopAgent`。LLM 在当前 step 即可直接感知图像内容。
+                **`steps.length === 0`**（首轮）跳过。之后每一步开始前：取 **上一 step** 的 `content`，`extractImageFetchBatchesFromStep` 得到批次；去掉已在 **`modelInjectedImageFetchToolCallIds`** 中的 `toolCallId`；对剩余批次 `buildVisionUserModelMessage`，将返回的 user `ModelMessage` **追加**到当前 step 的 `messages` 末尾，并以
+                {' '}
+                <code>{'{ messages: [...] }'}</code>
+                {' '}
+                形式返回。这样「刚抓取完图」后的**下一轮** LLM 调用能直接看到像素，符合 SPEC G5 同请求续轮语义。
             </Text>
             <Table
                 headers={['操作', '细节']}
@@ -117,7 +125,7 @@ export default function VisionInjection() {
 
             <H2>DB 路径失败处理</H2>
             <Callout tone="warning" title="非致命失败">
-                DB 路径（`buildVisionUserUiParts` + `createUserMessageWithParts`）抛出异常时，chat route 仅打 `console.warn`，不中断当前推理流程。LLM 本轮已通过 prepareStep（Model 路径）获得图像，推理结果不受影响。后果仅为：重载会话时 DB 中缺少对应的图像 user 消息，视觉上下文在 UI 中不可见。
+                DB 路径（`buildVisionUserUiParts` + `createUserMessageWithParts`）抛出异常时，chat route 仅打 `console.warn`，不中断当前推理。同请求内 **Model 路径（prepareStep）** 若已成功，本轮后续步仍可能已看到像素；若 Model 路径也失败，则仅依赖工具返回 JSON，视觉可能缺失。刷新后若 DB 未写入合成 USER，仅时间线缺图。
             </Callout>
 
             <Divider />

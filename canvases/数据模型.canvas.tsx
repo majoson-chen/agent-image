@@ -75,18 +75,18 @@ export default function DataModel() {
                 <CardBody>
                     <Stack gap={8}>
                         <Text size="small">
-                            `parts` 字段存储 UIMessage 格式的结构化 JSON 数组（含 text / file / tool-call / tool-result 等；用户多模态消息可含说明性 text 与多个 file part，file 以服务端 URL 引用为主）。`id` 由 chat route 的 `runId` 控制，continuation 场景下多步推理复用同一行追写。`content` 字段为纯文本兜底，M2 起新建消息该字段为空字符串。
+                            与 SPEC 对齐：单字段 **`payload`（Json）** 承载 UIMessage 子集——`role`（user | assistant | system）、`parts` 数组、`metadata`（含 `usage`、`modelIdAtTime` 等）。表上冗余 **`role`（MessageRole）** 便于查询与粗筛；时间线与模型输入以 **`parseMessagePayload` → parts** 为准。用户多模态消息的 file part 持久化为 `/api/images/
+                            {id}
+                            ` 引用，不在库内放大体积 base64。
                         </Text>
                         <Table
                             headers={['字段', '类型', '说明']}
                             rows={[
-                                ['id', 'String cuid', '主键；与 chat route runId 对齐'],
+                                ['id', 'String', '主键；user 与客户端 message id 对齐；assistant 首轮为 chat route 生成的 runId，审批续写复用同一 id'],
                                 ['conversationId', 'String', 'FK → Conversation（onDelete: Cascade）'],
-                                ['role', 'MessageRole', 'USER / ASSISTANT / SYSTEM'],
-                                ['content', 'String', '纯文本兜底；M1 旧消息使用，新消息为空字符串'],
-                                ['parts', 'Json?', 'UIMessage parts 数组；M2 起写入，M1 旧消息为 null'],
-                                ['usageInputTokens / usageOutputTokens / usageTotalTokens', 'Int?', '本条消息累计 token 用量（来自 API 响应，不做估算）'],
-                                ['modelIdAtTime', 'String?', 'FK → Model（onDelete: SetNull）；记录生成时使用的模型 id'],
+                                ['role', 'MessageRole', 'USER / ASSISTANT / SYSTEM，与 payload.role 同步'],
+                                ['payload', 'Json', '{ role, parts, metadata? }；用量仅在 assistant 的 metadata.usage'],
+                                ['createdAt', 'DateTime', '创建时间；排序用'],
                             ]}
                             striped
                         />

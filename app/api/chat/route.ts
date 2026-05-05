@@ -1,19 +1,25 @@
 import type { LanguageModel, ToolSet } from 'ai'
 import type { PrismaClient } from '~/generated/prisma/client'
 import { buildAgent } from '@lib/ai/build-agent'
+import { dbRowsToUiMessagesForHydrate } from '@lib/ai/db-rows-to-ui-messages'
 import {
     buildVisionUserModelMessage,
     buildVisionUserUiParts,
     extractImageFetchBatchesFromStep,
+    mergeImageFetchBatchesForPersist,
 } from '@lib/ai/image-fetch-vision-injection'
 import { hydrateApiImageFilePartsForModel } from '@lib/ai/normalize-user-image-parts'
 import { appendStepToParts, patchToolResultsFromResponseMessages } from '@lib/ai/step-to-parts'
 import { buildSystemPrompt } from '@lib/ai/system-prompt'
+import { applyToolApprovalsToParts } from '@lib/ai/tool-approval-parts'
+import { parseMessagePayload } from '@lib/db/message-payload'
 import {
     createUserMessageWithParts,
+    InvalidUserMessageIdError,
     listMessages,
-    syncIncomingClientUserMessages,
+    MessageConversationMismatchError,
     upsertAssistantMessage,
+    upsertUserMessageParts,
 } from '@lib/db/messages'
 import { getModel } from '@lib/db/models'
 import { getSelection } from '@lib/db/selections'
@@ -48,9 +54,9 @@ export async function handleChatPost(req: Request, deps: ChatPostDeps = {}) {
     if (!parsedBody.success)
         return NextResponse.json({ error: '请求体无效', issues: parsedBody.error.flatten() }, { status: 400 })
 
-    const { conversationId, messages: clientMessagesOpt } = parsedBody.data
+    const data = parsedBody.data
+    const conversationId = data.conversationId
 
-    // 获取 LLM 选型
     const selection = await getSelection(db, conversationId, 'LLM')
     if (!selection)
         return NextResponse.json({ error: '请先选择 LLM 模型' }, { status: 400 })
@@ -64,69 +70,61 @@ export async function handleChatPost(req: Request, deps: ChatPostDeps = {}) {
         ? undefined
         : computeLlmChatProviderOptions(modelRecord, selection.params)
 
-    // 消息历史：客户端 POST `messages`（与 useChat 一致）优先；否则仅从 DB 组装（兼容集成测试旧契约）
     let uiMessages: Array<{ id: string, role: 'user' | 'assistant', parts: object[] }>
-    if (clientMessagesOpt && clientMessagesOpt.length > 0) {
-        const synced = await syncIncomingClientUserMessages(db, conversationId, clientMessagesOpt)
-        if (!synced.ok)
-            return NextResponse.json({ error: synced.error }, { status: 400 })
+    let runId: string
+    let runningParts: UIMessagePart[]
+    let runningUsage = { inputTokens: 0, outputTokens: 0, totalTokens: 0 }
 
-        uiMessages = clientMessagesOpt.map(m => ({
-            id: m.id,
-            role: m.role.toLowerCase() as 'user' | 'assistant',
-            parts: m.parts as object[],
-        }))
+    if (data.kind === 'user-turn') {
+        try {
+            await upsertUserMessageParts(db, conversationId, { id: data.messageId, parts: data.parts })
+        }
+        catch (e) {
+            if (e instanceof MessageConversationMismatchError || e instanceof InvalidUserMessageIdError)
+                return NextResponse.json({ error: e.message }, { status: 400 })
+            throw e
+        }
+        const rows = await listMessages(db, conversationId)
+        uiMessages = dbRowsToUiMessagesForHydrate(rows)
+        runId = crypto.randomUUID()
+        runningParts = []
+        runningUsage = { inputTokens: 0, outputTokens: 0, totalTokens: 0 }
     }
     else {
-        const dbMessages = await listMessages(db, conversationId)
-        uiMessages = dbMessages.map((m) => {
-            const parts = m.parts !== null
-                ? m.parts as object[]
-                : [{ type: 'text' as const, text: m.content }]
-            return {
-                id: m.id,
-                role: m.role.toLowerCase() as 'user' | 'assistant',
-                parts,
-            }
+        const row = await db.message.findUnique({ where: { id: data.assistantMessageId } })
+        if (!row || row.conversationId !== conversationId)
+            return NextResponse.json({ error: '助手消息不存在' }, { status: 400 })
+        if (row.role !== 'ASSISTANT')
+            return NextResponse.json({ error: '无效助手消息' }, { status: 400 })
+        const pl = parseMessagePayload(row.payload)
+        const newParts = applyToolApprovalsToParts(pl.parts, data.approvals)
+        await upsertAssistantMessage(db, {
+            id: row.id,
+            conversationId,
+            parts: newParts as object[],
+            usage: pl.metadata?.usage ?? { inputTokens: null, outputTokens: null, totalTokens: null },
+            modelIdAtTime: pl.metadata?.modelIdAtTime ?? null,
         })
+        const rows = await listMessages(db, conversationId)
+        uiMessages = dbRowsToUiMessagesForHydrate(rows)
+        runId = data.assistantMessageId
+        runningParts = newParts as UIMessagePart[]
+        runningUsage = {
+            inputTokens: pl.metadata?.usage?.inputTokens ?? 0,
+            outputTokens: pl.metadata?.usage?.outputTokens ?? 0,
+            totalTokens: pl.metadata?.usage?.totalTokens ?? 0,
+        }
     }
 
-    // 构建可用工具集（传 conversationId 以按 IMAGE selection 暴露生图工具）
     const { tools, descriptors } = deps.toolsOverride
         ? { tools: deps.toolsOverride, descriptors: Object.keys(deps.toolsOverride) }
         : await buildAvailableTools(db, conversationId)
 
     const instructions = buildSystemPrompt(descriptors)
 
-    // continuation（审批等）：仅当**最后一条**客户端消息为 assistant 时才复用其 id 更新同一 DB 行。
-    // 若用 findLast(assistant)，在新一轮用户追问（…user, assistant, user）时会误绑到上一轮 assistant，
-    // upsert 覆盖旧内容且 createdAt 不变，按 createdAt 排序会出现「assistant 排在最新 user 之前」的错位。
-    const lastClientMsg = clientMessagesOpt?.at(-1)
-    const continuingAssistant
-        = lastClientMsg != null && lastClientMsg.role.toLowerCase() === 'assistant'
-
-    let runId: string
-    let runningParts: UIMessagePart[]
-    let runningUsage = { inputTokens: 0, outputTokens: 0, totalTokens: 0 }
-
-    if (continuingAssistant) {
-        runId = lastClientMsg.id
-        // 从 DB 加载已有 parts 作为续写起点（可能含 input-available 工具 part）
-        const dbMsg = await db.message.findUnique({ where: { id: runId } })
-        runningParts = (dbMsg?.parts as UIMessagePart[] | null) ?? (lastClientMsg.parts as UIMessagePart[])
-        runningUsage = {
-            inputTokens: dbMsg?.usageInputTokens ?? 0,
-            outputTokens: dbMsg?.usageOutputTokens ?? 0,
-            totalTokens: dbMsg?.usageTotalTokens ?? 0,
-        }
-    }
-    else {
-        runId = crypto.randomUUID()
-        runningParts = []
-    }
-
-    const modelInjectedImageFetchToolCallIds = new Set<string>()
     const dbPersistedImageFetchToolCallIds = new Set<string>()
+    /** 同请求内下一步 LLM 调用前注入像素，与 onStepFinish 写库互补（G5 / §6） */
+    const modelInjectedImageFetchToolCallIds = new Set<string>()
 
     const agent = buildAgent({
         model: llmModel,
@@ -136,8 +134,8 @@ export async function handleChatPost(req: Request, deps: ChatPostDeps = {}) {
         prepareStep: async ({ steps, messages }) => {
             if (steps.length === 0)
                 return {}
-            const lastStep = steps[steps.length - 1]!
-            const batches = extractImageFetchBatchesFromStep(lastStep)
+            const prev = steps[steps.length - 1]!
+            const batches = extractImageFetchBatchesFromStep({ content: prev.content as never })
             const pending = batches.filter(b => !modelInjectedImageFetchToolCallIds.has(b.toolCallId))
             if (pending.length === 0)
                 return {}
@@ -147,8 +145,8 @@ export async function handleChatPost(req: Request, deps: ChatPostDeps = {}) {
             return { messages: [...messages, visionUser] }
         },
         onStepFinish: async (step) => {
+            const partsLenBefore = runningParts.length
             runningParts = appendStepToParts(runningParts, step as never)
-            // 用 response.messages 里的 tool-result 回填跨步骤/跨请求的 input-available parts
             const respMsgs = (step as { response?: { messages?: unknown[] } }).response?.messages
             if (respMsgs) {
                 runningParts = patchToolResultsFromResponseMessages(runningParts, respMsgs as never)
@@ -171,7 +169,8 @@ export async function handleChatPost(req: Request, deps: ChatPostDeps = {}) {
                 modelIdAtTime: selection.modelId,
             })
 
-            const fetchBatches = extractImageFetchBatchesFromStep(step)
+            const appended = runningParts.slice(partsLenBefore)
+            const fetchBatches = mergeImageFetchBatchesForPersist(step as never, appended)
             const toPersist = fetchBatches.filter(b => !dbPersistedImageFetchToolCallIds.has(b.toolCallId))
             if (toPersist.length > 0) {
                 try {
@@ -185,7 +184,7 @@ export async function handleChatPost(req: Request, deps: ChatPostDeps = {}) {
                     const detail = e instanceof Error ? e.message : String(e)
                     console.warn(
                         `[chat] image-fetch 合成 user 持久化失败：conversationId=${conversationId} toolCallIds=[${toolCallIds}]；`
-                        + '模型本轮已通过 prepareStep 获得图像，但 DB 中缺少对应 user 消息，重载会话后视觉上下文可能不一致。',
+                        + '重载会话后视觉上下文可能不一致。',
                         detail,
                     )
                 }
@@ -195,8 +194,6 @@ export async function handleChatPost(req: Request, deps: ChatPostDeps = {}) {
 
     const uiMessagesForModel = await hydrateApiImageFilePartsForModel(db, conversationId, uiMessages)
 
-    // 与 upsertAssistantMessage 使用同一 id：当末条为 user 时 SDK 默认不给助手消息设 id（见 UIMessageStreamOptions.generateMessageId），
-    // useChat 会因缺少 id 合并流失败；延续轮末条为 assistant 时 SDK 会自带 id，此处返回同一 runId 仍安全。
     return createAgentUIStreamResponse({
         agent,
         uiMessages: uiMessagesForModel,

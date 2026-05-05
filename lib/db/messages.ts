@@ -1,4 +1,30 @@
+import type { MessagePayload } from '@lib/db/message-payload'
 import type { PrismaClient } from '~/generated/prisma/client'
+import { parseMessagePayload, toMessageRoleEnum } from '@lib/db/message-payload'
+
+/** 同一 message id 已绑定其他会话（不得静默改写 conversationId） */
+export class MessageConversationMismatchError extends Error {
+    constructor() {
+        super('消息 id 不属于本会话')
+        this.name = 'MessageConversationMismatchError'
+    }
+}
+
+/** message id 已存在但行角色不是 ASSISTANT */
+export class InvalidAssistantMessageIdError extends Error {
+    constructor() {
+        super('无效的助手消息 id')
+        this.name = 'InvalidAssistantMessageIdError'
+    }
+}
+
+/** message id 已存在但行角色不是 USER */
+export class InvalidUserMessageIdError extends Error {
+    constructor() {
+        super('无效的用户消息 id')
+        this.name = 'InvalidUserMessageIdError'
+    }
+}
 
 interface UsageInput {
     inputTokens: number | null
@@ -14,13 +40,36 @@ interface UpsertAssistantMessageInput {
     modelIdAtTime: string | null
 }
 
-function extractTextContent(parts: unknown[]): string {
-    return parts
-        .filter((p): p is { type: string, text: string } =>
-            typeof p === 'object' && p !== null && (p as { type: string }).type === 'text',
-        )
-        .map(p => p.text)
-        .join('')
+function buildPayloadForUser(parts: unknown[]): MessagePayload {
+    return {
+        role: 'user',
+        parts,
+        metadata: {},
+    }
+}
+
+function buildPayloadForAssistant(
+    parts: unknown[],
+    usage: UsageInput,
+    modelIdAtTime: string | null,
+): MessagePayload {
+    const hasUsage = usage.totalTokens != null
+    return {
+        role: 'assistant',
+        parts,
+        metadata: {
+            ...(hasUsage
+                ? {
+                        usage: {
+                            inputTokens: usage.inputTokens,
+                            outputTokens: usage.outputTokens,
+                            totalTokens: usage.totalTokens,
+                        },
+                    }
+                : {}),
+            modelIdAtTime,
+        },
+    }
 }
 
 export async function listMessages(prisma: PrismaClient, conversationId: string) {
@@ -35,8 +84,14 @@ export async function appendUserMessage(
     conversationId: string,
     content: string,
 ) {
+    const parts: object[] = [{ type: 'text', text: content }]
+    const payload = buildPayloadForUser(parts)
     return prisma.message.create({
-        data: { conversationId, role: 'USER', content },
+        data: {
+            conversationId,
+            role: toMessageRoleEnum('user'),
+            payload,
+        },
     })
 }
 
@@ -46,14 +101,13 @@ export async function createUserMessageWithParts(
     conversationId: string,
     parts: object[],
 ) {
-    const content = extractTextContent(parts)
+    const payload = buildPayloadForUser(parts)
     return prisma.message.create({
         data: {
             id: crypto.randomUUID(),
             conversationId,
-            role: 'USER',
-            content,
-            parts,
+            role: toMessageRoleEnum('user'),
+            payload,
         },
     })
 }
@@ -63,46 +117,29 @@ export async function upsertUserMessageParts(
     conversationId: string,
     input: { id: string, parts: unknown[] },
 ) {
-    const content = extractTextContent(input.parts)
+    const existing = await prisma.message.findUnique({ where: { id: input.id } })
+    if (existing) {
+        if (existing.conversationId !== conversationId)
+            throw new MessageConversationMismatchError()
+        if (existing.role !== 'USER')
+            throw new InvalidUserMessageIdError()
+    }
+
     const parts = input.parts as object[]
+    const payload = buildPayloadForUser(parts)
     return prisma.message.upsert({
         where: { id: input.id },
         create: {
             id: input.id,
             conversationId,
-            role: 'USER',
-            content,
-            parts,
+            role: toMessageRoleEnum('user'),
+            payload,
         },
         update: {
-            content,
-            parts,
+            role: toMessageRoleEnum('user'),
+            payload,
         },
     })
-}
-
-/** POST body 中的 useChat messages：仅同步 role=user，且校验 id 不跨会话冲突。 */
-export async function syncIncomingClientUserMessages(
-    prisma: PrismaClient,
-    conversationId: string,
-    clientMessages: Array<{ id: string, role: string, parts: unknown[] }>,
-): Promise<{ ok: true } | { ok: false, error: string }> {
-    for (const m of clientMessages) {
-        if (m.role.toLowerCase() !== 'user')
-            continue
-
-        const existing = await prisma.message.findUnique({ where: { id: m.id } })
-        if (existing) {
-            if (existing.conversationId !== conversationId)
-                return { ok: false, error: '消息 id 不属于本会话' }
-            if (existing.role !== 'USER')
-                return { ok: false, error: '无效的用户消息 id' }
-        }
-
-        await upsertUserMessageParts(prisma, conversationId, { id: m.id, parts: m.parts })
-    }
-
-    return { ok: true }
 }
 
 export async function appendAssistantMessage(
@@ -112,15 +149,13 @@ export async function appendAssistantMessage(
     usage: UsageInput,
     modelIdAtTime: string | null,
 ) {
+    const parts: object[] = [{ type: 'text', text: content }]
+    const payload = buildPayloadForAssistant(parts, usage, modelIdAtTime)
     return prisma.message.create({
         data: {
             conversationId,
-            role: 'ASSISTANT',
-            content,
-            usageInputTokens: usage.inputTokens,
-            usageOutputTokens: usage.outputTokens,
-            usageTotalTokens: usage.totalTokens,
-            modelIdAtTime,
+            role: toMessageRoleEnum('assistant'),
+            payload,
         },
     })
 }
@@ -129,26 +164,29 @@ export async function upsertAssistantMessage(
     prisma: PrismaClient,
     input: UpsertAssistantMessageInput,
 ) {
-    const content = extractTextContent(input.parts)
-    const data = {
-        conversationId: input.conversationId,
-        role: 'ASSISTANT' as const,
-        content,
-        parts: input.parts as object[],
-        usageInputTokens: input.usage.inputTokens,
-        usageOutputTokens: input.usage.outputTokens,
-        usageTotalTokens: input.usage.totalTokens,
-        modelIdAtTime: input.modelIdAtTime,
+    const existing = await prisma.message.findUnique({ where: { id: input.id } })
+    if (existing) {
+        if (existing.conversationId !== input.conversationId)
+            throw new MessageConversationMismatchError()
+        if (existing.role !== 'ASSISTANT')
+            throw new InvalidAssistantMessageIdError()
     }
+
+    const payload = buildPayloadForAssistant(
+        input.parts as unknown[],
+        input.usage,
+        input.modelIdAtTime,
+    )
     return prisma.message.upsert({
         where: { id: input.id },
-        create: { id: input.id, ...data },
+        create: {
+            id: input.id,
+            conversationId: input.conversationId,
+            role: toMessageRoleEnum('assistant'),
+            payload,
+        },
         update: {
-            content,
-            parts: input.parts as object[],
-            usageInputTokens: input.usage.inputTokens,
-            usageOutputTokens: input.usage.outputTokens,
-            usageTotalTokens: input.usage.totalTokens,
+            payload,
         },
     })
 }
@@ -158,19 +196,28 @@ export async function aggregateUsage(
     conversationId: string,
 ): Promise<{ inputTokens: number, outputTokens: number, totalTokens: number } | null> {
     const msgs = await prisma.message.findMany({
-        where: { conversationId, usageTotalTokens: { not: null } },
-        select: { usageInputTokens: true, usageOutputTokens: true, usageTotalTokens: true },
+        where: { conversationId },
+        select: { payload: true },
     })
 
-    if (msgs.length === 0)
+    let inputTokens = 0
+    let outputTokens = 0
+    let totalTokens = 0
+    let anyUsage = false
+
+    for (const m of msgs) {
+        const payload = parseMessagePayload(m.payload)
+        const u = payload.metadata?.usage
+        if (u?.totalTokens != null) {
+            anyUsage = true
+            inputTokens += u.inputTokens ?? 0
+            outputTokens += u.outputTokens ?? 0
+            totalTokens += u.totalTokens ?? 0
+        }
+    }
+
+    if (!anyUsage)
         return null
 
-    return msgs.reduce(
-        (acc, m) => ({
-            inputTokens: acc.inputTokens + (m.usageInputTokens ?? 0),
-            outputTokens: acc.outputTokens + (m.usageOutputTokens ?? 0),
-            totalTokens: acc.totalTokens + (m.usageTotalTokens ?? 0),
-        }),
-        { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
-    )
+    return { inputTokens, outputTokens, totalTokens }
 }

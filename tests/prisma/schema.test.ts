@@ -11,6 +11,28 @@ import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { PrismaClient } from '~/generated/prisma/client'
 
+function userPayload(text: string) {
+    return {
+        role: 'user' as const,
+        parts: [{ type: 'text', text }],
+        metadata: {},
+    }
+}
+
+function assistantPayload(
+    text: string,
+    metadata?: {
+        usage?: { inputTokens: number, outputTokens: number, totalTokens: number }
+        modelIdAtTime?: string | null
+    },
+) {
+    return {
+        role: 'assistant' as const,
+        parts: [{ type: 'text', text }],
+        metadata: metadata ?? {},
+    }
+}
+
 let tmpDir: string
 let dbPath: string
 let prisma: PrismaClient
@@ -68,15 +90,20 @@ describe('conversation + Message cascade', () => {
         const conv = await prisma.conversation.create({ data: {} })
 
         await prisma.message.create({
-            data: { conversationId: conv.id, role: 'USER', content: 'hello' },
+            data: {
+                conversationId: conv.id,
+                role: 'USER',
+                payload: userPayload('hello'),
+            },
         })
         await prisma.message.create({
             data: {
                 conversationId: conv.id,
                 role: 'ASSISTANT',
-                content: 'hi',
-                usageTotalTokens: 10,
-                modelIdAtTime: model.id,
+                payload: assistantPayload('hi', {
+                    usage: { inputTokens: 1, outputTokens: 1, totalTokens: 10 },
+                    modelIdAtTime: model.id,
+                }),
             },
         })
         await prisma.conversationModelSelection.create({
@@ -94,7 +121,7 @@ describe('conversation + Message cascade', () => {
         expect(sels).toHaveLength(0)
     })
 
-    it('sets modelIdAtTime to null when model is deleted', async () => {
+    it('keeps payload metadata modelIdAtTime after model is deleted', async () => {
         const model = await prisma.model.create({
             data: {
                 type: 'LLM',
@@ -109,15 +136,15 @@ describe('conversation + Message cascade', () => {
             data: {
                 conversationId: conv.id,
                 role: 'ASSISTANT',
-                content: 'resp',
-                modelIdAtTime: model.id,
+                payload: assistantPayload('resp', { modelIdAtTime: model.id }),
             },
         })
 
         await prisma.model.delete({ where: { id: model.id } })
 
         const updated = await prisma.message.findUniqueOrThrow({ where: { id: msg.id } })
-        expect(updated.modelIdAtTime).toBeNull()
+        const payload = updated.payload as { metadata?: { modelIdAtTime?: string | null } }
+        expect(payload.metadata?.modelIdAtTime).toBe(model.id)
     })
 })
 
@@ -194,7 +221,7 @@ describe('bRAVE_SEARCH model + SearchToolBinding', () => {
     })
 })
 
-describe('message.parts column', () => {
+describe('message.payload.parts', () => {
     it('writes and reads back parts JSON', async () => {
         const conv = await prisma.conversation.create({ data: {} })
         const parts = [
@@ -202,19 +229,29 @@ describe('message.parts column', () => {
             { type: 'tool-web-search', state: 'output-available', toolCallId: 'tc1', input: { query: 'test' }, output: { items: [] } },
         ]
         const msg = await prisma.message.create({
-            data: { conversationId: conv.id, role: 'ASSISTANT', content: 'Hello', parts: parts as unknown as object },
+            data: {
+                conversationId: conv.id,
+                role: 'ASSISTANT',
+                payload: { role: 'assistant', parts, metadata: {} },
+            },
         })
         const found = await prisma.message.findUniqueOrThrow({ where: { id: msg.id } })
-        expect(found.parts).toEqual(parts)
+        const p = found.payload as { parts: unknown[] }
+        expect(p.parts).toEqual(parts)
     })
 
-    it('m1 legacy message parts=null stays null', async () => {
+    it('payload.parts 仅 text（旧 content-only 等价）', async () => {
         const conv = await prisma.conversation.create({ data: {} })
         const msg = await prisma.message.create({
-            data: { conversationId: conv.id, role: 'ASSISTANT', content: 'legacy' },
+            data: {
+                conversationId: conv.id,
+                role: 'ASSISTANT',
+                payload: { role: 'assistant', parts: [{ type: 'text', text: 'legacy' }], metadata: {} },
+            },
         })
         const found = await prisma.message.findUniqueOrThrow({ where: { id: msg.id } })
-        expect(found.parts).toBeNull()
+        const p = found.payload as { parts: unknown[] }
+        expect(p.parts).toEqual([{ type: 'text', text: 'legacy' }])
     })
 })
 

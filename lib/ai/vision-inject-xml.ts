@@ -29,6 +29,26 @@ export function isVisionInjectUserText(text: string): boolean {
     return t.startsWith(`<${VISION_INJECT_XML_TAG}`)
 }
 
+/** 是否为仅用于持久化 / 模型上下文的 image-fetch 合成 user 消息（整条不在 UI 展示） */
+export function isImageFetchVisionPersistParts(parts: unknown): boolean {
+    if (!Array.isArray(parts) || parts.length === 0)
+        return false
+    const first = parts[0]
+    if (!first || typeof first !== 'object')
+        return false
+    const head = first as { type?: string, text?: string }
+    if (head.type !== 'text' || typeof head.text !== 'string')
+        return false
+    if (!isVisionInjectUserText(head.text))
+        return false
+    return parts.every((p) => {
+        if (!p || typeof p !== 'object')
+            return false
+        const t = (p as { type: string }).type
+        return t === 'text' || t === 'file'
+    })
+}
+
 /**
  * 生成完整 XML 文档片段（无 XML 声明）。`slot` 为全局序号，与 file part 列顺序一致。
  */

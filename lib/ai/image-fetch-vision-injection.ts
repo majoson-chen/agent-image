@@ -117,6 +117,59 @@ export function extractImageFetchBatchesFromStep(step: { content: ReadonlyArray<
     return batches
 }
 
+/** UIMessage part（appendStepToParts 产出）中可解析的最小结构 */
+interface RunningToolImageFetchPart {
+    type: string
+    state?: string
+    toolCallId?: string
+    output?: unknown
+}
+
+/**
+ * 从已写入 Assistant parts 的 `tool-image-fetch`（output-available）反推批次。
+ * 若干 SDK 版本下 onStepFinish 的 `step.content` 不含裸 `tool-result`，仅靠此路径才能落库视觉 USER 消息。
+ */
+export function extractImageFetchBatchesFromRunningParts(
+    parts: ReadonlyArray<RunningToolImageFetchPart>,
+): ImageFetchBatch[] {
+    const batches: ImageFetchBatch[] = []
+    for (const part of parts) {
+        if (part.type !== 'tool-image-fetch')
+            continue
+        if (part.state !== 'output-available' || typeof part.toolCallId !== 'string')
+            continue
+
+        const { successes, failureNotes } = parseImageFetchToolOutput(part.output)
+        if (successes.length === 0)
+            continue
+
+        batches.push({
+            toolCallId: part.toolCallId,
+            images: successes,
+            failureNotes,
+        })
+    }
+    return batches
+}
+
+/**
+ * 合并 step.content 与「本步」写入 runningParts 的片段（如 appendStepToParts 的增量）。
+ * 按 toolCallId 去重（优先 step.content）。用于 onStepFinish：避免整段 runningParts 含历史 tool 导致续写轮重复落库。
+ */
+export function mergeImageFetchBatchesForPersist(
+    step: { content: ReadonlyArray<StepToolResultPart> },
+    runningParts: ReadonlyArray<RunningToolImageFetchPart>,
+): ImageFetchBatch[] {
+    const byId = new Map<string, ImageFetchBatch>()
+    for (const b of extractImageFetchBatchesFromStep(step))
+        byId.set(b.toolCallId, b)
+    for (const b of extractImageFetchBatchesFromRunningParts(runningParts)) {
+        if (!byId.has(b.toolCallId))
+            byId.set(b.toolCallId, b)
+    }
+    return [...byId.values()]
+}
+
 /** 为 ModelMessage 构造 file parts（字节真值，供本轮后续 LLM 调用） */
 export async function buildVisionUserModelMessage(
     prisma: PrismaClient,

@@ -1,5 +1,7 @@
 import {
+    extractImageFetchBatchesFromRunningParts,
     extractImageFetchBatchesFromStep,
+    mergeImageFetchBatchesForPersist,
     normalizeImageFetchOutput,
     parseImageFetchToolOutput,
     unwrapToolOutput,
@@ -124,5 +126,77 @@ describe('extractImageFetchBatchesFromStep', () => {
             ],
         })
         expect(batches).toHaveLength(0)
+    })
+})
+
+describe('extractImageFetchBatchesFromRunningParts', () => {
+    it('parses tool-image-fetch output-available parts', () => {
+        const batches = extractImageFetchBatchesFromRunningParts([
+            { type: 'step-start' },
+            {
+                type: 'tool-image-fetch',
+                state: 'output-available',
+                toolCallId: 'call-1',
+                output: { imageId: 'img-x', mimeType: 'image/png' },
+            },
+        ])
+        expect(batches).toEqual([
+            {
+                toolCallId: 'call-1',
+                images: [{ imageId: 'img-x', mimeType: 'image/png' }],
+                failureNotes: [],
+            },
+        ])
+    })
+
+    it('ignores input-available and other tools', () => {
+        expect(extractImageFetchBatchesFromRunningParts([
+            { type: 'tool-image-fetch', state: 'input-available', toolCallId: 'c' },
+            { type: 'tool-web-fetch', state: 'output-available', toolCallId: 'w', output: {} },
+        ])).toHaveLength(0)
+    })
+})
+
+describe('mergeImageFetchBatchesForPersist', () => {
+    it('fills from runningParts when step.content has no tool-result', () => {
+        const merged = mergeImageFetchBatchesForPersist(
+            { content: [{ type: 'text', text: 'done' }] },
+            [
+                {
+                    type: 'tool-image-fetch',
+                    state: 'output-available',
+                    toolCallId: 'from-parts',
+                    output: { imageId: 'z', mimeType: 'image/jpeg' },
+                },
+            ],
+        )
+        expect(merged).toHaveLength(1)
+        expect(merged[0]!.toolCallId).toBe('from-parts')
+        expect(merged[0]!.images).toEqual([{ imageId: 'z', mimeType: 'image/jpeg' }])
+    })
+
+    it('prefers step.content when both have same toolCallId', () => {
+        const merged = mergeImageFetchBatchesForPersist(
+            {
+                content: [
+                    {
+                        type: 'tool-result',
+                        toolName: 'image-fetch',
+                        toolCallId: 'same',
+                        output: { imageId: 'from-step', mimeType: 'image/png' },
+                    },
+                ],
+            },
+            [
+                {
+                    type: 'tool-image-fetch',
+                    state: 'output-available',
+                    toolCallId: 'same',
+                    output: { imageId: 'from-running', mimeType: 'image/png' },
+                },
+            ],
+        )
+        expect(merged).toHaveLength(1)
+        expect(merged[0]!.images[0]!.imageId).toBe('from-step')
     })
 })

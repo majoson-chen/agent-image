@@ -6,7 +6,9 @@ import type { ImageModelCapabilities } from '@lib/validation/image-model-schema'
 import type { UIMessage } from 'ai'
 import { useChat } from '@ai-sdk/react'
 import { buildUserAttachXml, isUserAttachInjectText } from '@lib/ai/user-attach-xml'
+import { isImageFetchVisionPersistParts } from '@lib/ai/vision-inject-xml'
 import { getGateHint, getSubmitButtonState } from '@lib/chat-guard'
+import { buildNarrowChatPostBody } from '@lib/chat/narrow-chat-transport-body'
 import { cn } from '@lib/cn'
 import { cjk } from '@streamdown/cjk'
 import { code } from '@streamdown/code'
@@ -14,7 +16,7 @@ import { math } from '@streamdown/math'
 import { mermaid } from '@streamdown/mermaid'
 import { DefaultChatTransport, lastAssistantMessageIsCompleteWithApprovalResponses } from 'ai'
 import { Check, ChevronDown, ChevronUp, Send, Square, X } from 'lucide-react'
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { Streamdown } from 'streamdown'
 import { ComposerAttachments } from './ComposerAttachments'
 import { ComposerImageSlot } from './ComposerImageSlot'
@@ -30,21 +32,22 @@ interface MessageMetadata {
 
 interface ToolPart {
     type: string
-    state: 'input-streaming' | 'input-available' | 'output-available' | 'output-error'
+    state: 'input-streaming' | 'input-available' | 'output-available' | 'output-error' | 'output-denied'
     toolCallId?: string
     input?: unknown
     output?: unknown
     errorText?: string
+    approval?: { id?: string, approved?: boolean, reason?: string }
 }
 
 interface ImageGeneratePart {
     type: string // 'tool-image-generate-primary' | 'tool-image-generate-secondary'
-    state: 'input-streaming' | 'input-available' | 'approval-requested' | 'executing' | 'output-available' | 'output-error'
+    state: 'input-streaming' | 'input-available' | 'approval-requested' | 'executing' | 'output-available' | 'output-error' | 'output-denied'
     toolCallId?: string
     input?: { prompt?: string }
     output?: { imageId?: string, imageIds?: string[] }
     errorText?: string
-    approval?: { id: string }
+    approval?: { id: string, approved?: boolean, reason?: string }
 }
 
 function ImageGenerateBlock({
@@ -173,6 +176,19 @@ function ImageGenerateBlock({
         )
     }
 
+    if (part.state === 'output-denied') {
+        const denyReason = part.approval?.reason ?? '用户未批准'
+        return (
+            <div className="alert alert-warning py-2 text-sm">
+                <span className="font-medium">{label}</span>
+                <span className="ml-2 opacity-75">
+                    已拒绝：
+                    {denyReason}
+                </span>
+            </div>
+        )
+    }
+
     return null
 }
 
@@ -225,6 +241,19 @@ function ToolCallBlock({ part }: { part: ToolPart }) {
             <div className="alert alert-error py-2 text-sm">
                 <span className="font-medium">{label}</span>
                 <span className="ml-2 opacity-75">{part.errorText ?? '工具执行失败'}</span>
+            </div>
+        )
+    }
+
+    if (part.state === 'output-denied') {
+        const denyReason = part.approval?.reason ?? '用户未批准'
+        return (
+            <div className="alert alert-warning py-2 text-sm">
+                <span className="font-medium">{label}</span>
+                <span className="ml-2 opacity-75">
+                    已拒绝：
+                    {denyReason}
+                </span>
             </div>
         )
     }
@@ -287,8 +316,13 @@ export function ChatPage({
         messages: initialMessages,
         transport: new DefaultChatTransport({
             api: '/api/chat',
-            prepareSendMessagesRequest: ({ messages }) => ({
-                body: { conversationId, messages },
+            prepareSendMessagesRequest: ({ messages, trigger, messageId }) => ({
+                body: buildNarrowChatPostBody({
+                    conversationId,
+                    trigger,
+                    messageId,
+                    messages,
+                }),
             }),
         }),
         sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithApprovalResponses,
@@ -367,123 +401,127 @@ export function ChatPage({
             {/* 消息列表 */}
             <div className="min-h-0 flex-1 overflow-y-auto px-4 py-6">
                 <div className="mx-auto flex max-w-2xl flex-col gap-4">
-                    {messages.map(m => (
-                        <div key={m.id} className={cn(m.role === 'user' ? 'flex justify-end' : 'flex flex-col gap-2')}>
-                            {m.role === 'user'
-                                ? (
-                                        <div className="rounded-box flex max-w-prose flex-col gap-2 bg-primary px-4 py-3 text-sm text-primary-content">
-                                            {m.parts.map((part, i) => {
-                                                const p = part as { type: string, text?: string, url?: string, mediaType?: string }
-                                                if (p.type === 'text') {
-                                                    if (typeof p.text === 'string' && isUserAttachInjectText(p.text))
-                                                        return null
-                                                    return <span key={i} className="whitespace-pre-wrap">{p.text}</span>
-                                                }
-                                                if (p.type === 'file' && typeof p.url === 'string') {
-                                                    if (p.url.startsWith('/api/images/')) {
-                                                        return (
-                                                            <img
-                                                                key={i}
-                                                                src={p.url}
-                                                                loading="lazy"
-                                                                className="max-h-48 rounded object-contain border border-base-300"
-                                                                alt=""
-                                                            />
-                                                        )
+                    {messages.map((m) => {
+                        if (m.role === 'user' && isImageFetchVisionPersistParts(m.parts))
+                            return <Fragment key={m.id} />
+                        return (
+                            <div key={m.id} className={cn(m.role === 'user' ? 'flex justify-end' : 'flex flex-col gap-2')}>
+                                {m.role === 'user'
+                                    ? (
+                                            <div className="rounded-box flex max-w-prose flex-col gap-2 bg-primary px-4 py-3 text-sm text-primary-content">
+                                                {m.parts.map((part, i) => {
+                                                    const p = part as { type: string, text?: string, url?: string, mediaType?: string }
+                                                    if (p.type === 'text') {
+                                                        if (typeof p.text === 'string' && isUserAttachInjectText(p.text))
+                                                            return null
+                                                        return <span key={i} className="whitespace-pre-wrap">{p.text}</span>
                                                     }
-                                                    if (p.url.startsWith('data:image/')) {
-                                                        return (
-                                                            <img
-                                                                key={i}
-                                                                src={p.url}
-                                                                loading="lazy"
-                                                                className="max-h-48 rounded object-contain border border-base-300"
-                                                                alt=""
-                                                            />
-                                                        )
+                                                    if (p.type === 'file' && typeof p.url === 'string') {
+                                                        if (p.url.startsWith('/api/images/')) {
+                                                            return (
+                                                                <img
+                                                                    key={i}
+                                                                    src={p.url}
+                                                                    loading="lazy"
+                                                                    className="max-h-48 rounded object-contain border border-base-300"
+                                                                    alt=""
+                                                                />
+                                                            )
+                                                        }
+                                                        if (p.url.startsWith('data:image/')) {
+                                                            return (
+                                                                <img
+                                                                    key={i}
+                                                                    src={p.url}
+                                                                    loading="lazy"
+                                                                    className="max-h-48 rounded object-contain border border-base-300"
+                                                                    alt=""
+                                                                />
+                                                            )
+                                                        }
                                                     }
-                                                }
-                                                return null
-                                            })}
-                                        </div>
-                                    )
-                                : (
-                                        <>
-                                            {m.parts.map((part, i) => {
-                                                if (part.type === 'text') {
-                                                    const streamAnimating = assistantStreaming && m.id === lastMessage?.id
-                                                    return (
-                                                        <div
-                                                            key={i}
-                                                            className="rounded-box max-w-prose min-w-0 bg-base-200 px-4 py-3 text-sm text-base-content"
-                                                        >
-                                                            <Streamdown
-                                                                animated
-                                                                controls={{ table: true, code: true, mermaid: true }}
-                                                                isAnimating={streamAnimating}
-                                                                plugins={streamdownPlugins}
-                                                                translations={{
-                                                                    close: '关闭',
-                                                                    copied: '已复制',
-                                                                    copyCode: '复制代码',
-                                                                    copyLink: '复制链接',
-                                                                    copyTable: '复制表格',
-                                                                    copyTableAsCsv: '复制为 CSV',
-                                                                    copyTableAsMarkdown: '复制为 Markdown',
-                                                                    copyTableAsTsv: '复制为 TSV',
-                                                                    downloadDiagram: '下载图表',
-                                                                    downloadDiagramAsMmd: '下载 .mmd',
-                                                                    downloadDiagramAsPng: '下载 PNG',
-                                                                    downloadDiagramAsSvg: '下载 SVG',
-                                                                    downloadFile: '下载文件',
-                                                                    downloadImage: '下载图片',
-                                                                    downloadTable: '下载表格',
-                                                                    downloadTableAsCsv: '表格下载为 CSV',
-                                                                    downloadTableAsMarkdown: '表格下载为 Markdown',
-                                                                    exitFullscreen: '退出全屏',
-                                                                    externalLinkWarning: '即将打开外部链接，是否继续？',
-                                                                    imageNotAvailable: '图片不可用',
-                                                                    mermaidFormatMmd: 'Mermaid (.mmd)',
-                                                                    mermaidFormatPng: 'PNG',
-                                                                    mermaidFormatSvg: 'SVG',
-                                                                    openExternalLink: '打开',
-                                                                    openLink: '打开链接',
-                                                                    tableFormatCsv: 'CSV',
-                                                                    tableFormatMarkdown: 'Markdown',
-                                                                    tableFormatTsv: 'TSV',
-                                                                    viewFullscreen: '全屏查看',
-                                                                }}
+                                                    return null
+                                                })}
+                                            </div>
+                                        )
+                                    : (
+                                            <>
+                                                {m.parts.map((part, i) => {
+                                                    if (part.type === 'text') {
+                                                        const streamAnimating = assistantStreaming && m.id === lastMessage?.id
+                                                        return (
+                                                            <div
+                                                                key={i}
+                                                                className="rounded-box max-w-prose min-w-0 bg-base-200 px-4 py-3 text-sm text-base-content"
                                                             >
-                                                                {part.text}
-                                                            </Streamdown>
-                                                        </div>
-                                                    )
-                                                }
-                                                if (part.type === 'step-start') {
-                                                    return <hr key={i} className="border-base-300" />
-                                                }
-                                                if (part.type.startsWith('tool-image-generate-')) {
-                                                    return (
-                                                        <ImageGenerateBlock
-                                                            key={i}
-                                                            part={part as unknown as ImageGeneratePart}
-                                                            onApprove={id => addToolApprovalResponse({ id, approved: true })}
-                                                            onDeny={id => addToolApprovalResponse({ id, approved: false })}
-                                                        />
-                                                    )
-                                                }
-                                                if (part.type.startsWith('tool-')) {
-                                                    return <ToolCallBlock key={i} part={part as unknown as ToolPart} />
-                                                }
-                                                return null
-                                            })}
-                                            {abortedMessageIds.has(m.id) && (
-                                                <p className="text-xs text-base-content/40">（已停止）</p>
-                                            )}
-                                        </>
-                                    )}
-                        </div>
-                    ))}
+                                                                <Streamdown
+                                                                    animated
+                                                                    controls={{ table: true, code: true, mermaid: true }}
+                                                                    isAnimating={streamAnimating}
+                                                                    plugins={streamdownPlugins}
+                                                                    translations={{
+                                                                        close: '关闭',
+                                                                        copied: '已复制',
+                                                                        copyCode: '复制代码',
+                                                                        copyLink: '复制链接',
+                                                                        copyTable: '复制表格',
+                                                                        copyTableAsCsv: '复制为 CSV',
+                                                                        copyTableAsMarkdown: '复制为 Markdown',
+                                                                        copyTableAsTsv: '复制为 TSV',
+                                                                        downloadDiagram: '下载图表',
+                                                                        downloadDiagramAsMmd: '下载 .mmd',
+                                                                        downloadDiagramAsPng: '下载 PNG',
+                                                                        downloadDiagramAsSvg: '下载 SVG',
+                                                                        downloadFile: '下载文件',
+                                                                        downloadImage: '下载图片',
+                                                                        downloadTable: '下载表格',
+                                                                        downloadTableAsCsv: '表格下载为 CSV',
+                                                                        downloadTableAsMarkdown: '表格下载为 Markdown',
+                                                                        exitFullscreen: '退出全屏',
+                                                                        externalLinkWarning: '即将打开外部链接，是否继续？',
+                                                                        imageNotAvailable: '图片不可用',
+                                                                        mermaidFormatMmd: 'Mermaid (.mmd)',
+                                                                        mermaidFormatPng: 'PNG',
+                                                                        mermaidFormatSvg: 'SVG',
+                                                                        openExternalLink: '打开',
+                                                                        openLink: '打开链接',
+                                                                        tableFormatCsv: 'CSV',
+                                                                        tableFormatMarkdown: 'Markdown',
+                                                                        tableFormatTsv: 'TSV',
+                                                                        viewFullscreen: '全屏查看',
+                                                                    }}
+                                                                >
+                                                                    {part.text}
+                                                                </Streamdown>
+                                                            </div>
+                                                        )
+                                                    }
+                                                    if (part.type === 'step-start') {
+                                                        return <hr key={i} className="border-base-300" />
+                                                    }
+                                                    if (part.type.startsWith('tool-image-generate-')) {
+                                                        return (
+                                                            <ImageGenerateBlock
+                                                                key={i}
+                                                                part={part as unknown as ImageGeneratePart}
+                                                                onApprove={id => addToolApprovalResponse({ id, approved: true })}
+                                                                onDeny={id => addToolApprovalResponse({ id, approved: false })}
+                                                            />
+                                                        )
+                                                    }
+                                                    if (part.type === 'dynamic-tool' || part.type.startsWith('tool-')) {
+                                                        return <ToolCallBlock key={i} part={part as unknown as ToolPart} />
+                                                    }
+                                                    return null
+                                                })}
+                                                {abortedMessageIds.has(m.id) && (
+                                                    <p className="text-xs text-base-content/40">（已停止）</p>
+                                                )}
+                                            </>
+                                        )}
+                            </div>
+                        )
+                    })}
 
                     {status === 'streaming' && (
                         <span className="loading loading-dots loading-sm text-base-content/50" />
