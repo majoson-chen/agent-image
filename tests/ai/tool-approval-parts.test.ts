@@ -9,7 +9,7 @@ function part(p: Record<string, unknown>) {
 }
 
 describe('applyToolApprovalsToParts', () => {
-    it('批准：approval-requested → input-available', () => {
+    it('批准：approval-requested → approval-responded + approved true', () => {
         const parts = [
             part({
                 type: 'tool-image-gen',
@@ -19,7 +19,11 @@ describe('applyToolApprovalsToParts', () => {
             }),
         ]
         const out = applyToolApprovalsToParts(parts, [{ approvalId: 'ap1', approved: true }])
-        expect((out[0] as { state: string }).state).toBe('input-available')
+        expect((out[0] as { state: string }).state).toBe('approval-responded')
+        expect((out[0] as { approval: { id: string, approved: boolean } }).approval).toEqual({
+            id: 'ap1',
+            approved: true,
+        })
     })
 
     it('拒绝：→ output-denied 与默认 reason', () => {
@@ -64,12 +68,60 @@ describe('applyToolApprovalsToParts', () => {
         expect(out[0]).toEqual(parts[0])
     })
 
-    it('非 approval-requested 跳过', () => {
+    it('批准：input-available 且无 approval.approved（遗留）→ approval-responded', () => {
+        const parts = [
+            part({
+                type: 'tool-image-gen',
+                state: 'input-available',
+                approval: { id: 'ap-legacy' },
+                toolCallId: 'tcL',
+            }),
+        ]
+        const out = applyToolApprovalsToParts(parts, [{ approvalId: 'ap-legacy', approved: true }])
+        expect((out[0] as { state: string }).state).toBe('approval-responded')
+        expect((out[0] as { approval: { approved: boolean } }).approval.approved).toBe(true)
+    })
+
+    it('拒绝：input-available 且无 approved 标记 → output-denied', () => {
+        const parts = [
+            part({
+                type: 'tool-image-gen',
+                state: 'input-available',
+                approval: { id: 'ap-ld' },
+                toolCallId: 'tcD',
+            }),
+        ]
+        const out = applyToolApprovalsToParts(parts, [{ approvalId: 'ap-ld', approved: false }])
+        expect((out[0] as { state: string }).state).toBe('output-denied')
+    })
+
+    it('批准：input-available 且无 approval 对象时按 toolCallId 匹配', () => {
+        const parts = [
+            part({
+                type: 'tool-image-gen',
+                state: 'input-available',
+                toolCallId: 'functions.image-generate-primary:0',
+                input: { prompt: 'x' },
+            }),
+        ]
+        const out = applyToolApprovalsToParts(parts, [{
+            approvalId: 'ap-from-client',
+            approved: true,
+            toolCallId: 'functions.image-generate-primary:0',
+        }])
+        expect((out[0] as { state: string }).state).toBe('approval-responded')
+        expect((out[0] as { approval: { id: string, approved: boolean } }).approval).toEqual({
+            id: 'ap-from-client',
+            approved: true,
+        })
+    })
+
+    it('input-available 且已有 approved:true 时不改写', () => {
         const parts = [
             part({
                 type: 'tool-x',
                 state: 'input-available',
-                approval: { id: 'ap1' },
+                approval: { id: 'ap1', approved: true },
             }),
         ]
         const out = applyToolApprovalsToParts(parts, [{ approvalId: 'ap1', approved: true }])

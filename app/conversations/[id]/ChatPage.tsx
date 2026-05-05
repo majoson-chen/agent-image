@@ -42,7 +42,15 @@ interface ToolPart {
 
 interface ImageGeneratePart {
     type: string // 'tool-image-generate-primary' | 'tool-image-generate-secondary'
-    state: 'input-streaming' | 'input-available' | 'approval-requested' | 'executing' | 'output-available' | 'output-error' | 'output-denied'
+    state:
+    | 'input-streaming'
+    | 'input-available'
+    | 'approval-requested'
+    | 'approval-responded'
+    | 'executing'
+    | 'output-available'
+    | 'output-error'
+    | 'output-denied'
     toolCallId?: string
     input?: { prompt?: string }
     output?: { imageId?: string, imageIds?: string[] }
@@ -86,6 +94,17 @@ function ImageGenerateBlock({
                         <p className="text-xs text-base-content/60 line-clamp-2">{part.input.prompt}</p>
                     )}
                     <span className="text-xs text-base-content/50">等待结果…</span>
+                </div>
+            </div>
+        )
+    }
+
+    if (part.state === 'approval-responded') {
+        return (
+            <div className="card card-compact border border-base-300 bg-base-200">
+                <div className="card-body py-2 flex flex-row items-center gap-2">
+                    <span className="loading loading-spinner loading-xs" />
+                    <span className="text-sm text-base-content/60">已确认，准备生成…</span>
                 </div>
             </div>
         )

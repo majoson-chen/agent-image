@@ -3,6 +3,21 @@ import 'server-only'
 
 interface UIMessagePart { type: string, [key: string]: unknown }
 
+function toolCallIdOf(part: UIMessagePart): string | undefined {
+    const id = (part as { toolCallId?: string }).toolCallId
+    return typeof id === 'string' ? id : undefined
+}
+
+/** 同一步内工具执行回写前，去掉同 toolCallId 的挂起 part，避免 approval-responded/input-available 与 output-available 重复 */
+function withoutPriorToolInvocation(parts: UIMessagePart[], toolCallId: string): UIMessagePart[] {
+    return parts.filter((p) => {
+        const t = p.type
+        if (typeof t === 'string' && t.startsWith('tool-') && toolCallIdOf(p) === toolCallId)
+            return false
+        return true
+    })
+}
+
 /** step.response.messages 中的 tool message 最小结构 */
 interface ToolResultMessage {
     role: 'tool'
@@ -62,6 +77,7 @@ export function appendStepToParts(
                 const errorText = errorEntry.error instanceof Error
                     ? errorEntry.error.message
                     : String(errorEntry.error)
+                next.splice(0, next.length, ...withoutPriorToolInvocation(next, part.toolCallId))
                 next.push({
                     type: `tool-${part.toolName}`,
                     state: 'output-error',
@@ -71,6 +87,7 @@ export function appendStepToParts(
                 })
             }
             else if (result) {
+                next.splice(0, next.length, ...withoutPriorToolInvocation(next, part.toolCallId))
                 next.push({
                     type: `tool-${part.toolName}`,
                     state: 'output-available',
@@ -80,12 +97,20 @@ export function appendStepToParts(
                 })
             }
             else {
-                // 无对应结果（不应发生于 onStepFinish），降级为 input-available
+                // 无对应结果：需审批的工具在同一步常先落到 input-available；从同 toolCallId 的较早 part 继承 approval，避免落库丢 id 后 HTTP 批永远无法匹配
+                const priorWithApproval = [...next].reverse().find((p) => {
+                    const t = (p as { type?: string }).type
+                    return typeof t === 'string'
+                        && t.startsWith('tool-')
+                        && toolCallIdOf(p as UIMessagePart) === part.toolCallId
+                        && (p as { approval?: unknown }).approval != null
+                }) as { approval?: unknown } | undefined
                 next.push({
                     type: `tool-${part.toolName}`,
                     state: 'input-available',
                     toolCallId: part.toolCallId,
                     input: part.input,
+                    ...(priorWithApproval?.approval != null ? { approval: priorWithApproval.approval } : {}),
                 })
             }
         }
@@ -97,9 +122,9 @@ export function appendStepToParts(
 
 /**
  * 从 step.response.messages 中找到 tool-result，回写到 runningParts 中
- * state 为 'input-available' 的对应 tool part（跨步骤 / 跨请求审批场景）。
+ * state 为 'input-available' 或已批准的 'approval-responded' 的对应 tool part（跨步骤 / 跨请求审批场景）。
  *
- * 仅修改 state 仍为 input-available 的 part，不覆盖已有结果。
+ * 仅修改上述挂起 part，不覆盖已有 output-*。
  */
 export function patchToolResultsFromResponseMessages(
     runningParts: UIMessagePart[],
@@ -133,8 +158,17 @@ export function patchToolResultsFromResponseMessages(
 
     return runningParts.map((part) => {
         const p = part as Record<string, unknown>
-        if (p.state !== 'input-available' || !p.toolCallId)
+        const st = p.state
+        const patchable
+            = (st === 'input-available' || st === 'approval-responded') && typeof p.toolCallId === 'string'
+        if (!patchable)
             return part
+
+        if (st === 'approval-responded') {
+            const ap = p.approval as { approved?: boolean } | undefined
+            if (ap?.approved !== true)
+                return part
+        }
 
         const result = resultByCallId.get(p.toolCallId as string)
         if (!result)

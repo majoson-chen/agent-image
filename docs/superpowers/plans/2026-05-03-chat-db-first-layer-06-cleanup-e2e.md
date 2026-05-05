@@ -23,7 +23,7 @@
 | Delete?     | [`lib/ai/conversation-history-merge.ts`](../../lib/ai/conversation-history-merge.ts)                    |
 | Modify      | [`tests/**`](../../tests) 中与 chat / Message / 旧 HTTP 契约相关的用例（**Task 2** 主导，可能删/改/增） |
 | Modify      | **canvases** 中 Message 字段表                                                                          |
-| 可选 Delete | [`app/api/chat/demo.ts`](../../app/api/chat/demo.ts)（若团队确认讨论稿可删）                            |
+| Done（已删） | ~~`app/api/chat/demo.ts`~~ 非规范讨论稿已从仓库移除                             |
 
 ---
 

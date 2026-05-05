@@ -42,6 +42,19 @@ describe('chatPostBodySchema', () => {
         }
     })
 
+    it('parses tool-approval with optional toolCallId on approvals', () => {
+        const raw = {
+            kind: 'tool-approval',
+            conversationId: 'c1',
+            assistantMessageId: 'a1',
+            approvals: [{ approvalId: 'ap1', approved: true, toolCallId: 'functions.image-generate-primary:0' }],
+        }
+        const r = chatPostBodySchema.safeParse(raw)
+        expect(r.success).toBe(true)
+        if (r.success && r.data.kind === 'tool-approval')
+            expect(r.data.approvals[0]?.toolCallId).toBe('functions.image-generate-primary:0')
+    })
+
     it('rejects tool-approval with empty approvals', () => {
         const r = chatPostBodySchema.safeParse({
             kind: 'tool-approval',

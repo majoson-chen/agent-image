@@ -22,11 +22,11 @@ export type NarrowChatPostBody
         kind: 'tool-approval'
         conversationId: string
         assistantMessageId: string
-        approvals: Array<{ approvalId: string, approved: boolean, reason?: string }>
+        approvals: Array<{ approvalId: string, approved: boolean, reason?: string, toolCallId?: string }>
     }
 
-export function collectApprovalsFromAssistantMessage(msg: UIMessage): Array<{ approvalId: string, approved: boolean, reason?: string }> {
-    const out: Array<{ approvalId: string, approved: boolean, reason?: string }> = []
+export function collectApprovalsFromAssistantMessage(msg: UIMessage): Array<{ approvalId: string, approved: boolean, reason?: string, toolCallId?: string }> {
+    const out: Array<{ approvalId: string, approved: boolean, reason?: string, toolCallId?: string }> = []
     for (const p of msg.parts) {
         if (typeof p !== 'object' || p === null)
             continue
@@ -36,7 +36,13 @@ export function collectApprovalsFromAssistantMessage(msg: UIMessage): Array<{ ap
         const ap = part.approval as { id?: string, approved?: boolean, reason?: string } | undefined
         if (ap?.id == null || typeof ap.approved !== 'boolean')
             continue
-        out.push({ approvalId: ap.id, approved: ap.approved, ...(ap.reason != null ? { reason: ap.reason } : {}) })
+        const toolCallId = typeof part.toolCallId === 'string' ? part.toolCallId : undefined
+        out.push({
+            approvalId: ap.id,
+            approved: ap.approved,
+            ...(ap.reason != null ? { reason: ap.reason } : {}),
+            ...(toolCallId != null ? { toolCallId } : {}),
+        })
     }
     return out
 }

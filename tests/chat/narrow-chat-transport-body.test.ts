@@ -52,7 +52,7 @@ describe('buildNarrowChatPostBody', () => {
         expect(body.kind).toBe('tool-approval')
         if (body.kind === 'tool-approval') {
             expect(body.assistantMessageId).toBe('as1')
-            expect(body.approvals).toEqual([{ approvalId: 'ap1', approved: true }])
+            expect(body.approvals).toEqual([{ approvalId: 'ap1', approved: true, toolCallId: 'tc1' }])
         }
         expect(chatPostBodySchema.safeParse(body).success).toBe(true)
     })

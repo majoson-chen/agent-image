@@ -13,6 +13,7 @@ const approvalItemSchema = z.object({
     approvalId: z.string().min(1),
     approved: z.boolean(),
     reason: z.string().optional(),
+    toolCallId: z.string().min(1).optional(),
 })
 
 /** SPEC §4.3 tool-approval */

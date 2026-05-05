@@ -10,6 +10,7 @@ import {
 } from '@lib/ai/image-fetch-vision-injection'
 import { interleaveImageFetchVisionForModel } from '@lib/ai/interleave-image-fetch-vision-for-model'
 import { hydrateApiImageFilePartsForModel } from '@lib/ai/normalize-user-image-parts'
+import { repairDanglingImageGenerateToolParts } from '@lib/ai/repair-dangling-image-generate-parts'
 import { appendStepToParts, patchToolResultsFromResponseMessages } from '@lib/ai/step-to-parts'
 import { buildSystemPrompt } from '@lib/ai/system-prompt'
 import { applyToolApprovalsToParts } from '@lib/ai/tool-approval-parts'
@@ -193,7 +194,9 @@ export async function handleChatPost(req: Request, deps: ChatPostDeps = {}) {
         },
     })
 
-    const uiMessagesForModel = await hydrateApiImageFilePartsForModel(db, conversationId, uiMessages)
+    const uiMessagesForModel = repairDanglingImageGenerateToolParts(
+        await hydrateApiImageFilePartsForModel(db, conversationId, uiMessages),
+    )
 
     return createAgentUIStreamResponse({
         agent,

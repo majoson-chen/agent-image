@@ -175,7 +175,6 @@
 - 当前校验：`lib/validation/chat-post-schema.ts`
 - 前端 Transport：`app/conversations/[id]/ChatPage.tsx`（`prepareSendMessagesRequest`）
 - AI SDK：`prepareSendMessagesRequest`（`node_modules/ai/docs/04-ai-sdk-ui/21-transport.mdx`）、`createUIMessageStream`（`07-reference/02-ai-sdk-ui/40-create-ui-message-stream.mdx`）
-- 讨论demo（非规范）：`app/api/chat/demo.ts`
 - SSR 映射：`lib/conversations/initial-messages.ts`
 - 当前 Prisma：`prisma/schema.prisma` · `model Message`
 

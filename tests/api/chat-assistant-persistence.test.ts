@@ -57,6 +57,41 @@ describe('patchToolResultsFromResponseMessages', () => {
         expect(toolPart.output?.imageId).toBe('img-001')
     })
 
+    it('cross-step: patches approval-responded (approved) part with output from response.messages', () => {
+        const runningParts = [
+            { type: 'step-start' },
+            {
+                type: 'tool-image-generate-primary',
+                state: 'approval-responded',
+                toolCallId: 'tc-ar-1',
+                input: { prompt: '一只猫' },
+                approval: { id: 'ap-x', approved: true },
+            },
+        ]
+
+        const responseMessages = [
+            {
+                role: 'tool' as const,
+                content: [
+                    {
+                        type: 'tool-result' as const,
+                        toolCallId: 'tc-ar-1',
+                        toolName: 'image-generate-primary',
+                        output: { type: 'json' as const, value: { imageId: 'img-ar', mimeType: 'image/png', sizeBytes: 1000 } },
+                    },
+                ],
+            },
+        ]
+
+        const patched = patchToolResultsFromResponseMessages(runningParts as never, responseMessages as never)
+        const toolPart = patched.find(p => (p as { type: string }).type === 'tool-image-generate-primary') as {
+            state: string
+            output?: { imageId?: string }
+        }
+        expect(toolPart.state).toBe('output-available')
+        expect(toolPart.output?.imageId).toBe('img-ar')
+    })
+
     it('does not patch output-available parts (idempotent)', () => {
         const runningParts = [
             {
@@ -136,6 +171,29 @@ describe('patchToolResultsFromResponseMessages', () => {
 })
 
 describe('appendStepToParts (same-step, existing behavior)', () => {
+    it('tool-call without result: input-available 继承同 toolCallId 上一条的 approval', () => {
+        const prev = [
+            { type: 'step-start' },
+            {
+                type: 'tool-image-generate-primary',
+                state: 'approval-requested',
+                toolCallId: 'tc-ap',
+                input: { prompt: 'cat' },
+                approval: { id: 'ap-99' },
+            },
+        ]
+        const step = {
+            content: [
+                { type: 'tool-call', toolCallId: 'tc-ap', toolName: 'image-generate-primary', input: { prompt: 'cat' } },
+            ],
+        }
+        const result = appendStepToParts(prev as never, step as never)
+        const toolPart = result.find(p => (p as { type: string }).type === 'tool-image-generate-primary' && (p as { state: string }).state === 'input-available') as {
+            approval?: { id: string }
+        }
+        expect(toolPart?.approval?.id).toBe('ap-99')
+    })
+
     it('tool-call + tool-result in same step → output-available (regression)', () => {
         const step = {
             content: [
