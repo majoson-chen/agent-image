@@ -3,13 +3,16 @@
     "type": "module",
     "private": true,
     "module": "index.ts",
+    "packageManager": ">=bun@1.2.3",
     "scripts": {
         "dev": "next dev",
         "build": "next build",
         "start": "next start",
         "lint": "eslint",
         "test": "vitest",
-        "lint:fix": "eslint --fix"
+        "lint:fix": "eslint --fix",
+        "db:generate": "prisma generate",
+        "prepare": "bun run db:generate"
     },
     "dependencies": {
         "@ai-sdk/alibaba": "^1.0.18",
