@@ -67,13 +67,16 @@ describe('appendStepToParts', () => {
         expect(result[0]!.type).toBe('step-start')
     })
 
-    it('non-text/tool content is ignored', () => {
+    it('preserves reasoning before text', () => {
         const step = makeStep([
             { type: 'reasoning', text: 'thinking...' },
             { type: 'text', text: 'Answer' },
         ])
         const result = appendStepToParts([], step)
-        const textParts = result.filter(p => p.type === 'text')
-        expect(textParts).toHaveLength(1)
+        expect(result).toEqual([
+            { type: 'step-start' },
+            { type: 'reasoning', text: 'thinking...' },
+            { type: 'text', text: 'Answer' },
+        ])
     })
 })

@@ -35,6 +35,7 @@ type ResponseMessageLike = ToolResultMessage | { role: string }
  * 把一个 StepResult 的 content 追加到 UIMessage parts 数组（纯函数）。
  * 转换规则：
  *   text content → { type: 'text', text }
+ *   reasoning content → { type: 'reasoning', text }
  *   tool-call + tool-result → { type: 'tool-{name}', state: 'output-available', ... }
  *   tool-call + tool-error → { type: 'tool-{name}', state: 'output-error', errorText }
  */
@@ -68,6 +69,11 @@ export function appendStepToParts(
     for (const part of content) {
         if (part.type === 'text' && part.text !== undefined) {
             next.push({ type: 'text', text: part.text })
+        }
+        else if (part.type === 'reasoning') {
+            const reasoningText = (part as { text?: string }).text
+            if (reasoningText !== undefined)
+                next.push({ type: 'reasoning', text: reasoningText })
         }
         else if (part.type === 'tool-call' && part.toolCallId && part.toolName) {
             const result = resultByCallId.get(part.toolCallId)
@@ -114,7 +120,7 @@ export function appendStepToParts(
                 })
             }
         }
-        // 其他 content 类型（reasoning、source 等）忽略
+        // 其他 content 类型（source 等）仍忽略
     }
 
     return next

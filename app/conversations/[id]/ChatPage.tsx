@@ -507,6 +507,23 @@ export function ChatPage({
                                                             </div>
                                                         )
                                                     }
+                                                    if (part.type === 'reasoning') {
+                                                        const reasoningText = typeof (part as { text?: string }).text === 'string'
+                                                            ? (part as { text: string }).text
+                                                            : ''
+                                                        return (
+                                                            <details key={i} className="rounded-box border border-base-300 bg-base-200">
+                                                                <summary className="cursor-pointer px-3 py-2 text-sm font-medium text-base-content/80">
+                                                                    推理过程（思维链）
+                                                                </summary>
+                                                                <div className="border-t border-base-300 px-3 py-2">
+                                                                    <div className="max-h-56 overflow-y-auto whitespace-pre-wrap break-words font-mono text-xs text-base-content/70">
+                                                                        {reasoningText || '（暂无文本）'}
+                                                                    </div>
+                                                                </div>
+                                                            </details>
+                                                        )
+                                                    }
                                                     if (part.type === 'step-start') {
                                                         return <hr key={i} className="border-base-300" />
                                                     }
