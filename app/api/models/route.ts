@@ -1,9 +1,7 @@
 import type { PrismaClient } from '~/generated/prisma/client'
-import { createImageModel, createLlmModel, createSearchModel, listModels } from '@lib/db/models'
+import { createModel, listModels } from '@lib/db/models'
 import prismaDefault from '@lib/prisma'
-import { imageModelInputSchema } from '@lib/validation/image-model-schema'
-import { llmModelInputSchema } from '@lib/validation/llm-model-schema'
-import { searchModelInputSchema } from '@lib/validation/search-model-schema'
+import { modelCreateBodySchema } from '@lib/validation/model-upsert-schema'
 import { NextResponse } from 'next/server'
 import { ZodError } from 'zod'
 
@@ -31,21 +29,9 @@ export async function handleModelsPost(req: Request, deps: ModelsRouteDeps = {})
         return NextResponse.json({ error: '无效 JSON' }, { status: 400 })
     }
 
-    const bodyType = (body as Record<string, unknown>)?.type
-
     try {
-        if (bodyType === 'SEARCH') {
-            const parsed = searchModelInputSchema.parse(body)
-            const model = await createSearchModel(db, parsed)
-            return NextResponse.json(model, { status: 201 })
-        }
-        if (bodyType === 'IMAGE') {
-            const parsed = imageModelInputSchema.parse(body)
-            const model = await createImageModel(db, parsed)
-            return NextResponse.json(model, { status: 201 })
-        }
-        const parsed = llmModelInputSchema.parse(body)
-        const model = await createLlmModel(db, parsed)
+        const parsed = modelCreateBodySchema.parse(body)
+        const model = await createModel(db, parsed)
         return NextResponse.json(model, { status: 201 })
     }
     catch (e) {

@@ -12,7 +12,7 @@ import type { LanguageModel } from 'ai'
 import type { PrismaClient } from '~/generated/prisma/client'
 import { createConversation } from '@lib/db/conversations'
 import { aggregateUsage, listMessages, upsertUserMessageParts } from '@lib/db/messages'
-import { createLlmModel } from '@lib/db/models'
+import { createModel } from '@lib/db/models'
 import { setSelection } from '@lib/db/selections'
 import { tool } from 'ai'
 import { convertArrayToReadableStream, MockLanguageModelV3 } from 'ai/test'
@@ -58,11 +58,11 @@ function textFromMessagePayload(msg: { payload: unknown }): string {
 }
 
 async function setupConversationWithLlm() {
-    const llmModel = await createLlmModel(prisma, {
+    const llmModel = await createModel(prisma, {
+        type: 'LLM',
         name: 'test-llm',
-        providerType: 'OPENAI',
-        apiKey: 'sk-test',
-        contextWindow: 4096,
+        registerId: 'openai/official',
+        config: { modelId: 'test-llm', apiKey: 'sk-test' },
     })
     const conv = await createConversation(prisma)
     await setSelection(prisma, conv.id, 'LLM', llmModel.id)
@@ -84,11 +84,11 @@ function makeRequest(body: unknown) {
 
 describe('pOST /api/chat', () => {
     it('new user turn after assistant uses fresh assistant row; DB order is chronological', async () => {
-        const llmModel = await createLlmModel(prisma, {
+        const llmModel = await createModel(prisma, {
+            type: 'LLM',
             name: 'test-llm-two-turn',
-            providerType: 'OPENAI',
-            apiKey: 'sk-test',
-            contextWindow: 4096,
+            registerId: 'openai/official',
+            config: { modelId: 'test-llm-two-turn', apiKey: 'sk-test' },
         })
         const conv = await createConversation(prisma)
         await setSelection(prisma, conv.id, 'LLM', llmModel.id)
@@ -139,11 +139,11 @@ describe('pOST /api/chat', () => {
     })
 
     it('persists user messages from POST body when messages provided', async () => {
-        const llmModel = await createLlmModel(prisma, {
+        const llmModel = await createModel(prisma, {
+            type: 'LLM',
             name: 'test-llm-body',
-            providerType: 'OPENAI',
-            apiKey: 'sk-test',
-            contextWindow: 4096,
+            registerId: 'openai/official',
+            config: { modelId: 'test-llm-body', apiKey: 'sk-test' },
         })
         const conv = await createConversation(prisma)
         await setSelection(prisma, conv.id, 'LLM', llmModel.id)

@@ -1,6 +1,6 @@
 import type { PrismaClient } from '~/generated/prisma/client'
 import { createConversation } from '@lib/db/conversations'
-import { createLlmModel } from '@lib/db/models'
+import { createModel } from '@lib/db/models'
 import { getAllSelections, getSelection, setSelection } from '@lib/db/selections'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { createTestDb } from '../helpers/db'
@@ -22,11 +22,11 @@ describe('getSelection', () => {
 
 describe('setSelection', () => {
     it('creates a new selection', async () => {
-        const model = await createLlmModel(prisma, {
+        const model = await createModel(prisma, {
+            type: 'LLM',
             name: 'sel-model',
-            providerType: 'OPENAI',
-            apiKey: 'sk-s',
-            contextWindow: 4000,
+            registerId: 'openai/official',
+            config: { modelId: 'sel-model', apiKey: 'sk-s' },
         })
         const conv = await createConversation(prisma)
         await setSelection(prisma, conv.id, 'LLM', model.id)
@@ -35,17 +35,17 @@ describe('setSelection', () => {
     })
 
     it('upserts when role already exists', async () => {
-        const m1 = await createLlmModel(prisma, {
+        const m1 = await createModel(prisma, {
+            type: 'LLM',
             name: 'upsert-a',
-            providerType: 'OPENAI',
-            apiKey: 'sk-u1',
-            contextWindow: 4000,
+            registerId: 'openai/official',
+            config: { modelId: 'upsert-a', apiKey: 'sk-u1' },
         })
-        const m2 = await createLlmModel(prisma, {
+        const m2 = await createModel(prisma, {
+            type: 'LLM',
             name: 'upsert-b',
-            providerType: 'OPENAI',
-            apiKey: 'sk-u2',
-            contextWindow: 4000,
+            registerId: 'openai/official',
+            config: { modelId: 'upsert-b', apiKey: 'sk-u2' },
         })
         const conv = await createConversation(prisma)
         await setSelection(prisma, conv.id, 'LLM', m1.id)
@@ -58,7 +58,16 @@ describe('setSelection', () => {
 describe('setSelection with params (M3)', () => {
     it('sets IMAGE_PRIMARY with size param', async () => {
         const model = await prisma.model.create({
-            data: { type: 'IMAGE', name: 'params-sel', providerType: 'VOLCENGINE_SEEDREAM', apiKey: 'k' },
+            data: {
+                type: 'IMAGE',
+                name: 'params-sel',
+                registerId: 'volcengine/seedream',
+                config: {
+                    requestModel: 'params-sel',
+                    apiKey: 'k',
+                    capabilities: { supportedSizes: ['2048x2048'], maxReferenceImages: 0, supportsSeed: false },
+                },
+            },
         })
         const conv = await createConversation(prisma)
         await setSelection(prisma, conv.id, 'IMAGE_PRIMARY', model.id, { size: '2048x2048' })
@@ -69,11 +78,11 @@ describe('setSelection with params (M3)', () => {
 
 describe('getAllSelections', () => {
     it('returns all three roles (some null)', async () => {
-        const model = await createLlmModel(prisma, {
+        const model = await createModel(prisma, {
+            type: 'LLM',
             name: 'all-sel',
-            providerType: 'OPENAI',
-            apiKey: 'sk-all',
-            contextWindow: 4000,
+            registerId: 'openai/official',
+            config: { modelId: 'all-sel', apiKey: 'sk-all' },
         })
         const conv = await createConversation(prisma)
         await setSelection(prisma, conv.id, 'LLM', model.id)

@@ -33,9 +33,11 @@ export function AddSearchModelForm() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 type: 'SEARCH',
-                providerType: 'BRAVE_SEARCH',
+                registerId: 'brave/search',
                 name: form.name.trim(),
-                apiKey: form.apiKey.trim(),
+                config: {
+                    apiKey: form.apiKey.trim(),
+                },
             }),
         })
 

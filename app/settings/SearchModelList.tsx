@@ -1,5 +1,6 @@
 import { listModels } from '@lib/db/models'
 import prisma from '@lib/prisma'
+import { getRegisterMetadata } from '@lib/providers/registry'
 import { AddSearchModelForm } from './AddSearchModelForm'
 import { SearchModelActions } from './SearchModelActions'
 
@@ -18,7 +19,8 @@ export async function SearchModelList() {
                         <div className="min-w-0">
                             <p className="truncate font-medium text-base-content">{m.name}</p>
                             <p className="mt-0.5 text-xs text-base-content/50">
-                                Brave Search · Token: ****
+                                {getRegisterMetadata(m.registerId)?.title ?? m.registerId}
+                                {' · Token: ****'}
                             </p>
                         </div>
                         <SearchModelActions id={m.id} />

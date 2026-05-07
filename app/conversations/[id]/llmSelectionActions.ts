@@ -22,7 +22,7 @@ export async function setLlmSelectionAction(
         throw new Error('指定的模型不是 LLM')
 
     const toWrite
-        = llmSupportsThinking(model.capabilities) && opts?.thinkingEnabled === true
+        = llmSupportsThinking(model.config) && opts?.thinkingEnabled === true
             ? { thinkingEnabled: true as const }
             : null
 

@@ -2,7 +2,7 @@
  * U2 — SearchToolBinding CRUD 测试（test-first）
  */
 import type { PrismaClient } from '~/generated/prisma/client'
-import { createSearchModel } from '@lib/db/models'
+import { createModel } from '@lib/db/models'
 import {
     clearBinding,
     getAllBindings,
@@ -21,11 +21,11 @@ beforeAll(async () => {
 afterAll(() => cleanup())
 
 async function makeBraveModel(name = 'Brave') {
-    return createSearchModel(prisma, {
+    return createModel(prisma, {
         type: 'SEARCH',
-        providerType: 'BRAVE_SEARCH',
         name,
-        apiKey: 'BSA-test',
+        registerId: 'brave/search',
+        config: { apiKey: 'BSA-test' },
     })
 }
 

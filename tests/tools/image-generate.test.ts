@@ -22,8 +22,7 @@ vi.mock('../../lib/image-provider-factory', () => ({
 function makeModel(overrides: Partial<{
     id: string
     name: string
-    apiKey: string
-    providerType: string
+    registerId: string
     maxReferenceImages: number
 }> = {}) {
     const maxRefs = overrides.maxReferenceImages ?? 4
@@ -31,15 +30,15 @@ function makeModel(overrides: Partial<{
         id: overrides.id ?? 'model-1',
         type: 'IMAGE' as const,
         name: overrides.name ?? 'doubao-seedream-4-5-251128',
-        providerType: (overrides.providerType ?? 'VOLCENGINE_SEEDREAM') as 'VOLCENGINE_SEEDREAM' | 'DASHSCOPE_WAN_IMAGE',
-        apiKey: overrides.apiKey ?? 'test-key',
-        baseURL: null,
-        contextWindow: null,
-        extraHeaders: null,
-        capabilities: {
-            supportedSizes: ['1024x1024', '2048x2048'],
-            maxReferenceImages: maxRefs,
-            supportsSeed: false,
+        registerId: overrides.registerId ?? 'volcengine/seedream',
+        config: {
+            requestModel: overrides.name ?? 'doubao-seedream-4-5-251128',
+            apiKey: 'test-key',
+            capabilities: {
+                supportedSizes: ['1024x1024', '2048x2048'],
+                maxReferenceImages: maxRefs,
+                supportsSeed: false,
+            },
         },
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -145,7 +144,7 @@ describe('createImageGenerateTool - execute', () => {
         expect(result).toMatchObject({ imageId: 'img-001' })
     })
 
-    it('propagates error from executeImageGeneration', async () => {
+    it('returns structured error from executeImageGeneration', async () => {
         const mod = await import('../../lib/image-provider-factory')
         ;(mod.executeImageGeneration as MockedFunction<typeof ExecuteImageGenerationFn>).mockRejectedValueOnce(new Error('Seedream 503'))
 
@@ -158,6 +157,10 @@ describe('createImageGenerateTool - execute', () => {
 
         await expect(
             tool.execute!({ prompt: 'test' }, { abortSignal: new AbortController().signal } as Parameters<NonNullable<typeof tool.execute>>[1]),
-        ).rejects.toThrow('Seedream 503')
+        ).resolves.toMatchObject({
+            ok: false,
+            code: 'IMAGE_GEN_FAILED',
+            message: 'Seedream 503',
+        })
     })
 })

@@ -1,9 +1,12 @@
-import type { ImageModelCapabilities } from '@lib/validation/image-model-schema'
+import type { BraveSearchConfig } from '@lib/providers/registers/brave-search'
+import type { DashscopeWanImageConfig } from '@lib/providers/registers/dashscope-wan-image'
+import type { VolcengineSeedreamConfig } from '@lib/providers/registers/volcengine-seedream'
 import type { ToolSet } from 'ai'
-import type { PrismaClient } from '~/generated/prisma/client'
+import type { Model, PrismaClient } from '~/generated/prisma/client'
 import { getModel } from '@lib/db/models'
 import { getAllBindings } from '@lib/db/search-tool-bindings'
 import { getSelection } from '@lib/db/selections'
+import { parseModelConfig } from '@lib/providers/registry'
 import { createConversationRenameTool } from './conversation-rename'
 import { createImageFetchTool } from './image-fetch'
 import { createImageGenerateTool } from './image-generate'
@@ -18,6 +21,21 @@ interface AvailableTools {
     descriptors: string[]
 }
 
+type ImageRegisterConfig = DashscopeWanImageConfig | VolcengineSeedreamConfig
+
+function getBraveApiKey(model: Model): string {
+    const config = parseModelConfig('brave/search', model.config) as BraveSearchConfig
+    return config.apiKey
+}
+
+function getImageRegisterConfig(model: Model): ImageRegisterConfig | null {
+    if (model.type !== 'IMAGE')
+        return null
+    if (model.registerId !== 'volcengine/seedream' && model.registerId !== 'dashscope/wan-image')
+        return null
+    return parseModelConfig(model.registerId, model.config) as ImageRegisterConfig
+}
+
 export async function buildAvailableTools(prisma: PrismaClient, conversationId: string): Promise<AvailableTools> {
     const bindings = await getAllBindings(prisma)
     const tools = {} as ToolSet
@@ -28,14 +46,14 @@ export async function buildAvailableTools(prisma: PrismaClient, conversationId: 
         const model = await getModel(prisma, bindings.WEB_SEARCH)
         if (!model)
             throw new Error(`Search model not found: ${bindings.WEB_SEARCH}`)
-        tools['web-search'] = createWebSearchTool(model.apiKey)
+        tools['web-search'] = createWebSearchTool(getBraveApiKey(model))
     }
 
     if (bindings.IMAGE_SEARCH) {
         const model = await getModel(prisma, bindings.IMAGE_SEARCH)
         if (!model)
             throw new Error(`Search model not found: ${bindings.IMAGE_SEARCH}`)
-        tools['image-search'] = createImageSearchTool(model.apiKey)
+        tools['image-search'] = createImageSearchTool(getBraveApiKey(model))
     }
 
     // web-fetch / image-fetch 始终可用，无绑定语义
@@ -46,12 +64,12 @@ export async function buildAvailableTools(prisma: PrismaClient, conversationId: 
     const primarySel = await getSelection(prisma, conversationId, 'IMAGE_PRIMARY')
     if (primarySel) {
         const model = await getModel(prisma, primarySel.modelId)
-        if (model && model.capabilities) {
-            const caps = model.capabilities as ImageModelCapabilities
-            const defaultSize = caps.supportedSizes[0] ?? '1024x1024'
+        const config = model ? getImageRegisterConfig(model) : null
+        if (model && config) {
+            const defaultSize = config.capabilities.supportedSizes[0] ?? '1024x1024'
             const selParams = primarySel.params as { size?: string } | null
             tools['image-generate-primary'] = createImageGenerateTool({
-                model: model as Parameters<typeof createImageGenerateTool>[0]['model'],
+                model,
                 params: { size: selParams?.size ?? defaultSize },
                 role: 'PRIMARY',
                 conversationId,
@@ -62,12 +80,12 @@ export async function buildAvailableTools(prisma: PrismaClient, conversationId: 
     const secondarySel = await getSelection(prisma, conversationId, 'IMAGE_SECONDARY')
     if (secondarySel) {
         const model = await getModel(prisma, secondarySel.modelId)
-        if (model && model.capabilities) {
-            const caps = model.capabilities as ImageModelCapabilities
-            const defaultSize = caps.supportedSizes[0] ?? '1024x1024'
+        const config = model ? getImageRegisterConfig(model) : null
+        if (model && config) {
+            const defaultSize = config.capabilities.supportedSizes[0] ?? '1024x1024'
             const selParams = secondarySel.params as { size?: string } | null
             tools['image-generate-secondary'] = createImageGenerateTool({
-                model: model as Parameters<typeof createImageGenerateTool>[0]['model'],
+                model,
                 params: { size: selParams?.size ?? defaultSize },
                 role: 'SECONDARY',
                 conversationId,

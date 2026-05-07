@@ -5,32 +5,30 @@ import { Plus } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 
-type ProviderType = 'OPENAI' | 'OPENAI_COMPATIBLE' | 'ALIBABA'
+type LlmRegisterId = 'openai/official' | 'openai-compatible/generic' | 'alibaba/dashscope-llm'
 
-function llmModelNamePlaceholder(p: ProviderType): string {
-    if (p === 'ALIBABA')
+function llmModelNamePlaceholder(registerId: LlmRegisterId): string {
+    if (registerId === 'alibaba/dashscope-llm')
         return '如 qwen-plus'
-    if (p === 'OPENAI_COMPATIBLE')
+    if (registerId === 'openai-compatible/generic')
         return '如 moonshot-v1-8k'
     return '如 gpt-4o'
 }
 
 interface FormState {
     name: string
-    providerType: ProviderType
+    registerId: LlmRegisterId
     baseURL: string
     apiKey: string
-    contextWindow: string
     /** 阿里云百炼专用：勾选后写入 capabilities.supportsThinking */
     supportsThinking: boolean
 }
 
 const initialState: FormState = {
     name: '',
-    providerType: 'OPENAI',
+    registerId: 'openai/official',
     baseURL: '',
     apiKey: '',
-    contextWindow: '128000',
     supportsThinking: false,
 }
 
@@ -51,21 +49,25 @@ export function AddLlmModelForm() {
         setLoading(true)
 
         const payload: Record<string, unknown> = {
+            type: 'LLM',
             name: form.name.trim(),
-            providerType: form.providerType,
-            apiKey: form.apiKey.trim(),
-            contextWindow: Number(form.contextWindow),
+            registerId: form.registerId,
+            config: {
+                modelId: form.name.trim(),
+                apiKey: form.apiKey.trim(),
+            },
         }
-        if (form.providerType === 'OPENAI_COMPATIBLE') {
-            payload.baseURL = form.baseURL.trim()
+        const config = payload.config as Record<string, unknown>
+        if (form.registerId === 'openai-compatible/generic') {
+            config.baseURL = form.baseURL.trim()
         }
-        else if (form.providerType === 'ALIBABA') {
+        else if (form.registerId === 'alibaba/dashscope-llm') {
             const b = form.baseURL.trim()
             if (b) {
-                payload.baseURL = b
+                config.baseURL = b
             }
             if (form.supportsThinking) {
-                payload.capabilities = { supportsThinking: true }
+                config.capabilities = { supportsThinking: true }
             }
         }
 
@@ -120,7 +122,7 @@ export function AddLlmModelForm() {
                     <legend className="fieldset-legend">模型名称</legend>
                     <input
                         className="input input-bordered w-full"
-                        placeholder={llmModelNamePlaceholder(form.providerType)}
+                        placeholder={llmModelNamePlaceholder(form.registerId)}
                         value={form.name}
                         onChange={e => set('name', e.target.value)}
                         required
@@ -128,35 +130,35 @@ export function AddLlmModelForm() {
                 </fieldset>
 
                 <fieldset className="fieldset">
-                    <legend className="fieldset-legend">Provider 类型</legend>
+                    <legend className="fieldset-legend">Register</legend>
                     <select
                         className="select select-bordered w-full"
-                        value={form.providerType}
-                        onChange={e => set('providerType', e.target.value as ProviderType)}
+                        value={form.registerId}
+                        onChange={e => set('registerId', e.target.value as LlmRegisterId)}
                     >
-                        <option value="OPENAI">OpenAI</option>
-                        <option value="OPENAI_COMPATIBLE">OpenAI Compatible</option>
-                        <option value="ALIBABA">阿里云百炼（DashScope）</option>
+                        <option value="openai/official">OpenAI 官方</option>
+                        <option value="openai-compatible/generic">OpenAI 兼容（通用）</option>
+                        <option value="alibaba/dashscope-llm">阿里云百炼（DashScope）</option>
                     </select>
                 </fieldset>
 
-                {(form.providerType === 'OPENAI_COMPATIBLE' || form.providerType === 'ALIBABA') && (
+                {(form.registerId === 'openai-compatible/generic' || form.registerId === 'alibaba/dashscope-llm') && (
                     <fieldset className="fieldset">
                         <legend className="fieldset-legend">
-                            {form.providerType === 'ALIBABA' ? 'Base URL（可选）' : 'Base URL'}
+                            {form.registerId === 'alibaba/dashscope-llm' ? 'Base URL（可选）' : 'Base URL'}
                         </legend>
                         <input
                             className="input input-bordered w-full font-mono text-sm"
                             placeholder={
-                                form.providerType === 'ALIBABA'
+                                form.registerId === 'alibaba/dashscope-llm'
                                     ? '留空使用 SDK 默认（国际兼容端点）'
                                     : 'https://api.example.com/v1'
                             }
                             value={form.baseURL}
                             onChange={e => set('baseURL', e.target.value)}
-                            required={form.providerType === 'OPENAI_COMPATIBLE'}
+                            required={form.registerId === 'openai-compatible/generic'}
                         />
-                        {form.providerType === 'ALIBABA' && (
+                        {form.registerId === 'alibaba/dashscope-llm' && (
                             <p className="mt-1 text-xs text-base-content/60">
                                 中国内地可填 https://dashscope.aliyuncs.com/compatible-mode/v1
                             </p>
@@ -164,7 +166,7 @@ export function AddLlmModelForm() {
                     </fieldset>
                 )}
 
-                {form.providerType === 'ALIBABA' && (
+                {form.registerId === 'alibaba/dashscope-llm' && (
                     <label className="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-base-300 bg-base-200/40 px-3 py-2">
                         <span className="text-sm text-base-content">模型支持思考模式</span>
                         <input
@@ -188,18 +190,6 @@ export function AddLlmModelForm() {
                     />
                 </fieldset>
 
-                <fieldset className="fieldset">
-                    <legend className="fieldset-legend">Context Window（tokens）</legend>
-                    <input
-                        type="number"
-                        className="input input-bordered w-full"
-                        placeholder="128000"
-                        min={1}
-                        value={form.contextWindow}
-                        onChange={e => set('contextWindow', e.target.value)}
-                        required
-                    />
-                </fieldset>
             </div>
 
             <div className="mt-4 flex gap-2">

@@ -1,7 +1,14 @@
 import { listModels } from '@lib/db/models'
 import prisma from '@lib/prisma'
+import { getRegisterMetadata } from '@lib/providers/registry'
 import { AddLlmModelForm } from './AddLlmModelForm'
 import { LlmModelActions } from './LlmModelActions'
+
+function configRecord(config: unknown): Record<string, unknown> {
+    return config != null && typeof config === 'object' && !Array.isArray(config)
+        ? config as Record<string, unknown>
+        : {}
+}
 
 export async function LlmModelList() {
     const models = await listModels(prisma, 'LLM')
@@ -18,11 +25,9 @@ export async function LlmModelList() {
                         <div className="min-w-0">
                             <p className="truncate font-medium text-base-content">{m.name}</p>
                             <p className="mt-0.5 text-xs text-base-content/50">
-                                {m.providerType}
-                                {m.baseURL ? ` · ${m.baseURL}` : ''}
-                                {' · '}
-                                {((m.contextWindow ?? 0) / 1000).toFixed(0)}
-                                k ctx
+                                {getRegisterMetadata(m.registerId)?.title ?? m.registerId}
+                                {typeof configRecord(m.config).modelId === 'string' ? ` · ${configRecord(m.config).modelId}` : ''}
+                                {typeof configRecord(m.config).baseURL === 'string' ? ` · ${configRecord(m.config).baseURL}` : ''}
                             </p>
                         </div>
                         <LlmModelActions id={m.id} />

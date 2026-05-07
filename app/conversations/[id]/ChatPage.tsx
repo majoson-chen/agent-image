@@ -43,14 +43,14 @@ interface ToolPart {
 interface ImageGeneratePart {
     type: string // 'tool-image-generate-primary' | 'tool-image-generate-secondary'
     state:
-    | 'input-streaming'
-    | 'input-available'
-    | 'approval-requested'
-    | 'approval-responded'
-    | 'executing'
-    | 'output-available'
-    | 'output-error'
-    | 'output-denied'
+        | 'input-streaming'
+        | 'input-available'
+        | 'approval-requested'
+        | 'approval-responded'
+        | 'executing'
+        | 'output-available'
+        | 'output-error'
+        | 'output-denied'
     toolCallId?: string
     input?: { prompt?: string }
     output?: { imageId?: string, imageIds?: string[] }
@@ -220,7 +220,7 @@ interface ImageModelInfo {
 interface LlmModelInfo {
     id: string
     name: string
-    capabilities: unknown
+    config: unknown
 }
 
 interface Props {
@@ -421,8 +421,8 @@ export function ChatPage({
             <div className="min-h-0 flex-1 overflow-y-auto px-4 py-6">
                 <div className="mx-auto flex max-w-2xl flex-col gap-4">
                     {messages
-                        .filter((m) => !(m.role === 'user' && isImageFetchVisionPersistParts(m.parts)))
-                        .map((m) => (
+                        .filter(m => !(m.role === 'user' && isImageFetchVisionPersistParts(m.parts)))
+                        .map(m => (
                             <div key={m.id} className={cn(m.role === 'user' ? 'flex justify-end' : 'flex flex-col gap-2')}>
                                 {m.role === 'user'
                                     ? (

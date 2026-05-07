@@ -1,15 +1,14 @@
 import type { ImageModelCapabilities } from '@lib/validation/image-model-schema'
 import { listModels } from '@lib/db/models'
 import prisma from '@lib/prisma'
+import { getRegisterMetadata } from '@lib/providers/registry'
 import { AddImageModelForm } from './AddImageModelForm'
 import { ImageModelActions } from './ImageModelActions'
 
-function imageProviderLabel(providerType: string): string {
-    if (providerType === 'DASHSCOPE_WAN_IMAGE')
-        return '阿里云百炼 · 万相图像（DashScope）'
-    if (providerType === 'VOLCENGINE_SEEDREAM')
-        return '火山方舟 Seedream'
-    return providerType
+function configRecord(config: unknown): Record<string, unknown> {
+    return config != null && typeof config === 'object' && !Array.isArray(config)
+        ? config as Record<string, unknown>
+        : {}
 }
 
 export async function ImageModelList() {
@@ -24,8 +23,9 @@ export async function ImageModelList() {
             )}
 
             {models.map((m) => {
-                const cap = m.capabilities as ImageModelCapabilities | null
-                const vendor = imageProviderLabel(m.providerType)
+                const config = configRecord(m.config)
+                const cap = config.capabilities as ImageModelCapabilities | undefined
+                const vendor = getRegisterMetadata(m.registerId)?.title ?? m.registerId
                 return (
                     <div key={m.id} className="rounded-box border border-base-300 bg-base-200 p-4">
                         <div className="flex items-start justify-between gap-2">
@@ -33,7 +33,8 @@ export async function ImageModelList() {
                                 <p className="truncate font-medium text-base-content font-mono text-sm">{m.name}</p>
                                 <p className="mt-0.5 text-xs text-base-content/50">
                                     {vendor}
-                                    {m.baseURL ? ` · ${m.baseURL}` : ''}
+                                    {typeof config.requestModel === 'string' ? ` · ${config.requestModel}` : ''}
+                                    {typeof config.baseURL === 'string' ? ` · ${config.baseURL}` : ''}
                                     {cap && (
                                         <>
                                             {' · 分辨率：'}

@@ -1,11 +1,12 @@
-import type { ImageModelInput } from '@lib/validation/image-model-schema'
-import type { LlmModelInput } from '@lib/validation/llm-model-schema'
-import type { SearchModelInput } from '@lib/validation/search-model-schema'
-import type { ModelType, PrismaClient } from '~/generated/prisma/client'
-import { imageModelInputSchema } from '@lib/validation/image-model-schema'
-import { llmModelInputSchema } from '@lib/validation/llm-model-schema'
-import { searchModelInputSchema } from '@lib/validation/search-model-schema'
-import { Prisma } from '~/generated/prisma/client'
+import type { ModelCreateBody, ModelPatchBody } from '@lib/validation/model-upsert-schema'
+import type { Model, ModelType, Prisma, PrismaClient } from '~/generated/prisma/client'
+import { getRegisterMetadata, parseModelConfig } from '@lib/providers/registry'
+import {
+
+    modelCreateBodySchema,
+
+    modelPatchBodySchema,
+} from '@lib/validation/model-upsert-schema'
 
 export async function listModels(prisma: PrismaClient, type?: ModelType) {
     return prisma.model.findMany({
@@ -18,96 +19,65 @@ export async function getModel(prisma: PrismaClient, id: string) {
     return prisma.model.findUnique({ where: { id } })
 }
 
-export async function createLlmModel(prisma: PrismaClient, input: LlmModelInput) {
-    const parsed = llmModelInputSchema.parse(input)
-    return prisma.model.create({
-        data: {
-            type: 'LLM',
-            name: parsed.name,
-            providerType: parsed.providerType,
-            baseURL: parsed.baseURL ?? null,
-            apiKey: parsed.apiKey,
-            contextWindow: parsed.contextWindow,
-            ...(parsed.extraHeaders != null && {
-                extraHeaders: parsed.extraHeaders as Prisma.InputJsonValue,
-            }),
-            ...(parsed.capabilities != null && {
-                capabilities: parsed.capabilities as Prisma.InputJsonValue,
-            }),
-        },
-    })
-}
-
-export async function updateLlmModel(
-    prisma: PrismaClient,
-    id: string,
-    patch: Partial<LlmModelInput>,
-) {
-    // 只更新显式传入的字段
-    return prisma.model.update({
-        where: { id },
-        data: {
-            ...(patch.name !== undefined && { name: patch.name }),
-            ...(patch.providerType !== undefined && { providerType: patch.providerType }),
-            ...(patch.baseURL !== undefined && { baseURL: patch.baseURL }),
-            ...(patch.apiKey !== undefined && { apiKey: patch.apiKey }),
-            ...(patch.contextWindow !== undefined && { contextWindow: patch.contextWindow }),
-            ...(patch.extraHeaders !== undefined && {
-                extraHeaders:
-                    patch.extraHeaders === null
-                        ? Prisma.JsonNull
-                        : (patch.extraHeaders as Prisma.InputJsonValue),
-            }),
-            ...(patch.capabilities !== undefined && {
-                capabilities:
-                    patch.capabilities === null
-                        ? Prisma.JsonNull
-                        : (patch.capabilities as Prisma.InputJsonValue),
-            }),
-        },
-    })
-}
-
 export async function deleteModel(prisma: PrismaClient, id: string) {
     return prisma.model.delete({ where: { id } })
 }
 
-export async function createSearchModel(prisma: PrismaClient, input: SearchModelInput) {
-    const parsed = searchModelInputSchema.parse(input)
+function assertRegisterMatchesType(body: Pick<ModelCreateBody, 'registerId' | 'type'>) {
+    const metadata = getRegisterMetadata(body.registerId)
+    if (!metadata || metadata.modelType !== body.type)
+        throw new Error('registerId 与 type 不匹配')
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return value != null && typeof value === 'object' && !Array.isArray(value)
+}
+
+function mergeConfig(existing: Model['config'], patch: ModelPatchBody['config']): unknown {
+    if (patch === undefined)
+        return existing
+    if (isRecord(existing) && isRecord(patch))
+        return { ...existing, ...patch }
+    return patch
+}
+
+export async function createModel(prisma: PrismaClient, raw: unknown) {
+    const body = modelCreateBodySchema.parse(raw)
+    assertRegisterMatchesType(body)
+    const config = parseModelConfig(body.registerId, body.config)
+
     return prisma.model.create({
         data: {
-            type: 'SEARCH',
-            name: parsed.name,
-            providerType: parsed.providerType,
-            apiKey: parsed.apiKey,
+            type: body.type,
+            registerId: body.registerId,
+            name: body.name,
+            config: config as Prisma.InputJsonValue,
         },
     })
 }
 
-export async function createImageModel(prisma: PrismaClient, input: ImageModelInput) {
-    const parsed = imageModelInputSchema.parse(input)
-    return prisma.model.create({
-        data: {
-            type: 'IMAGE',
-            name: parsed.name,
-            providerType: parsed.providerType,
-            baseURL: parsed.baseURL ?? null,
-            apiKey: parsed.apiKey,
-            capabilities: parsed.capabilities as unknown as object,
-        },
-    })
-}
-
-export async function updateSearchModel(
+export async function updateModel(
     prisma: PrismaClient,
     id: string,
-    patch: Partial<Pick<SearchModelInput, 'name' | 'apiKey'>>,
+    raw: unknown,
 ) {
+    const patch = modelPatchBodySchema.parse(raw)
+    const existing = await getModel(prisma, id)
+    if (!existing)
+        return null
+
+    const registerId = patch.registerId ?? existing.registerId
+    const body = { type: existing.type, registerId }
+    assertRegisterMatchesType(body)
+
+    const config = parseModelConfig(registerId, mergeConfig(existing.config, patch.config))
+
     return prisma.model.update({
         where: { id },
         data: {
             ...(patch.name !== undefined && { name: patch.name }),
-            ...(patch.apiKey !== undefined && { apiKey: patch.apiKey }),
+            ...(patch.registerId !== undefined && { registerId }),
+            config: config as Prisma.InputJsonValue,
         },
     })
 }

@@ -13,7 +13,7 @@ import {
     upsertAssistantMessage,
     upsertUserMessageParts,
 } from '@lib/db/messages'
-import { createLlmModel } from '@lib/db/models'
+import { createModel } from '@lib/db/models'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { createTestDb } from '../helpers/db'
 
@@ -26,11 +26,11 @@ beforeAll(async () => {
 afterAll(() => cleanup())
 
 async function makeConv() {
-    const model = await createLlmModel(prisma, {
+    const model = await createModel(prisma, {
+        type: 'LLM',
         name: 'test-llm',
-        providerType: 'OPENAI',
-        apiKey: 'sk-test',
-        contextWindow: 4096,
+        registerId: 'openai/official',
+        config: { modelId: 'test-llm', apiKey: 'sk-test' },
     })
     const conv = await createConversation(prisma)
     return { conv, modelId: model.id }
@@ -192,11 +192,11 @@ describe('upsertUserMessageParts', () => {
 
 describe('upsertAssistantMessage guards', () => {
     it('conversationId 与已存在行不一致抛 MessageConversationMismatchError', async () => {
-        const model = await createLlmModel(prisma, {
+        const model = await createModel(prisma, {
+            type: 'LLM',
             name: 'test-llm-asst-guard',
-            providerType: 'OPENAI',
-            apiKey: 'sk-test',
-            contextWindow: 4096,
+            registerId: 'openai/official',
+            config: { modelId: 'test-llm-asst-guard', apiKey: 'sk-test' },
         })
         const conv1 = await createConversation(prisma)
         const conv2 = await createConversation(prisma)

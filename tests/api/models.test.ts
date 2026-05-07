@@ -35,10 +35,10 @@ describe('gET /api/models', () => {
 describe('pOST /api/models', () => {
     it('creates a model and returns 201', async () => {
         const res = await handleModelsPost(makeRequest('POST', {
+            type: 'LLM',
             name: 'gpt-4o',
-            providerType: 'OPENAI',
-            apiKey: 'sk-x',
-            contextWindow: 128000,
+            registerId: 'openai/official',
+            config: { modelId: 'gpt-4o', apiKey: 'sk-x' },
         }), { prisma })
         expect(res.status).toBe(201)
         const body = await res.json()
@@ -47,94 +47,98 @@ describe('pOST /api/models', () => {
 
     it('returns 422 on validation failure', async () => {
         const res = await handleModelsPost(makeRequest('POST', {
+            type: 'LLM',
             name: '',
-            providerType: 'OPENAI',
-            apiKey: '',
-            contextWindow: 0,
+            registerId: 'openai/official',
+            config: { modelId: 'gpt-4o', apiKey: '' },
         }), { prisma })
         expect(res.status).toBe(422)
     })
 
     it('returns 422 when OPENAI_COMPATIBLE missing baseURL', async () => {
         const res = await handleModelsPost(makeRequest('POST', {
+            type: 'LLM',
             name: 'x',
-            providerType: 'OPENAI_COMPATIBLE',
-            apiKey: 'sk-x',
-            contextWindow: 4096,
+            registerId: 'openai-compatible/generic',
+            config: { modelId: 'x', apiKey: 'sk-x' },
         }), { prisma })
         expect(res.status).toBe(422)
     })
 
     it('creates ALIBABA LLM without baseURL and returns 201', async () => {
         const res = await handleModelsPost(makeRequest('POST', {
+            type: 'LLM',
             name: 'qwen-plus',
-            providerType: 'ALIBABA',
-            apiKey: 'sk-dash',
-            contextWindow: 128000,
+            registerId: 'alibaba/dashscope-llm',
+            config: { modelId: 'qwen-plus', apiKey: 'sk-dash' },
         }), { prisma })
         expect(res.status).toBe(201)
         const body = await res.json()
         expect(body.name).toBe('qwen-plus')
-        expect(body.providerType).toBe('ALIBABA')
-        expect(body.baseURL).toBeNull()
+        expect(body.registerId).toBe('alibaba/dashscope-llm')
     })
 
     it('creates ALIBABA LLM with supportsThinking capability when provided', async () => {
         const res = await handleModelsPost(makeRequest('POST', {
+            type: 'LLM',
             name: 'qwen-thinking',
-            providerType: 'ALIBABA',
-            apiKey: 'sk-dash',
-            contextWindow: 128000,
-            capabilities: { supportsThinking: true },
+            registerId: 'alibaba/dashscope-llm',
+            config: { modelId: 'qwen-thinking', apiKey: 'sk-dash', capabilities: { supportsThinking: true } },
         }), { prisma })
         expect(res.status).toBe(201)
         const body = await res.json()
-        expect(body.capabilities).toEqual({ supportsThinking: true })
+        expect(body.config).toMatchObject({ capabilities: { supportsThinking: true } })
     })
 
     it('creates IMAGE Seedream model with optional baseURL', async () => {
         const res = await handleModelsPost(makeRequest('POST', {
             type: 'IMAGE',
             name: 'doubao-seedream-4-5-251128',
-            providerType: 'VOLCENGINE_SEEDREAM',
-            apiKey: 'ark-x',
-            baseURL: 'https://ark.cn-beijing.volces.com/api/v3/images/generations',
-            capabilities: {
-                supportedSizes: ['1024x1024'],
-                maxReferenceImages: 14,
-                supportsSeed: false,
+            registerId: 'volcengine/seedream',
+            config: {
+                requestModel: 'doubao-seedream-4-5-251128',
+                apiKey: 'ark-x',
+                baseURL: 'https://ark.cn-beijing.volces.com/api/v3/images/generations',
+                capabilities: {
+                    supportedSizes: ['1024x1024'],
+                    maxReferenceImages: 14,
+                    supportsSeed: false,
+                },
             },
         }), { prisma })
         expect(res.status).toBe(201)
         const body = await res.json()
-        expect(body.baseURL).toBe('https://ark.cn-beijing.volces.com/api/v3/images/generations')
+        expect(body.config).toMatchObject({ baseURL: 'https://ark.cn-beijing.volces.com/api/v3/images/generations' })
     })
 
     it('creates IMAGE Wan model with DashScope provider', async () => {
         const res = await handleModelsPost(makeRequest('POST', {
             type: 'IMAGE',
             name: 'wan2.7-image-pro',
-            providerType: 'DASHSCOPE_WAN_IMAGE',
-            apiKey: 'sk-dash',
-            capabilities: {
-                supportedSizes: ['2048x2048'],
-                maxReferenceImages: 4,
-                supportsSeed: true,
+            registerId: 'dashscope/wan-image',
+            config: {
+                requestModel: 'wan2.7-image-pro',
+                apiKey: 'sk-dash',
+                capabilities: {
+                    supportedSizes: ['2048x2048'],
+                    maxReferenceImages: 4,
+                    supportsSeed: true,
+                },
             },
         }), { prisma })
         expect(res.status).toBe(201)
         const body = await res.json()
-        expect(body.providerType).toBe('DASHSCOPE_WAN_IMAGE')
+        expect(body.registerId).toBe('dashscope/wan-image')
     })
 })
 
 describe('dELETE /api/models/[id]', () => {
     it('deletes and returns 204', async () => {
         const createRes = await handleModelsPost(makeRequest('POST', {
+            type: 'LLM',
             name: 'del-test',
-            providerType: 'OPENAI',
-            apiKey: 'sk-d',
-            contextWindow: 1000,
+            registerId: 'openai/official',
+            config: { modelId: 'del-test', apiKey: 'sk-d' },
         }), { prisma })
         const { id } = await createRes.json()
 
@@ -151,10 +155,10 @@ describe('dELETE /api/models/[id]', () => {
 describe('pATCH /api/models/[id]', () => {
     it('updates model fields', async () => {
         const createRes = await handleModelsPost(makeRequest('POST', {
+            type: 'LLM',
             name: 'old-name',
-            providerType: 'OPENAI',
-            apiKey: 'sk-u',
-            contextWindow: 4096,
+            registerId: 'openai/official',
+            config: { modelId: 'old-name', apiKey: 'sk-u' },
         }), { prisma })
         const { id } = await createRes.json()
 
@@ -162,7 +166,7 @@ describe('pATCH /api/models/[id]', () => {
             new Request(`http://localhost/api/models/${id}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: 'new-name', contextWindow: 8192 }),
+                body: JSON.stringify({ name: 'new-name', config: { modelId: 'new-model' } }),
             }),
             Promise.resolve({ id }),
             { prisma },

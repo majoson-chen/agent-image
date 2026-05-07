@@ -18,6 +18,12 @@ interface Props {
     params: Promise<{ id: string }>
 }
 
+function configRecord(config: unknown): Record<string, unknown> {
+    return config != null && typeof config === 'object' && !Array.isArray(config)
+        ? config as Record<string, unknown>
+        : {}
+}
+
 export default async function ConversationPage({ params }: Props) {
     const { id } = await params
     const conv = await getConversation(prisma, id)
@@ -38,12 +44,12 @@ export default async function ConversationPage({ params }: Props) {
     const imageModelList = imageModels.map(m => ({
         id: m.id,
         name: m.name,
-        capabilities: m.capabilities as ImageModelCapabilities | null,
+        capabilities: configRecord(m.config).capabilities as ImageModelCapabilities | null,
     }))
     const llmModelList = llmModelRecords.map(m => ({
         id: m.id,
         name: m.name,
-        capabilities: m.capabilities,
+        config: m.config,
     }))
     const llmParams = selections.LLM?.params as { thinkingEnabled?: boolean } | undefined
     const llmThinkingEnabled = llmParams?.thinkingEnabled === true
@@ -56,7 +62,7 @@ export default async function ConversationPage({ params }: Props) {
             llmModels={llmModelList}
             llmModelId={selections.LLM?.modelId ?? null}
             llmThinkingEnabled={llmThinkingEnabled}
-            contextWindow={llmModel?.contextWindow ?? undefined}
+            contextWindow={undefined}
             imageModels={imageModelList}
             primaryImageModelId={primarySel?.modelId ?? null}
             primaryImageSize={(primarySel?.params as { size?: string } | null)?.size ?? null}

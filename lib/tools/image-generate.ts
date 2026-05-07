@@ -1,4 +1,3 @@
-import type { ImageModelCapabilities } from '@lib/validation/image-model-schema'
 import type { Model } from '~/generated/prisma/client'
 import { executeImageGeneration } from '@lib/image-provider-factory'
 import prismaDefault from '@lib/prisma'
@@ -6,13 +5,8 @@ import { tool } from 'ai'
 import { z } from 'zod'
 import 'server-only'
 
-interface ImageModelRecord extends Model {
-    providerType: 'VOLCENGINE_SEEDREAM' | 'DASHSCOPE_WAN_IMAGE'
-    capabilities: ImageModelCapabilities
-}
-
 interface CreateImageGenerateToolOptions {
-    model: ImageModelRecord | (Omit<Model, 'capabilities'> & { capabilities: ImageModelCapabilities })
+    model: Model
     params: { size: string }
     role: 'PRIMARY' | 'SECONDARY'
     conversationId: string
@@ -33,14 +27,24 @@ export function createImageGenerateTool({
         }),
         needsApproval: true,
         execute: async ({ prompt }, { abortSignal }) => {
-            return executeImageGeneration({
-                model: model as never,
-                prompt,
-                size: params.size,
-                conversationId,
-                prisma: prismaDefault,
-                abortSignal,
-            })
+            try {
+                return await executeImageGeneration({
+                    model,
+                    prompt,
+                    size: params.size,
+                    conversationId,
+                    prisma: prismaDefault,
+                    abortSignal,
+                })
+            }
+            catch (e) {
+                const message = e instanceof Error ? e.message : String(e)
+                return {
+                    ok: false as const,
+                    code: 'IMAGE_GEN_FAILED',
+                    message: message.slice(0, 500),
+                }
+            }
         },
     })
 }

@@ -139,21 +139,25 @@ export function AddImageModelForm() {
 
         setLoading(true)
 
-        const providerType = form.vendor === 'seedream' ? 'VOLCENGINE_SEEDREAM' : 'DASHSCOPE_WAN_IMAGE'
+        const registerId = form.vendor === 'seedream' ? 'volcengine/seedream' : 'dashscope/wan-image'
         const body: Record<string, unknown> = {
             type: 'IMAGE',
-            providerType,
+            registerId,
             name: form.name.trim(),
-            apiKey: form.apiKey.trim(),
-            capabilities: {
-                supportedSizes: form.supportedSizes,
-                maxReferenceImages: form.maxReferenceImages,
-                supportsSeed: form.supportsSeed,
+            config: {
+                requestModel: form.name.trim(),
+                apiKey: form.apiKey.trim(),
+                capabilities: {
+                    supportedSizes: form.supportedSizes,
+                    maxReferenceImages: form.maxReferenceImages,
+                    supportsSeed: form.supportsSeed,
+                },
             },
         }
         const bu = form.baseURL.trim()
-        if (bu)
-            body.baseURL = bu
+        if (bu) {
+            (body.config as Record<string, unknown>).baseURL = bu
+        }
 
         const res = await fetch('/api/models', {
             method: 'POST',

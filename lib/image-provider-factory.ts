@@ -1,16 +1,17 @@
+import type { DashscopeWanImageConfig } from '@lib/providers/registers/dashscope-wan-image'
+import type { VolcengineSeedreamConfig } from '@lib/providers/registers/volcengine-seedream'
 import type { PrismaClient } from '~/generated/prisma/client'
 import { createImage } from './db/images'
 import { SEEDREAM_DEFAULT_API_BASE_URL } from './image/seedream-presets'
 import { WAN_IMAGE_DEFAULT_API_URL } from './image/wan-image-presets'
 import { detectMime } from './images/mime'
+import { parseModelConfig } from './providers/registry'
 import 'server-only'
 
 interface ImageModelRecord {
     id: string
-    name: string
-    providerType: string
-    apiKey: string
-    baseURL?: string | null
+    registerId: string
+    config: unknown
 }
 
 interface ExecuteImageGenerationInput {
@@ -25,16 +26,20 @@ interface ExecuteImageGenerationInput {
 export async function executeImageGeneration(input: ExecuteImageGenerationInput) {
     const { model } = input
 
-    if (model.providerType === 'VOLCENGINE_SEEDREAM')
-        return executeSeedream(input)
+    if (model.registerId === 'volcengine/seedream') {
+        const config = parseModelConfig(model.registerId, model.config) as VolcengineSeedreamConfig
+        return executeSeedream(input, config)
+    }
 
-    if (model.providerType === 'DASHSCOPE_WAN_IMAGE')
-        return executeDashscopeWanImage(input)
+    if (model.registerId === 'dashscope/wan-image') {
+        const config = parseModelConfig(model.registerId, model.config) as DashscopeWanImageConfig
+        return executeDashscopeWanImage(input, config)
+    }
 
-    throw new Error(`unsupported image provider: ${model.providerType}`)
+    throw new Error(`unsupported image register: ${model.registerId}`)
 }
 
-async function executeSeedream(input: ExecuteImageGenerationInput) {
+async function executeSeedream(input: ExecuteImageGenerationInput, config: VolcengineSeedreamConfig) {
     const { model, prompt, size, conversationId, prisma, abortSignal } = input
 
     // 30s 超时复合 abortSignal
@@ -43,9 +48,9 @@ async function executeSeedream(input: ExecuteImageGenerationInput) {
         ? AbortSignal.any([abortSignal, timeoutSignal])
         : timeoutSignal
 
-    const body: Record<string, unknown> = { model: model.name, prompt, size }
+    const body: Record<string, unknown> = { model: config.requestModel, prompt, size }
 
-    const apiUrl = model.baseURL?.trim() || SEEDREAM_DEFAULT_API_BASE_URL
+    const apiUrl = config.baseURL?.trim() || SEEDREAM_DEFAULT_API_BASE_URL
 
     const res = await fetch(
         apiUrl,
@@ -53,7 +58,7 @@ async function executeSeedream(input: ExecuteImageGenerationInput) {
             method: 'POST',
             signal: combinedSignal,
             headers: {
-                'Authorization': `Bearer ${model.apiKey}`,
+                'Authorization': `Bearer ${config.apiKey}`,
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify(body),
@@ -125,7 +130,7 @@ function mapSizeToDashscopeParameter(size: string, modelName: string): string {
     return '2K'
 }
 
-async function executeDashscopeWanImage(input: ExecuteImageGenerationInput) {
+async function executeDashscopeWanImage(input: ExecuteImageGenerationInput, config: DashscopeWanImageConfig) {
     const { model, prompt, size, conversationId, prisma, abortSignal } = input
 
     const timeoutSignal = AbortSignal.timeout(120_000)
@@ -136,14 +141,14 @@ async function executeDashscopeWanImage(input: ExecuteImageGenerationInput) {
     const content: Array<{ text?: string, image?: string }> = [{ text: prompt }]
 
     const parameters: Record<string, unknown> = {
-        size: mapSizeToDashscopeParameter(size, model.name),
+        size: mapSizeToDashscopeParameter(size, config.requestModel),
         n: 1,
         watermark: false,
         thinking_mode: true,
     }
 
     const body = {
-        model: model.name,
+        model: config.requestModel,
         input: {
             messages: [{
                 role: 'user',
@@ -153,13 +158,13 @@ async function executeDashscopeWanImage(input: ExecuteImageGenerationInput) {
         parameters,
     }
 
-    const apiUrl = model.baseURL?.trim() || WAN_IMAGE_DEFAULT_API_URL
+    const apiUrl = config.baseURL?.trim() || WAN_IMAGE_DEFAULT_API_URL
 
     const res = await fetch(apiUrl, {
         method: 'POST',
         signal: combinedSignal,
         headers: {
-            'Authorization': `Bearer ${model.apiKey}`,
+            'Authorization': `Bearer ${config.apiKey}`,
             'Content-Type': 'application/json',
         },
         body: JSON.stringify(body),

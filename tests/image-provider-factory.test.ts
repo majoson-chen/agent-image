@@ -33,9 +33,12 @@ async function createSeedreamModel(overrides: Record<string, unknown> = {}) {
         data: {
             type: 'IMAGE',
             name: 'doubao-seedream-4-5-251128',
-            providerType: 'VOLCENGINE_SEEDREAM',
-            apiKey: 'ark-test-key',
-            capabilities: { supportedSizes: ['1024x1024', '2048x2048'], maxReferenceImages: 14, supportsSeed: false },
+            registerId: 'volcengine/seedream',
+            config: {
+                requestModel: 'doubao-seedream-4-5-251128',
+                apiKey: 'ark-test-key',
+                capabilities: { supportedSizes: ['1024x1024', '2048x2048'], maxReferenceImages: 14, supportsSeed: false },
+            },
             ...overrides,
         },
     })
@@ -104,7 +107,14 @@ describe('executeImageGeneration - happy paths', () => {
 
     it('uses model baseURL when set', async () => {
         const customUrl = 'https://ark.example.com/api/v3/images/generations'
-        const model = await createSeedreamModel({ baseURL: customUrl })
+        const model = await createSeedreamModel({
+            config: {
+                requestModel: 'doubao-seedream-4-5-251128',
+                apiKey: 'ark-test-key',
+                baseURL: customUrl,
+                capabilities: { supportedSizes: ['1024x1024', '2048x2048'], maxReferenceImages: 14, supportsSeed: false },
+            },
+        })
         const conv = await createConversation(prisma)
 
         let seedreamRequestUrl = ''
@@ -186,9 +196,12 @@ async function createWanModel(overrides: Record<string, unknown> = {}) {
         data: {
             type: 'IMAGE',
             name: 'wan2.7-image-pro',
-            providerType: 'DASHSCOPE_WAN_IMAGE',
-            apiKey: 'sk-dash-test',
-            capabilities: { supportedSizes: ['1024x1024', '2048x2048'], maxReferenceImages: 9, supportsSeed: true },
+            registerId: 'dashscope/wan-image',
+            config: {
+                requestModel: 'wan2.7-image-pro',
+                apiKey: 'sk-dash-test',
+                capabilities: { supportedSizes: ['1024x1024', '2048x2048'], maxReferenceImages: 9, supportsSeed: true },
+            },
             ...overrides,
         },
     })
@@ -322,12 +335,12 @@ function mockModel(overrides: Record<string, unknown> = {}) {
         id: 'mock-model-id',
         type: 'IMAGE' as const,
         name: 'test-model',
-        providerType: 'VOLCENGINE_SEEDREAM' as const,
-        apiKey: 'test-key',
-        baseURL: null,
-        contextWindow: null,
-        extraHeaders: null,
-        capabilities: null,
+        registerId: 'volcengine/seedream',
+        config: {
+            requestModel: 'test-model',
+            apiKey: 'test-key',
+            capabilities: { supportedSizes: ['1024x1024'], maxReferenceImages: 14, supportsSeed: false },
+        },
         createdAt: new Date(),
         updatedAt: new Date(),
         ...overrides,
@@ -336,7 +349,13 @@ function mockModel(overrides: Record<string, unknown> = {}) {
 
 describe('executeImageGeneration - error paths', () => {
     it('throws on Seedream 401 without leaking apiKey', async () => {
-        const model = mockModel({ apiKey: 'secret-api-key-xyz' })
+        const model = mockModel({
+            config: {
+                requestModel: 'test-model',
+                apiKey: 'secret-api-key-xyz',
+                capabilities: { supportedSizes: ['1024x1024'], maxReferenceImages: 14, supportsSeed: false },
+            },
+        })
         const conv = await createConversation(prisma)
 
         const originalFetch = globalThis.fetch
@@ -419,8 +438,8 @@ describe('executeImageGeneration - error paths', () => {
         }
     })
 
-    it('throws for unsupported provider type', async () => {
-        const model = mockModel({ providerType: 'OPENAI' })
+    it('throws for unsupported register', async () => {
+        const model = mockModel({ registerId: 'openai/official' })
         const conv = await createConversation(prisma)
 
         const executeImageGeneration = await getFactory()

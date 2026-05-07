@@ -15,9 +15,11 @@ function parseVisionBatchToolCallIdsFromParts(parts: object[]): Set<string> {
         return new Set()
     const ids = new Set<string>()
     const re = /toolCallId="([^"]+)"/g
-    let m: RegExpExecArray | null
-    while ((m = re.exec(h.text)) !== null)
+    let m = re.exec(h.text)
+    while (m !== null) {
         ids.add(m[1]!)
+        m = re.exec(h.text)
+    }
     return ids
 }
 
@@ -49,7 +51,7 @@ function splitAssistantAtImageFetch(parts: object[], toolCallIds: Set<string>): 
     return { pre: parts.slice(0, splitIdx + 1), post }
 }
 
-export type UiLikeMessage = { id: string, role: 'user' | 'assistant', parts: object[] }
+export interface UiLikeMessage { id: string, role: 'user' | 'assistant', parts: object[] }
 
 export function interleaveImageFetchVisionForModel(messages: UiLikeMessage[]): UiLikeMessage[] {
     const out: UiLikeMessage[] = []

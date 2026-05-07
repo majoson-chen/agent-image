@@ -2,7 +2,7 @@
  * U3 — /api/bindings Route Handler 行为测试
  */
 import type { PrismaClient } from '~/generated/prisma/client'
-import { createLlmModel, createSearchModel } from '@lib/db/models'
+import { createModel } from '@lib/db/models'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import {
     handleBindingsDelete,
@@ -39,10 +39,11 @@ describe('gET /api/bindings', () => {
 
 describe('pUT /api/bindings', () => {
     it('sets a binding and reads it back via GET', async () => {
-        const model = await createSearchModel(prisma, {
+        const model = await createModel(prisma, {
+            type: 'SEARCH',
             name: 'brave-test',
-            providerType: 'BRAVE_SEARCH',
-            apiKey: 'bsa-test-key',
+            registerId: 'brave/search',
+            config: { apiKey: 'bsa-test-key' },
         })
 
         const res = await handleBindingsPut(
@@ -57,15 +58,17 @@ describe('pUT /api/bindings', () => {
     })
 
     it('upserts when same tool bound twice', async () => {
-        const m1 = await createSearchModel(prisma, {
+        const m1 = await createModel(prisma, {
+            type: 'SEARCH',
             name: 'brave-a',
-            providerType: 'BRAVE_SEARCH',
-            apiKey: 'key-a',
+            registerId: 'brave/search',
+            config: { apiKey: 'key-a' },
         })
-        const m2 = await createSearchModel(prisma, {
+        const m2 = await createModel(prisma, {
+            type: 'SEARCH',
             name: 'brave-b',
-            providerType: 'BRAVE_SEARCH',
-            apiKey: 'key-b',
+            registerId: 'brave/search',
+            config: { apiKey: 'key-b' },
         })
 
         await handleBindingsPut(makeReq('PUT', { tool: 'IMAGE_SEARCH', modelId: m1.id }), { prisma })
@@ -87,11 +90,11 @@ describe('pUT /api/bindings', () => {
     })
 
     it('returns 422 when trying to bind LLM model to search tool', async () => {
-        const llm = await createLlmModel(prisma, {
+        const llm = await createModel(prisma, {
+            type: 'LLM',
             name: 'gpt-test',
-            providerType: 'OPENAI',
-            apiKey: 'sk-x',
-            contextWindow: 4096,
+            registerId: 'openai/official',
+            config: { modelId: 'gpt-test', apiKey: 'sk-x' },
         })
         const res = await handleBindingsPut(
             makeReq('PUT', { tool: 'WEB_SEARCH', modelId: llm.id }),
@@ -103,10 +106,11 @@ describe('pUT /api/bindings', () => {
 
 describe('dELETE /api/bindings', () => {
     it('clears a binding', async () => {
-        const model = await createSearchModel(prisma, {
+        const model = await createModel(prisma, {
+            type: 'SEARCH',
             name: 'brave-del',
-            providerType: 'BRAVE_SEARCH',
-            apiKey: 'key-del',
+            registerId: 'brave/search',
+            config: { apiKey: 'key-del' },
         })
         await handleBindingsPut(makeReq('PUT', { tool: 'WEB_SEARCH', modelId: model.id }), { prisma })
 

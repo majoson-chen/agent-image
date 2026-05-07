@@ -62,7 +62,16 @@ describe('createImage GENERATED', () => {
     it('creates DB row with modelIdAtTime', async () => {
         const createImage = await getCreateImage()
         const model = await prisma.model.create({
-            data: { type: 'IMAGE', name: 'test-gen', providerType: 'VOLCENGINE_SEEDREAM', apiKey: 'k' },
+            data: {
+                type: 'IMAGE',
+                name: 'test-gen',
+                registerId: 'volcengine/seedream',
+                config: {
+                    requestModel: 'test-gen',
+                    apiKey: 'k',
+                    capabilities: { supportedSizes: ['1024x1024'], maxReferenceImages: 0, supportsSeed: false },
+                },
+            },
         })
         const conv = await prisma.conversation.create({ data: {} })
 

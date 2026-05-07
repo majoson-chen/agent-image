@@ -1,10 +1,10 @@
 import type { PrismaClient } from '~/generated/prisma/client'
 import {
-    createLlmModel,
+    createModel,
     deleteModel,
     getModel,
     listModels,
-    updateLlmModel,
+    updateModel,
 } from '@lib/db/models'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { createTestDb } from '../helpers/db'
@@ -24,11 +24,11 @@ describe('listModels', () => {
     })
 
     it('filters by type', async () => {
-        await createLlmModel(prisma, {
+        await createModel(prisma, {
+            type: 'LLM',
             name: 'gpt-4o',
-            providerType: 'OPENAI',
-            apiKey: 'sk-1',
-            contextWindow: 128000,
+            registerId: 'openai/official',
+            config: { modelId: 'gpt-4o', apiKey: 'sk-1' },
         })
         const llms = await listModels(prisma, 'LLM')
         expect(llms).toHaveLength(1)
@@ -37,42 +37,42 @@ describe('listModels', () => {
     })
 })
 
-describe('createLlmModel', () => {
+describe('createModel', () => {
     it('creates model with required fields', async () => {
-        const m = await createLlmModel(prisma, {
+        const m = await createModel(prisma, {
+            type: 'LLM',
             name: 'moonshot-v1-8k',
-            providerType: 'OPENAI_COMPATIBLE',
-            baseURL: 'https://api.moonshot.cn/v1',
-            apiKey: 'sk-moon',
-            contextWindow: 8000,
+            registerId: 'openai-compatible/generic',
+            config: { modelId: 'moonshot-v1-8k', baseURL: 'https://api.moonshot.cn/v1', apiKey: 'sk-moon' },
         })
         expect(m.id).toBeTruthy()
         expect(m.type).toBe('LLM')
-        expect(m.baseURL).toBe('https://api.moonshot.cn/v1')
+        expect(m.registerId).toBe('openai-compatible/generic')
+        expect(m.config).toMatchObject({ baseURL: 'https://api.moonshot.cn/v1' })
     })
 
     it('throws when apiKey is empty', async () => {
         let threw = false
         try {
-            await createLlmModel(prisma, {
+            await createModel(prisma, {
+                type: 'LLM',
                 name: 'x',
-                providerType: 'OPENAI',
-                apiKey: '',
-                contextWindow: 1000,
+                registerId: 'openai/official',
+                config: { modelId: 'x', apiKey: '' },
             })
         }
         catch { threw = true }
         expect(threw).toBe(true)
     })
 
-    it('throws when contextWindow is 0', async () => {
+    it('throws when registerId does not match type', async () => {
         let threw = false
         try {
-            await createLlmModel(prisma, {
+            await createModel(prisma, {
+                type: 'SEARCH',
                 name: 'x',
-                providerType: 'OPENAI',
-                apiKey: 'sk-x',
-                contextWindow: 0,
+                registerId: 'openai/official',
+                config: { modelId: 'x', apiKey: 'sk-x' },
             })
         }
         catch { threw = true }
@@ -82,11 +82,11 @@ describe('createLlmModel', () => {
     it('throws OPENAI_COMPATIBLE without baseURL', async () => {
         let threw = false
         try {
-            await createLlmModel(prisma, {
+            await createModel(prisma, {
+                type: 'LLM',
                 name: 'x',
-                providerType: 'OPENAI_COMPATIBLE',
-                apiKey: 'sk-x',
-                contextWindow: 1000,
+                registerId: 'openai-compatible/generic',
+                config: { modelId: 'x', apiKey: 'sk-x' },
             })
         }
         catch { threw = true }
@@ -94,24 +94,24 @@ describe('createLlmModel', () => {
     })
 
     it('creates ALIBABA model without baseURL', async () => {
-        const m = await createLlmModel(prisma, {
+        const m = await createModel(prisma, {
+            type: 'LLM',
             name: 'qwen-plus',
-            providerType: 'ALIBABA',
-            apiKey: 'sk-dash',
-            contextWindow: 128000,
+            registerId: 'alibaba/dashscope-llm',
+            config: { modelId: 'qwen-plus', apiKey: 'sk-dash' },
         })
-        expect(m.providerType).toBe('ALIBABA')
-        expect(m.baseURL).toBeNull()
+        expect(m.registerId).toBe('alibaba/dashscope-llm')
+        expect(m.config).toMatchObject({ modelId: 'qwen-plus' })
     })
 })
 
 describe('getModel', () => {
     it('returns model by id', async () => {
-        const m = await createLlmModel(prisma, {
+        const m = await createModel(prisma, {
+            type: 'LLM',
             name: 'get-test',
-            providerType: 'OPENAI',
-            apiKey: 'sk-g',
-            contextWindow: 4096,
+            registerId: 'openai/official',
+            config: { modelId: 'get-test', apiKey: 'sk-g' },
         })
         const found = await getModel(prisma, m.id)
         expect(found?.name).toBe('get-test')
@@ -123,27 +123,27 @@ describe('getModel', () => {
     })
 })
 
-describe('updateLlmModel', () => {
-    it('updates name and contextWindow', async () => {
-        const m = await createLlmModel(prisma, {
+describe('updateModel', () => {
+    it('updates name and merges config', async () => {
+        const m = await createModel(prisma, {
+            type: 'LLM',
             name: 'old-name',
-            providerType: 'OPENAI',
-            apiKey: 'sk-u',
-            contextWindow: 4096,
+            registerId: 'openai/official',
+            config: { modelId: 'old-model', apiKey: 'sk-u' },
         })
-        const updated = await updateLlmModel(prisma, m.id, { name: 'new-name', contextWindow: 8192 })
-        expect(updated.name).toBe('new-name')
-        expect(updated.contextWindow).toBe(8192)
+        const updated = await updateModel(prisma, m.id, { name: 'new-name', config: { modelId: 'new-model' } })
+        expect(updated?.name).toBe('new-name')
+        expect(updated?.config).toMatchObject({ modelId: 'new-model', apiKey: 'sk-u' })
     })
 })
 
 describe('deleteModel', () => {
     it('removes model from db', async () => {
-        const m = await createLlmModel(prisma, {
+        const m = await createModel(prisma, {
+            type: 'LLM',
             name: 'del-me',
-            providerType: 'OPENAI',
-            apiKey: 'sk-d',
-            contextWindow: 1000,
+            registerId: 'openai/official',
+            config: { modelId: 'del-me', apiKey: 'sk-d' },
         })
         await deleteModel(prisma, m.id)
         const found = await getModel(prisma, m.id)

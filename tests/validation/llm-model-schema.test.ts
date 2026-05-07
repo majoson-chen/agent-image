@@ -1,129 +1,81 @@
-import { llmModelInputSchema } from '@lib/validation/llm-model-schema'
+import { parseModelConfig } from '@lib/providers/registry'
 import { describe, expect, it } from 'vitest'
 
-describe('llmModelInputSchema', () => {
-    it('accepts valid OPENAI model', () => {
-        const result = llmModelInputSchema.safeParse({
-            name: 'gpt-4o',
-            providerType: 'OPENAI',
+describe('LLM register config schemas', () => {
+    it('accepts valid OpenAI official config', () => {
+        expect(parseModelConfig('openai/official', {
+            modelId: 'gpt-4o',
             apiKey: 'sk-test',
-            contextWindow: 128000,
-        })
-        expect(result.success).toBe(true)
+        })).toMatchObject({ modelId: 'gpt-4o' })
     })
 
-    it('accepts valid OPENAI_COMPATIBLE model with baseURL', () => {
-        const result = llmModelInputSchema.safeParse({
-            name: 'moonshot',
-            providerType: 'OPENAI_COMPATIBLE',
+    it('accepts valid OpenAI compatible config with baseURL', () => {
+        expect(parseModelConfig('openai-compatible/generic', {
+            modelId: 'moonshot',
             baseURL: 'https://api.moonshot.cn/v1',
             apiKey: 'sk-moon',
-            contextWindow: 8000,
-        })
-        expect(result.success).toBe(true)
+        })).toMatchObject({ baseURL: 'https://api.moonshot.cn/v1' })
     })
 
-    it('accepts valid ALIBABA model without baseURL', () => {
-        const result = llmModelInputSchema.safeParse({
-            name: 'qwen-plus',
-            providerType: 'ALIBABA',
+    it('accepts valid Alibaba config without baseURL', () => {
+        expect(parseModelConfig('alibaba/dashscope-llm', {
+            modelId: 'qwen-plus',
             apiKey: 'sk-dash',
-            contextWindow: 128000,
-        })
-        expect(result.success).toBe(true)
+        })).toMatchObject({ modelId: 'qwen-plus' })
     })
 
-    it('accepts valid ALIBABA model with baseURL', () => {
-        const result = llmModelInputSchema.safeParse({
-            name: 'qwen-plus',
-            providerType: 'ALIBABA',
+    it('accepts valid Alibaba config with baseURL and capabilities', () => {
+        expect(parseModelConfig('alibaba/dashscope-llm', {
+            modelId: 'qwen-plus',
             baseURL: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
             apiKey: 'sk-dash',
-            contextWindow: 128000,
-        })
-        expect(result.success).toBe(true)
+            capabilities: { supportsThinking: true },
+        })).toMatchObject({ capabilities: { supportsThinking: true } })
     })
 
-    it('rejects ALIBABA with empty baseURL string', () => {
-        const result = llmModelInputSchema.safeParse({
-            name: 'qwen-plus',
-            providerType: 'ALIBABA',
+    it('rejects Alibaba with empty baseURL string', () => {
+        expect(() => parseModelConfig('alibaba/dashscope-llm', {
+            modelId: 'qwen-plus',
             baseURL: '',
             apiKey: 'sk-dash',
-            contextWindow: 128000,
-        })
-        expect(result.success).toBe(false)
+        })).toThrow()
     })
 
     it('rejects empty apiKey', () => {
-        const result = llmModelInputSchema.safeParse({
-            name: 'x',
-            providerType: 'OPENAI',
+        expect(() => parseModelConfig('openai/official', {
+            modelId: 'x',
             apiKey: '',
-            contextWindow: 1000,
-        })
-        expect(result.success).toBe(false)
+        })).toThrow()
     })
 
-    it('rejects contextWindow of 0', () => {
-        const result = llmModelInputSchema.safeParse({
-            name: 'x',
-            providerType: 'OPENAI',
+    it('rejects OpenAI compatible without baseURL', () => {
+        expect(() => parseModelConfig('openai-compatible/generic', {
+            modelId: 'x',
             apiKey: 'sk',
-            contextWindow: 0,
-        })
-        expect(result.success).toBe(false)
+        })).toThrow()
     })
 
-    it('rejects contextWindow of negative number', () => {
-        const result = llmModelInputSchema.safeParse({
-            name: 'x',
-            providerType: 'OPENAI',
-            apiKey: 'sk',
-            contextWindow: -1,
-        })
-        expect(result.success).toBe(false)
-    })
-
-    it('rejects OPENAI_COMPATIBLE without baseURL', () => {
-        const result = llmModelInputSchema.safeParse({
-            name: 'x',
-            providerType: 'OPENAI_COMPATIBLE',
-            apiKey: 'sk',
-            contextWindow: 1000,
-        })
-        expect(result.success).toBe(false)
-    })
-
-    it('rejects OPENAI_COMPATIBLE with empty baseURL', () => {
-        const result = llmModelInputSchema.safeParse({
-            name: 'x',
-            providerType: 'OPENAI_COMPATIBLE',
+    it('rejects OpenAI compatible with empty baseURL', () => {
+        expect(() => parseModelConfig('openai-compatible/generic', {
+            modelId: 'x',
             baseURL: '',
             apiKey: 'sk',
-            contextWindow: 1000,
-        })
-        expect(result.success).toBe(false)
+        })).toThrow()
     })
 
-    it('rejects empty name', () => {
-        const result = llmModelInputSchema.safeParse({
-            name: '',
-            providerType: 'OPENAI',
+    it('rejects empty modelId', () => {
+        expect(() => parseModelConfig('openai/official', {
+            modelId: '',
             apiKey: 'sk',
-            contextWindow: 1000,
-        })
-        expect(result.success).toBe(false)
+        })).toThrow()
     })
 
     it('accepts optional extraHeaders as record', () => {
-        const result = llmModelInputSchema.safeParse({
-            name: 'x',
-            providerType: 'OPENAI',
+        expect(parseModelConfig('openai-compatible/generic', {
+            modelId: 'x',
+            baseURL: 'https://api.example.com/v1',
             apiKey: 'sk',
-            contextWindow: 1000,
             extraHeaders: { 'X-Custom': 'value' },
-        })
-        expect(result.success).toBe(true)
+        })).toMatchObject({ extraHeaders: { 'X-Custom': 'value' } })
     })
 })

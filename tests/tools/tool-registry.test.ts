@@ -3,7 +3,7 @@
  * 验证根据 SearchToolBinding + IMAGE selection 动态拼装 tools 对象
  */
 import type { PrismaClient } from '~/generated/prisma/client'
-import { createImageModel, createSearchModel } from '@lib/db/models'
+import { createModel } from '@lib/db/models'
 import { clearBinding, setBinding } from '@lib/db/search-tool-bindings'
 import { clearSelection, setSelection } from '@lib/db/selections'
 import { buildAvailableTools } from '@lib/tools/tool-registry'
@@ -18,15 +18,18 @@ async function createConversation(p: PrismaClient) {
 }
 
 async function createSeedreamModel(p: PrismaClient) {
-    return createImageModel(p, {
+    return createModel(p, {
         type: 'IMAGE',
-        providerType: 'VOLCENGINE_SEEDREAM',
         name: 'doubao-seedream-4-5-251128',
-        apiKey: 'sk-test',
-        capabilities: {
-            supportedSizes: ['1024x1024', '2048x2048'],
-            maxReferenceImages: 4,
-            supportsSeed: false,
+        registerId: 'volcengine/seedream',
+        config: {
+            requestModel: 'doubao-seedream-4-5-251128',
+            apiKey: 'sk-test',
+            capabilities: {
+                supportedSizes: ['1024x1024', '2048x2048'],
+                maxReferenceImages: 4,
+                supportsSeed: false,
+            },
         },
     })
 }
@@ -51,11 +54,11 @@ describe('buildAvailableTools', () => {
     it('with WEB_SEARCH binding → web-search + web-fetch', async () => {
         await clearBinding(prisma, 'WEB_SEARCH')
         await clearBinding(prisma, 'IMAGE_SEARCH')
-        const m = await createSearchModel(prisma, {
+        const m = await createModel(prisma, {
             type: 'SEARCH',
-            providerType: 'BRAVE_SEARCH',
             name: 'Brave WEB',
-            apiKey: 'BSA-test',
+            registerId: 'brave/search',
+            config: { apiKey: 'BSA-test' },
         })
         await setBinding(prisma, 'WEB_SEARCH', m.id)
         const conv = await createConversation(prisma)
@@ -69,11 +72,11 @@ describe('buildAvailableTools', () => {
     it('with both bindings → all three tools', async () => {
         await clearBinding(prisma, 'WEB_SEARCH')
         await clearBinding(prisma, 'IMAGE_SEARCH')
-        const m = await createSearchModel(prisma, {
+        const m = await createModel(prisma, {
             type: 'SEARCH',
-            providerType: 'BRAVE_SEARCH',
             name: 'Brave BOTH',
-            apiKey: 'BSA-test',
+            registerId: 'brave/search',
+            config: { apiKey: 'BSA-test' },
         })
         await setBinding(prisma, 'WEB_SEARCH', m.id)
         await setBinding(prisma, 'IMAGE_SEARCH', m.id)

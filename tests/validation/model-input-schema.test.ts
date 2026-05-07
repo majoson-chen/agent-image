@@ -1,59 +1,46 @@
-import { modelInputSchema } from '@lib/validation/model-input-schema'
+import { modelCreateBodySchema } from '@lib/validation/model-upsert-schema'
 /**
- * U2 — model-input-schema discriminated union 测试（test-first）
+ * U2 — modelCreateBodySchema discriminated union 测试（register 架构）
  */
 import { describe, expect, it } from 'vitest'
 
-describe('modelInputSchema discriminated union', () => {
+describe('modelCreateBodySchema discriminated union', () => {
     it('accepts LLM input', () => {
-        const result = modelInputSchema.safeParse({
+        const result = modelCreateBodySchema.safeParse({
             type: 'LLM',
-            providerType: 'OPENAI',
+            registerId: 'openai/official',
             name: 'GPT-4o',
-            apiKey: 'sk-test',
-            contextWindow: 128000,
+            config: { modelId: 'gpt-4o', apiKey: 'sk-test' },
         })
         expect(result.success).toBe(true)
     })
 
     it('accepts ALIBABA LLM input without baseURL', () => {
-        const result = modelInputSchema.safeParse({
+        const result = modelCreateBodySchema.safeParse({
             type: 'LLM',
-            providerType: 'ALIBABA',
+            registerId: 'alibaba/dashscope-llm',
             name: 'qwen-plus',
-            apiKey: 'sk-dash',
-            contextWindow: 128000,
+            config: { modelId: 'qwen-plus', apiKey: 'sk-dash' },
         })
         expect(result.success).toBe(true)
     })
 
     it('accepts SEARCH input', () => {
-        const result = modelInputSchema.safeParse({
+        const result = modelCreateBodySchema.safeParse({
             type: 'SEARCH',
-            providerType: 'BRAVE_SEARCH',
+            registerId: 'brave/search',
             name: 'Brave',
-            apiKey: 'BSA-token',
+            config: { apiKey: 'BSA-token' },
         })
         expect(result.success).toBe(true)
     })
 
-    it('rejects LLM input with BRAVE_SEARCH providerType', () => {
-        const result = modelInputSchema.safeParse({
-            type: 'LLM',
-            providerType: 'BRAVE_SEARCH',
+    it('rejects unknown type', () => {
+        const result = modelCreateBodySchema.safeParse({
+            type: 'OTHER',
+            registerId: 'openai/official',
             name: 'Bad',
-            apiKey: 'sk-test',
-            contextWindow: 1000,
-        })
-        expect(result.success).toBe(false)
-    })
-
-    it('rejects SEARCH input with OPENAI providerType', () => {
-        const result = modelInputSchema.safeParse({
-            type: 'SEARCH',
-            providerType: 'OPENAI',
-            name: 'Bad',
-            apiKey: 'sk-test',
+            config: { modelId: 'x', apiKey: 'sk-test' },
         })
         expect(result.success).toBe(false)
     })

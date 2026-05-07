@@ -1,47 +1,20 @@
-import { searchModelInputSchema } from '@lib/validation/search-model-schema'
+import { parseModelConfig } from '@lib/providers/registry'
 /**
- * U2 — search-model-schema zod 校验测试（test-first）
+ * U2 — Brave Search register config zod 校验测试
  */
 import { describe, expect, it } from 'vitest'
 
-describe('searchModelInputSchema', () => {
+describe('brave/search config schema', () => {
     it('accepts valid Brave Search input', () => {
-        const result = searchModelInputSchema.safeParse({
-            type: 'SEARCH',
-            providerType: 'BRAVE_SEARCH',
-            name: 'Brave',
+        const result = parseModelConfig('brave/search', {
             apiKey: 'BSA-token',
         })
-        expect(result.success).toBe(true)
+        expect(result).toEqual({ apiKey: 'BSA-token' })
     })
 
     it('rejects empty apiKey', () => {
-        const result = searchModelInputSchema.safeParse({
-            type: 'SEARCH',
-            providerType: 'BRAVE_SEARCH',
-            name: 'Brave',
+        expect(() => parseModelConfig('brave/search', {
             apiKey: '',
-        })
-        expect(result.success).toBe(false)
-    })
-
-    it('rejects empty name', () => {
-        const result = searchModelInputSchema.safeParse({
-            type: 'SEARCH',
-            providerType: 'BRAVE_SEARCH',
-            name: '',
-            apiKey: 'BSA-token',
-        })
-        expect(result.success).toBe(false)
-    })
-
-    it('rejects wrong providerType for SEARCH type', () => {
-        const result = searchModelInputSchema.safeParse({
-            type: 'SEARCH',
-            providerType: 'OPENAI',
-            name: 'Test',
-            apiKey: 'sk-test',
-        })
-        expect(result.success).toBe(false)
+        })).toThrow()
     })
 })

@@ -1,10 +1,9 @@
-import { imageModelInputSchema } from '@lib/validation/image-model-schema'
+import { parseModelConfig } from '@lib/providers/registry'
 import { describe, expect, it } from 'vitest'
 
-describe('imageModelInputSchema', () => {
+describe('image register config schemas', () => {
     const valid = {
-        name: 'doubao-seedream-4-5-251128',
-        providerType: 'VOLCENGINE_SEEDREAM' as const,
+        requestModel: 'doubao-seedream-4-5-251128',
         apiKey: 'ark-key-123',
         capabilities: {
             supportedSizes: ['1024x1024', '2048x2048'],
@@ -14,34 +13,26 @@ describe('imageModelInputSchema', () => {
     }
 
     it('accepts valid Seedream model input', () => {
-        expect(imageModelInputSchema.safeParse(valid).success).toBe(true)
+        expect(parseModelConfig('volcengine/seedream', valid)).toMatchObject({
+            requestModel: 'doubao-seedream-4-5-251128',
+        })
     })
 
     it('accepts optional baseURL', () => {
-        const r = imageModelInputSchema.safeParse({
+        const r = parseModelConfig('volcengine/seedream', {
             ...valid,
             baseURL: 'https://ark.cn-beijing.volces.com/api/v3/images/generations',
         })
-        expect(r.success).toBe(true)
-    })
-
-    it('treats empty baseURL as undefined', () => {
-        const r = imageModelInputSchema.safeParse({ ...valid, baseURL: '   ' })
-        expect(r.success).toBe(true)
-        if (r.success) {
-            expect(r.data.baseURL).toBeUndefined()
-        }
+        expect(r).toMatchObject({ baseURL: 'https://ark.cn-beijing.volces.com/api/v3/images/generations' })
     })
 
     it('rejects invalid baseURL', () => {
-        const r = imageModelInputSchema.safeParse({ ...valid, baseURL: 'not-a-url' })
-        expect(r.success).toBe(false)
+        expect(() => parseModelConfig('volcengine/seedream', { ...valid, baseURL: 'not-a-url' })).toThrow()
     })
 
     it('accepts valid DashScope Wan image model input', () => {
-        const r = imageModelInputSchema.safeParse({
-            name: 'wan2.7-image-pro',
-            providerType: 'DASHSCOPE_WAN_IMAGE',
+        const r = parseModelConfig('dashscope/wan-image', {
+            requestModel: 'wan2.7-image-pro',
             apiKey: 'sk-dash',
             capabilities: {
                 supportedSizes: ['1024x1024'],
@@ -49,71 +40,62 @@ describe('imageModelInputSchema', () => {
                 supportsSeed: true,
             },
         })
-        expect(r.success).toBe(true)
+        expect(r).toMatchObject({ requestModel: 'wan2.7-image-pro' })
     })
 
     it('rejects Wan maxReferenceImages > 9', () => {
-        const r = imageModelInputSchema.safeParse({
-            name: 'wan2.7-image',
-            providerType: 'DASHSCOPE_WAN_IMAGE',
+        expect(() => parseModelConfig('dashscope/wan-image', {
+            requestModel: 'wan2.7-image',
             apiKey: 'sk-dash',
             capabilities: {
                 supportedSizes: ['1024x1024'],
                 maxReferenceImages: 10,
                 supportsSeed: false,
             },
-        })
-        expect(r.success).toBe(false)
+        })).toThrow()
     })
 
-    it('rejects empty name', () => {
-        const r = imageModelInputSchema.safeParse({ ...valid, name: '' })
-        expect(r.success).toBe(false)
+    it('rejects empty requestModel', () => {
+        expect(() => parseModelConfig('volcengine/seedream', { ...valid, requestModel: '' })).toThrow()
     })
 
     it('rejects empty apiKey', () => {
-        const r = imageModelInputSchema.safeParse({ ...valid, apiKey: '' })
-        expect(r.success).toBe(false)
+        expect(() => parseModelConfig('volcengine/seedream', { ...valid, apiKey: '' })).toThrow()
     })
 
     it('rejects empty supportedSizes array', () => {
-        const r = imageModelInputSchema.safeParse({
+        expect(() => parseModelConfig('volcengine/seedream', {
             ...valid,
             capabilities: { ...valid.capabilities, supportedSizes: [] },
-        })
-        expect(r.success).toBe(false)
-        expect(r.error?.issues[0].message).toMatch(/至少填写一项分辨率/)
+        })).toThrow(/至少填写一项分辨率/)
     })
 
     it('rejects malformed size string', () => {
-        const r = imageModelInputSchema.safeParse({
+        expect(() => parseModelConfig('volcengine/seedream', {
             ...valid,
             capabilities: { ...valid.capabilities, supportedSizes: ['2k'] },
-        })
-        expect(r.success).toBe(false)
+        })).toThrow()
     })
 
     it('accepts maxReferenceImages=0 (no reference images)', () => {
-        const r = imageModelInputSchema.safeParse({
+        const r = parseModelConfig('volcengine/seedream', {
             ...valid,
             capabilities: { ...valid.capabilities, maxReferenceImages: 0 },
         })
-        expect(r.success).toBe(true)
+        expect(r).toMatchObject({ capabilities: { maxReferenceImages: 0 } })
     })
 
     it('rejects maxReferenceImages > 14', () => {
-        const r = imageModelInputSchema.safeParse({
+        expect(() => parseModelConfig('volcengine/seedream', {
             ...valid,
             capabilities: { ...valid.capabilities, maxReferenceImages: 15 },
-        })
-        expect(r.success).toBe(false)
+        })).toThrow()
     })
 
     it('rejects maxReferenceImages < 0', () => {
-        const r = imageModelInputSchema.safeParse({
+        expect(() => parseModelConfig('volcengine/seedream', {
             ...valid,
             capabilities: { ...valid.capabilities, maxReferenceImages: -1 },
-        })
-        expect(r.success).toBe(false)
+        })).toThrow()
     })
 })

@@ -2,14 +2,14 @@
  * 静态 Provider 注册元数据目录（plan-01，无 DB）。
  */
 import type { RegisterId, RegisterMetadata } from '@lib/providers/types'
+import type { z } from 'zod'
+import type { ModelType } from '~/generated/prisma/client'
 import { alibabaDashscopeLlmConfigSchema } from '@lib/providers/registers/alibaba-dashscope-llm'
 import { braveSearchConfigSchema } from '@lib/providers/registers/brave-search'
 import { dashscopeWanImageConfigSchema } from '@lib/providers/registers/dashscope-wan-image'
 import { openaiCompatibleGenericConfigSchema } from '@lib/providers/registers/openai-compatible-generic'
 import { openaiOfficialConfigSchema } from '@lib/providers/registers/openai-official'
 import { volcengineSeedreamConfigSchema } from '@lib/providers/registers/volcengine-seedream'
-import type { z } from 'zod'
-import type { ModelType } from '~/generated/prisma/client'
 
 function asRegisterId(id: string): RegisterId {
     return id as RegisterId

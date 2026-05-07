@@ -1,8 +1,8 @@
-import type { LlmModelInput } from '@lib/validation/llm-model-schema'
 import type { PrismaClient } from '~/generated/prisma/client'
-import { deleteModel, getModel, updateLlmModel, updateSearchModel } from '@lib/db/models'
+import { deleteModel, updateModel } from '@lib/db/models'
 import prismaDefault from '@lib/prisma'
 import { NextResponse } from 'next/server'
+import { ZodError } from 'zod'
 
 export interface ModelByIdRouteDeps {
     prisma?: PrismaClient
@@ -48,19 +48,17 @@ export async function handlePatchModel(
         return NextResponse.json({ error: '无效 JSON' }, { status: 400 })
     }
 
-    const patch = body as Partial<LlmModelInput>
-
-    const existing = await getModel(db, id)
-    if (!existing)
-        return NextResponse.json({ error: '未找到' }, { status: 404 })
-
-    if (existing.type === 'SEARCH') {
-        const model = await updateSearchModel(db, id, patch as { name?: string, apiKey?: string })
+    try {
+        const model = await updateModel(db, id, body)
+        if (!model)
+            return NextResponse.json({ error: '未找到' }, { status: 404 })
         return NextResponse.json(model)
     }
-
-    const model = await updateLlmModel(db, id, patch)
-    return NextResponse.json(model)
+    catch (e) {
+        if (e instanceof ZodError)
+            return NextResponse.json({ errors: e.issues }, { status: 422 })
+        throw e
+    }
 }
 
 export async function PATCH(
