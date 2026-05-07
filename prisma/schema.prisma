@@ -16,15 +16,6 @@ enum ModelType {
   SEARCH
 }
 
-enum ProviderType {
-  OPENAI
-  OPENAI_COMPATIBLE
-  ALIBABA
-  BRAVE_SEARCH
-  VOLCENGINE_SEEDREAM
-  DASHSCOPE_WAN_IMAGE
-}
-
 enum ImageSource {
   USER_UPLOAD
   GENERATED
@@ -52,23 +43,23 @@ enum SelectionRole {
 // ——— 表 ———
 
 model Model {
-  id            String       @id @default(cuid())
-  type          ModelType
-  name          String
-  providerType  ProviderType
-  /// LLM: 必须由 app 层校验非空；IMAGE/SEARCH: 按各自需求
-  baseURL       String?
-  apiKey        String
-  /// LLM 必填（app 层校验），其他类型 null
-  contextWindow Int?
-  extraHeaders  Json?
-  capabilities  Json?
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  id         String    @id @default(cuid())
+  type       ModelType
+  /// SPEC：稳定 SKU id，与 lib/providers/registry 一致
+  registerId String
+  /// 用户可读标签（可能与 API modelId 不同）
+  name       String
+  /// Register 专属的 JSON，opaque at DB layer
+  config     Json
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 
   selections      ConversationModelSelection[]
   searchBindings  SearchToolBinding[]
   generatedImages Image[]
+
+  @@index([type])
+  @@index([registerId])
 }
 
 model Conversation {
