@@ -2,8 +2,8 @@
     "name": "agent-image",
     "type": "module",
     "private": true,
-    "module": "index.ts",
     "packageManager": ">=bun@1.2.3",
+    "module": "index.ts",
     "scripts": {
         "dev": "next dev",
         "build": "next build",

@@ -31,20 +31,17 @@ export default function DataModel() {
                 <CardBody>
                     <Stack gap={8}>
                         <Text size="small">
-                            全局模型配置表，存储 LLM、图像、搜索三类 Provider 的连接信息。工厂函数读取此表记录来实例化可执行对象。删除 Model 时，关联 `ConversationModelSelection` 与 `SearchToolBinding` 级联删除；历史 `Message` 和 `Image` 的外键置空（SetNull），保留历史记录。
+                            全局模型配置表，存储 LLM、图像、搜索三类连接信息。运行时以 **`registerId`** 在工厂链中分发，`config` 为 JSON，经 **`parseModelConfig(registerId, config)`** 与各 Register 的 Zod schema 对齐。删除 Model 时，关联 `ConversationModelSelection` 与 `SearchToolBinding` 级联删除；历史 `Message` / `Image` 外键 SetNull。**`name` 仅列表展示**，LLM / 图像实际请求模型名分别在 `config.modelId` / **`config.requestModel`**。
                         </Text>
                         <Table
                             headers={['字段', '类型', '说明']}
                             rows={[
                                 ['id', 'String cuid', '主键'],
-                                ['type', 'ModelType', 'LLM / IMAGE / SEARCH，决定该记录归属哪类功能'],
-                                ['name', 'String', '模型名称，同时用作 API 请求中的 model 参数'],
-                                ['providerType', 'ProviderType', '决定使用哪条工厂链或执行路径'],
-                                ['baseURL', 'String?', 'OPENAI 类型忽略；OPENAI_COMPATIBLE / 图像 Provider 必填'],
-                                ['apiKey', 'String', '鉴权密钥，v1 明文存储'],
-                                ['contextWindow', 'Int?', 'LLM 必填（app 层校验）；IMAGE / SEARCH 为 null'],
-                                ['extraHeaders', 'Json?', '附加 HTTP 请求头，仅 OPENAI_COMPATIBLE 使用'],
-                                ['capabilities', 'Json?', '图像模型能力描述，含 supportedSizes 数组'],
+                                ['type', 'ModelType', 'LLM / IMAGE / SEARCH'],
+                                ['registerId', 'String', '静态目录 SKU（与 lib/providers/registry 一致），取代旧枚举 providerType'],
+                                ['name', 'String', '用户可读标签；不参与下游 HTTP body 的 model 字段'],
+                                ['config', 'Json', 'Register 专有：含 apiKey、modelId/requestModel、baseURL?、capabilities? 等'],
+                                ['createdAt / updatedAt', 'DateTime', '时间戳'],
                             ]}
                             striped
                         />
@@ -187,16 +184,19 @@ export default function DataModel() {
                     />
                 </Stack>
                 <Stack gap={6}>
-                    <Text weight="semibold">ProviderType</Text>
+                    <Text weight="semibold">registerId（节选）</Text>
+                    <Text size="small" tone="secondary">
+                        完整列表由 **`listRegisterMetadata(type)`** 提供；设置页打开表单时 **`GET /api/register-metadata?type=LLM|IMAGE|SEARCH`** 拉取标题与 sortOrder。
+                    </Text>
                     <Table
-                        headers={['值', '工厂 / 执行路径']}
+                        headers={['registerId', 'type', '工厂 / 工具']}
                         rows={[
-                            ['OPENAI', 'LLM：@ai-sdk/openai'],
-                            ['OPENAI_COMPATIBLE', 'LLM：@ai-sdk/openai-compatible'],
-                            ['ALIBABA', 'LLM：@ai-sdk/alibaba'],
-                            ['BRAVE_SEARCH', '搜索：直接调 Brave Search API'],
-                            ['VOLCENGINE_SEEDREAM', '图像：火山引擎 Seedream'],
-                            ['DASHSCOPE_WAN_IMAGE', '图像：阿里云百炼 WAN'],
+                            ['openai/official', 'LLM', '@ai-sdk/openai'],
+                            ['openai-compatible/generic', 'LLM', '@ai-sdk/openai-compatible'],
+                            ['alibaba/dashscope-llm', 'LLM', '@ai-sdk/alibaba'],
+                            ['brave/search', 'SEARCH', 'Brave Search API（web-search / image-search）'],
+                            ['volcengine/seedream', 'IMAGE', 'Seedream HTTP 同步接口'],
+                            ['dashscope/wan-image', 'IMAGE', 'DashScope 多模态 messages 接口'],
                         ]}
                     />
                 </Stack>
@@ -219,12 +219,13 @@ export default function DataModel() {
             <Table
                 headers={['Settings 页面区域', '操作', '对应表 / 字段']}
                 rows={[
-                    ['LLM 模型列表', '新增 / 删除', 'Model（type = LLM）'],
-                    ['图像模型列表', '新增 / 删除', 'Model（type = IMAGE），capabilities 存 supportedSizes'],
-                    ['搜索模型列表', '新增 / 删除', 'Model（type = SEARCH）'],
+                    ['Register 下拉 / 单行提示', 'Client fetch', '`GET /api/register-metadata`，按 type 分支；条目 ≤1 时可隐藏下拉'],
+                    ['LLM 模型表单', 'POST /api/models', 'registerId + name（显示名）+ config.modelId + apiKey 等'],
+                    ['图像模型表单', 'POST /api/models', 'registerId + name + config.requestModel + capabilities（含 supportedSizes · maxReferenceImages）'],
+                    ['Search 模型表单', 'POST /api/models', 'registerId（如 brave/search）+ name + config.apiKey'],
+                    ['LLM / 图像 / 搜索列表', '新增 / 删除', 'Model'],
                     ['搜索工具绑定表单', '绑定 / 解绑', 'SearchToolBinding（tool + modelId）'],
-                    ['对话页 LLM 选择器', '切换', 'ConversationModelSelection（role = LLM）'],
-                    ['对话页图像选择器', '切换 / 清除', 'ConversationModelSelection（role = IMAGE_PRIMARY / IMAGE_SECONDARY）'],
+                    ['对话页 LLM / 图像选择器', '切换', 'ConversationModelSelection'],
                 ]}
                 striped
             />

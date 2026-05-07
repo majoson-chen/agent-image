@@ -3,14 +3,21 @@
 import { cn } from '@lib/cn'
 import { Plus } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+
+interface RegisterRow {
+    registerId: string
+    title: string
+}
 
 interface FormState {
     name: string
     apiKey: string
+    /** 静态目录中的 registerId（当前仅 Brave） */
+    registerId: string
 }
 
-const initialState: FormState = { name: '', apiKey: '' }
+const initialState: FormState = { name: '', apiKey: '', registerId: 'brave/search' }
 
 export function AddSearchModelForm() {
     const router = useRouter()
@@ -18,8 +25,27 @@ export function AddSearchModelForm() {
     const [error, setError] = useState<string | null>(null)
     const [loading, setLoading] = useState(false)
     const [open, setOpen] = useState(false)
+    const [registerRows, setRegisterRows] = useState<RegisterRow[] | null>(null)
 
-    function set(key: keyof FormState, value: string) {
+    useEffect(() => {
+        if (!open || registerRows)
+            return
+        void (async () => {
+            const res = await fetch('/api/register-metadata?type=SEARCH')
+            if (!res.ok) {
+                setRegisterRows([])
+                return
+            }
+            const rows = await res.json() as RegisterRow[]
+            setRegisterRows(rows)
+            setForm(prev => ({
+                ...prev,
+                registerId: rows[0]?.registerId ?? prev.registerId,
+            }))
+        })()
+    }, [open, registerRows])
+
+    function set<K extends keyof FormState>(key: K, value: FormState[K]) {
         setForm(prev => ({ ...prev, [key]: value }))
     }
 
@@ -33,7 +59,7 @@ export function AddSearchModelForm() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 type: 'SEARCH',
-                registerId: 'brave/search',
+                registerId: form.registerId,
                 name: form.name.trim(),
                 config: {
                     apiKey: form.apiKey.trim(),
@@ -54,8 +80,11 @@ export function AddSearchModelForm() {
 
         setForm(initialState)
         setOpen(false)
+        setRegisterRows(null)
         router.refresh()
     }
+
+    const titleLabel = registerRows?.find(r => r.registerId === form.registerId)?.title ?? 'Search'
 
     if (!open) {
         return (
@@ -65,7 +94,7 @@ export function AddSearchModelForm() {
                 onClick={() => setOpen(true)}
             >
                 <Plus className="size-4" strokeWidth={2} aria-hidden />
-                添加 Brave Search 模型
+                添加 Search 模型
             </button>
         )
     }
@@ -75,13 +104,28 @@ export function AddSearchModelForm() {
             onSubmit={handleSubmit}
             className="rounded-box border border-base-300 bg-base-100 p-4"
         >
-            <p className="mb-3 font-medium text-base-content">添加 Brave Search 模型</p>
+            <p className="mb-3 font-medium text-base-content">{`添加 ${titleLabel}`}</p>
 
             {error && (
                 <div className="alert alert-error mb-3 py-2 text-sm">{error}</div>
             )}
 
             <div className="grid gap-3">
+                {registerRows && registerRows.length > 1 && (
+                    <fieldset className="fieldset">
+                        <legend className="fieldset-legend">Register</legend>
+                        <select
+                            className="select select-bordered w-full"
+                            value={form.registerId}
+                            onChange={e => set('registerId', e.target.value)}
+                        >
+                            {registerRows.map(r => (
+                                <option key={r.registerId} value={r.registerId}>{r.title}</option>
+                            ))}
+                        </select>
+                    </fieldset>
+                )}
+
                 <fieldset className="fieldset">
                     <legend className="fieldset-legend">模型名称</legend>
                     <input
@@ -121,6 +165,7 @@ export function AddSearchModelForm() {
                         setOpen(false)
                         setError(null)
                         setForm(initialState)
+                        setRegisterRows(null)
                     }}
                 >
                     取消

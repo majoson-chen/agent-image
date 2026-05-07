@@ -49,11 +49,13 @@ related_components:
 **渲染列表（节选模式）：**
 
 ```tsx
-{messages
-    .filter((m) => !(m.role === 'user' && isImageFetchVisionPersistParts(m.parts)))
-    .map((m) => (
-        <div key={m.id}>{/* 原有 user / assistant 分支 */}</div>
-    ))}
+{
+    messages
+        .filter(m => !(m.role === 'user' && isImageFetchVisionPersistParts(m.parts)))
+        .map(m => (
+            <div key={m.id}>{/* 原有 user / assistant 分支 */}</div>
+        ))
+}
 ```
 
 **检测逻辑（服务端/客户端共用）**：`@lib/ai/vision-inject-xml` 的 `isImageFetchVisionPersistParts`。

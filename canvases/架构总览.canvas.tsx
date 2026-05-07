@@ -103,7 +103,7 @@ export default function ArchitectureOverview() {
                     <CardHeader trailing={<Pill size="sm">app/api/</Pill>}>Route Handler</CardHeader>
                     <CardBody>
                         <Stack gap={4}>
-                            <Text size="small">`chat/route.ts` 是核心对话接口；`models/` · `conversations/` · `images/`（GET 读图、POST 用户上传）· `bindings/` 等提供 CRUD。</Text>
+                            <Text size="small">`chat/route.ts` 是核心对话接口；`models/` · **`register-metadata/`**（只读 Register 目录）· `conversations/` · `images/`（GET 读图、POST 用户上传）· `bindings/` 等。</Text>
                         </Stack>
                     </CardBody>
                 </Card>
@@ -112,7 +112,9 @@ export default function ArchitectureOverview() {
                     <CardBody>
                         <Stack gap={4}>
                             <Text size="small">`conversations/[id]/`：ChatPage、Composer、ComposerAttachments（用户附图）、ContextUsageBar</Text>
-                            <Text size="small">`settings/`：模型管理（LLM / 图像 / 搜索）</Text>
+                            <Text size="small">
+                                `settings/`：模型管理；打开表单时拉取 `GET /api/register-metadata`，**name**（展示）与 API **modelId**（LLM）/ **requestModel**（生图）分离。
+                            </Text>
                             <Text size="small">`Sidebar.tsx`：会话列表与导航</Text>
                         </Stack>
                     </CardBody>
@@ -146,8 +148,8 @@ export default function ArchitectureOverview() {
             <Table
                 headers={['画布', '覆盖内容']}
                 rows={[
-                    ['数据模型', 'Prisma schema · 6 张表字段与关系 · 枚举 · cascade 规则'],
-                    ['Provider 工厂', 'LLM / 图像两条工厂链 · Presets 文件 · computeLlmChatProviderOptions'],
+                    ['数据模型', 'Prisma · Model 使用 registerId + Json config · Register 目录 · Settings 与表字段映射'],
+                    ['Provider 工厂', '按 registerId 分发 · LLM / 图像工厂链 · Presets · computeLlmChatProviderOptions'],
                     ['工具系统', 'buildAvailableTools() · 三类暴露条件 · 各工具入参出参 · SSRF 防护'],
                     ['Agent 运行时与消息 Parts', 'handleChatPost() 主流程 · ToolLoopAgent · parts 结构 · continuation · usage'],
                     ['视觉上下文注入', 'prepareStep 路径 · onStepFinish DB 路径 · 两个去重 Set · 失败处理'],

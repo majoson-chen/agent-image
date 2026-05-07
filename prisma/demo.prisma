@@ -1,0 +1,20 @@
+enum ModelType {
+  LLM
+  IMAGE
+  SEARCH
+}
+
+
+model Model {
+  id            String       @id @default(cuid())
+  type          ModelType
+  name          String
+  // 对应我们的 Register，例如 `alibaba/kimi-k2.6`, `volcengine/seedream-4.5-pro`
+  registerID    String
+  // 不在 DB 做类型约束和校验，直接传入 Register 的 config
+  // 保持灵活性
+  config        Json
+  
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+}

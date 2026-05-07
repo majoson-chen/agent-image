@@ -22,7 +22,7 @@ function isImageGenerateToolPart(p: object): boolean {
         && (x.toolName === 'image-generate-primary' || x.toolName === 'image-generate-secondary')
 }
 
-export type UiLike = { id: string, role: 'user' | 'assistant', parts: object[] }
+export interface UiLike { id: string, role: 'user' | 'assistant', parts: object[] }
 
 function sliceHasLaterUser(messages: UiLike[], assistantIndex: number): boolean {
     return messages.slice(assistantIndex + 1).some(msg => msg.role === 'user')

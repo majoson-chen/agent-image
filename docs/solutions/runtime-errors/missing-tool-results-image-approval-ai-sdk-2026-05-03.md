@@ -43,37 +43,37 @@ related_components:
 
 对齐 SDK 契约，并补齐 **落库 part** 与 **HTTP 审批负载** 的匹配维度。
 
-1. **`lib/ai/repair-dangling-image-generate-parts.ts`**  
+1. **`lib/ai/repair-dangling-image-generate-parts.ts`**
    仅当 **该条 assistant 之后还存在至少一条 user** 时，才把主/次生图未完结状态收成 `output-denied`；避免 tool-approval 续跑（末尾 assistant、后无 user）被误伤。
 
-2. **`lib/ai/tool-approval-parts.ts` — `applyToolApprovalsToParts`**  
-   - 批准：**`approval-responded`**，**`approval: { id: decision.approvalId, approved: true }`**（`id` 以 HTTP 的 `approvalId` 为准）。  
-   - 匹配决策：**先 `part.approval.id`，再 `approvals[].toolCallId === part.toolCallId`**。  
-   - 可合并状态：**`approval-requested`**，或 **`input-available` 且 `approval.approved !== true`**（含无 `approval` 对象的条）。  
-   - **删除**「无 `approval.id` 则直接 return」——否则会永久无法合并「丢 approval 的 input-available」。
+2. **`lib/ai/tool-approval-parts.ts` — `applyToolApprovalsToParts`**
+    - 批准：**`approval-responded`**，**`approval: { id: decision.approvalId, approved: true }`**（`id` 以 HTTP 的 `approvalId` 为准）。
+    - 匹配决策：**先 `part.approval.id`，再 `approvals[].toolCallId === part.toolCallId`**。
+    - 可合并状态：**`approval-requested`**，或 **`input-available` 且 `approval.approved !== true`**（含无 `approval` 对象的条）。
+    - **删除**「无 `approval.id` 则直接 return」——否则会永久无法合并「丢 approval 的 input-available」。
 
-3. **`lib/ai/step-to-parts.ts` — `appendStepToParts`**  
+3. **`lib/ai/step-to-parts.ts` — `appendStepToParts`**
    当 step 仅有 **`tool-call` 尚无 `tool-result`**、写入 **`input-available`** 时，从 **同 `toolCallId` 的前序 tool part** 拷贝 **`approval`**，避免新条抹掉 `approval.id`。
 
-4. **窄传输与校验**  
-   - **`lib/chat/narrow-chat-transport-body.ts`**：`collectApprovalsFromAssistantMessage` 附带 **`toolCallId`**。  
-   - **`lib/validation/chat-post-schema.ts`**：`approvals[]` 项增加可选 **`toolCallId`**。
+4. **窄传输与校验**
+    - **`lib/chat/narrow-chat-transport-body.ts`**：`collectApprovalsFromAssistantMessage` 附带 **`toolCallId`**。
+    - **`lib/validation/chat-post-schema.ts`**：`approvals[]` 项增加可选 **`toolCallId`**。
 
-5. **`app/conversations/[id]/ChatPage.tsx`**  
+5. **`app/conversations/[id]/ChatPage.tsx`**
    渲染 **`approval-responded`**（如「已确认，准备生成…」），避免无分支导致空白。
 
 ## Why This Works
 
-AI SDK 在整理发往模型的 prompt 时，对每个未 `providerExecuted` 的 **`tool-call`**，要求在遇到下一则 **user** 前必须有 **`tool-result`**，或 **`approvedToolCallIds`** 中含该 `toolCallId`（由 **`tool-approval-request` / `tool-approval-response`** 配对产生）。  
+AI SDK 在整理发往模型的 prompt 时，对每个未 `providerExecuted` 的 **`tool-call`**，要求在遇到下一则 **user** 前必须有 **`tool-result`**，或 **`approvedToolCallIds`** 中含该 `toolCallId`（由 **`tool-approval-request` / `tool-approval-response`** 配对产生）。
 `convertToModelMessages` 只在 tool UI part 上 **`approval.approved` 已赋值** 时写入 **`tool-approval-response`**。因此：**DB 行必须是 `approval-responded` + `approved: true`，或至少可通过 HTTP 合并成该形状**；**不能**长期停留在「像已批准」的 `input-available` 却无 `approved`。**`toolCallId` 回传**解决 **落库丢失 `approval.id`** 时的匹配问题。
 
 ## Prevention
 
-- **改 `applyToolApprovalsToParts` / `appendStepToParts` 时**：用 Vitest 覆盖三类数据——**`approval-requested`**、**`input-available` 带 `approval.id` 无 `approved`**、**`input-available` 仅 `toolCallId`** + HTTP **`toolCallId`**。  
-- **回归**：`tool-approval` 后从 DB `listMessages` 读出的最后一条 assistant 生图 part 应为 **`approval-responded`**（调试期曾用 `pre-repair` 日志断言；现已移除 ingest）。  
+- **改 `applyToolApprovalsToParts` / `appendStepToParts` 时**：用 Vitest 覆盖三类数据——**`approval-requested`**、**`input-available` 带 `approval.id` 无 `approved`**、**`input-available` 仅 `toolCallId`** + HTTP **`toolCallId`**。
+- **回归**：`tool-approval` 后从 DB `listMessages` 读出的最后一条 assistant 生图 part 应为 **`approval-responded`**（调试期曾用 `pre-repair` 日志断言；现已移除 ingest）。
 - **阅 SDK**：涉及审批与消息转换时对照本地 **`node_modules/ai/dist/index.mjs`** 中 `convertToModelMessages` 与 `convertToLanguageModelPrompt` 分支，避免仅凭猜测状态机。
 
 ## Related Issues
 
-- 多模态与 `convertToModelMessages`（相对路径 hydrate）：[`docs/solutions/design-patterns/composer-user-image-upload-multimodal-2026-05-03.md`](../design-patterns/composer-user-image-upload-multimodal-2026-05-03.md)（**低重叠**，不同问题域）。  
+- 多模态与 `convertToModelMessages`（相对路径 hydrate）：[`docs/solutions/design-patterns/composer-user-image-upload-multimodal-2026-05-03.md`](../design-patterns/composer-user-image-upload-multimodal-2026-05-03.md)（**低重叠**，不同问题域）。
 - 代码锚点（实现以仓库当前版本为准）：`lib/ai/tool-approval-parts.ts`、`lib/ai/step-to-parts.ts`、`lib/ai/repair-dangling-image-generate-parts.ts`、`app/api/chat/route.ts`、`lib/chat/narrow-chat-transport-body.ts`、`lib/validation/chat-post-schema.ts`。

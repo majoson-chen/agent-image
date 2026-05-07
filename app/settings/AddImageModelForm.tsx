@@ -7,12 +7,23 @@ import { getSeedreamPreset, SEEDREAM_PRESETS } from '@lib/image/seedream-presets
 import { getWanImagePreset, WAN_IMAGE_PRESETS } from '@lib/image/wan-image-presets'
 import { Plus, X } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+
+type ImageRegisterId = 'volcengine/seedream' | 'dashscope/wan-image'
 
 type ImageVendor = 'seedream' | 'wan'
 
+function imageVendorFromRegister(registerId: ImageRegisterId): ImageVendor {
+    return registerId === 'dashscope/wan-image' ? 'wan' : 'seedream'
+}
+
+interface RegisterRow {
+    registerId: string
+    title: string
+}
+
 interface FormState {
-    vendor: ImageVendor
+    registerId: ImageRegisterId
     seedreamPreset: SeedreamPresetKey
     wanPreset: WanImagePresetKey
     /** DB `Model.name`：列表展示用 */
@@ -39,7 +50,7 @@ const emptyCaps = {
 }
 
 const initialState: FormState = {
-    vendor: 'seedream',
+    registerId: 'volcengine/seedream',
     seedreamPreset: 'custom',
     wanPreset: 'custom',
     ...emptyCaps,
@@ -51,6 +62,39 @@ export function AddImageModelForm() {
     const [error, setError] = useState<string | null>(null)
     const [loading, setLoading] = useState(false)
     const [open, setOpen] = useState(false)
+    const [registerRows, setRegisterRows] = useState<RegisterRow[] | null>(null)
+
+    const vendor = imageVendorFromRegister(form.registerId)
+    /** 与服务端 IMAGE 目录一致时才展示为多选；单行则固定；加载/失败时退回静态两项 */
+    const showRegisterSelect = !(registerRows && registerRows.length === 1)
+    const registerTitle
+        = registerRows?.find(r => r.registerId === form.registerId)?.title
+            ?? (form.registerId === 'dashscope/wan-image'
+                ? '阿里云 · 百炼万相图像（DashScope）'
+                : '火山引擎 · 方舟 Seedream')
+
+    useEffect(() => {
+        if (!open || registerRows)
+            return
+        void (async () => {
+            const res = await fetch('/api/register-metadata?type=IMAGE')
+            if (!res.ok) {
+                setRegisterRows([])
+                return
+            }
+            const rows = (await res.json() as RegisterRow[]).filter(
+                (r): r is RegisterRow & { registerId: ImageRegisterId } =>
+                    r.registerId === 'volcengine/seedream' || r.registerId === 'dashscope/wan-image',
+            )
+            setRegisterRows(rows)
+            if (rows.length === 1) {
+                setForm(prev => ({
+                    ...prev,
+                    registerId: rows[0].registerId,
+                }))
+            }
+        })()
+    }, [open, registerRows])
 
     function set<K extends keyof FormState>(key: K, value: FormState[K]) {
         setForm(prev => ({ ...prev, [key]: value }))
@@ -94,21 +138,21 @@ export function AddImageModelForm() {
         }))
     }
 
-    function setVendor(vendor: ImageVendor) {
-        if (vendor === form.vendor)
+    function setImageRegister(registerId: ImageRegisterId) {
+        if (registerId === form.registerId)
             return
         setForm({
             ...initialState,
-            vendor,
+            registerId,
         })
     }
 
     function presetValue(): string {
-        return form.vendor === 'seedream' ? form.seedreamPreset : form.wanPreset
+        return vendor === 'seedream' ? form.seedreamPreset : form.wanPreset
     }
 
     function onPresetChange(raw: string) {
-        if (form.vendor === 'seedream')
+        if (vendor === 'seedream')
             applySeedreamPreset(raw as SeedreamPresetKey)
         else applyWanPreset(raw as WanImagePresetKey)
     }
@@ -145,10 +189,9 @@ export function AddImageModelForm() {
 
         setLoading(true)
 
-        const registerId = form.vendor === 'seedream' ? 'volcengine/seedream' : 'dashscope/wan-image'
         const body: Record<string, unknown> = {
             type: 'IMAGE',
-            registerId,
+            registerId: form.registerId,
             name: form.displayName.trim(),
             config: {
                 requestModel: form.requestModel.trim(),
@@ -184,10 +227,11 @@ export function AddImageModelForm() {
 
         setForm(initialState)
         setOpen(false)
+        setRegisterRows(null)
         router.refresh()
     }
 
-    const maxRefs = form.vendor === 'wan' ? 9 : 14
+    const maxRefs = vendor === 'wan' ? 9 : 14
 
     if (!open) {
         return (
@@ -209,20 +253,41 @@ export function AddImageModelForm() {
             {error && <div className="alert alert-error mb-3 py-2 text-sm">{error}</div>}
 
             <div className="grid gap-3">
-                <fieldset className="fieldset">
-                    <legend className="fieldset-legend">服务商</legend>
-                    <select
-                        className="select select-bordered w-full"
-                        value={form.vendor}
-                        onChange={e => setVendor(e.target.value as ImageVendor)}
-                    >
-                        <option value="seedream">火山引擎 · 方舟 Seedream</option>
-                        <option value="wan">阿里云 · 百炼万相图像（DashScope）</option>
-                    </select>
-                    <p className="fieldset-label mt-1 text-xs text-base-content/50">
-                        各服务商的 API Key 与网关须分别配置，并与控制台所选地域一致。此处仅文生图 / 图生图（图像），不含视频。
-                    </p>
-                </fieldset>
+                {showRegisterSelect
+                    ? (
+                            <fieldset className="fieldset">
+                                <legend className="fieldset-legend">Register</legend>
+                                <select
+                                    className="select select-bordered w-full"
+                                    value={form.registerId}
+                                    onChange={(e) => {
+                                        setImageRegister(e.target.value as ImageRegisterId)
+                                    }}
+                                >
+                                    {registerRows && registerRows.length > 1
+                                        ? registerRows.map(r => (
+                                                <option key={r.registerId} value={r.registerId}>{r.title}</option>
+                                            ))
+                                        : (
+                                                <>
+                                                    <option value="volcengine/seedream">火山引擎 · 方舟 Seedream</option>
+                                                    <option value="dashscope/wan-image">阿里云 · 百炼万相图像（DashScope）</option>
+                                                </>
+                                            )}
+                                </select>
+                                <p className="fieldset-label mt-1 text-xs text-base-content/50">
+                                    各服务商的 API Key 与网关须分别配置，并与控制台所选地域一致。此处仅文生图 / 图生图（图像），不含视频。
+                                </p>
+                            </fieldset>
+                        )
+                    : (
+                            <div className="rounded-lg border border-base-300 bg-base-200/30 px-3 py-2">
+                                <p className="text-xs font-medium text-base-content">{registerTitle}</p>
+                                <p className="mt-1 text-xs text-base-content/50">
+                                    目录中仅有一项生图 Register，已与下方预设联动。
+                                </p>
+                            </div>
+                        )}
 
                 <fieldset className="fieldset">
                     <legend className="fieldset-legend">版本预设</legend>
@@ -232,7 +297,7 @@ export function AddImageModelForm() {
                         onChange={e => onPresetChange(e.target.value)}
                     >
                         <option value="custom">自定义（手动填写模型 ID 与能力）</option>
-                        {form.vendor === 'seedream'
+                        {vendor === 'seedream'
                             ? SEEDREAM_PRESETS.map(p => (
                                     <option key={p.key} value={p.key}>{p.label}</option>
                                 ))
@@ -241,7 +306,7 @@ export function AddImageModelForm() {
                                 ))}
                     </select>
                     <p className="fieldset-label mt-1 text-xs text-base-content/50">
-                        {form.vendor === 'seedream'
+                        {vendor === 'seedream'
                             ? '预设对应常见方舟模型 ID，仍以火山控制台为准，可再微调。'
                             : '预设对应万相 2.7 图像模型 ID，仍以百炼控制台为准，可再微调。'}
                     </p>
@@ -263,7 +328,7 @@ export function AddImageModelForm() {
                     <input
                         className="input input-bordered w-full font-mono text-sm"
                         placeholder={
-                            form.vendor === 'seedream'
+                            vendor === 'seedream'
                                 ? '例如 doubao-seedream-4-5-251128'
                                 : '例如 wan2.7-image-pro'
                         }
@@ -278,14 +343,14 @@ export function AddImageModelForm() {
                     <input
                         className="input input-bordered w-full font-mono text-sm"
                         placeholder={
-                            form.vendor === 'seedream'
+                            vendor === 'seedream'
                                 ? '留空使用内置默认 LAS 地址；自管接入点时填完整 https URL'
                                 : '留空使用北京「多模态图像生成」默认地址；国际站等请填控制台完整 endpoint'
                         }
                         value={form.baseURL}
                         onChange={e => set('baseURL', e.target.value)}
                     />
-                    {form.vendor === 'wan' && (
+                    {vendor === 'wan' && (
                         <p className="fieldset-label mt-1 text-xs text-base-content/50">
                             地域与 Key 必须同属北京或同属新加坡等国际区，勿混用。
                         </p>
@@ -294,12 +359,12 @@ export function AddImageModelForm() {
 
                 <fieldset className="fieldset">
                     <legend className="fieldset-legend">
-                        {form.vendor === 'seedream' ? '方舟 API Key' : '百炼 API Key（DashScope）'}
+                        {vendor === 'seedream' ? '方舟 API Key' : '百炼 API Key（DashScope）'}
                     </legend>
                     <input
                         type="password"
                         className="input input-bordered w-full font-mono text-sm"
-                        placeholder={form.vendor === 'seedream' ? 'ARK API Key' : 'DASHSCOPE_API_KEY'}
+                        placeholder={vendor === 'seedream' ? 'ARK API Key' : 'DASHSCOPE_API_KEY'}
                         value={form.apiKey}
                         onChange={e => set('apiKey', e.target.value)}
                         required
@@ -327,7 +392,7 @@ export function AddImageModelForm() {
                     </div>
                     <p className="fieldset-label mt-1 text-xs text-base-content/50">
                         格式为宽×高（如 1024x1024）；对话中仅能选择此处已添加的规格。
-                        {form.vendor === 'wan'
+                        {vendor === 'wan'
                             ? ' 选用万相时，服务端会将常见正方形对齐为百炼文档中的 1K / 2K / 4K 等档位。'
                             : ''}
                     </p>
@@ -362,7 +427,7 @@ export function AddImageModelForm() {
                         }}
                     />
                     <p className="fieldset-label text-xs text-base-content/50">
-                        {form.vendor === 'seedream'
+                        {vendor === 'seedream'
                             ? 'Seedream 常见型号最多约 14 张参考图；填 0 表示不向模型传参考图'
                             : '万相图像接口单轮最多 9 张参考图；填 0 表示仅文生图、不使用参考图'}
                     </p>
@@ -396,6 +461,7 @@ export function AddImageModelForm() {
                         setOpen(false)
                         setError(null)
                         setForm(initialState)
+                        setRegisterRows(null)
                     }}
                 >
                     取消

@@ -4,11 +4,11 @@
  * 覆盖 approval 状态与生图输出
  */
 import type { UIMessage } from 'ai'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
-
-import { ChatPage } from '@/conversations/[id]/ChatPage'
 import { VISION_INJECT_XML_TAG } from '@lib/ai/vision-inject-xml'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { ChatPage } from '@/conversations/[id]/ChatPage'
 
 const mockChat = vi.hoisted(() => ({
     messages: [] as UIMessage[],

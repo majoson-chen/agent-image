@@ -1,10 +1,10 @@
+import { repairDanglingImageGenerateToolParts } from '@lib/ai/repair-dangling-image-generate-parts'
 /**
  * repairDanglingImageGenerateToolParts：防止未完成生图 tool 与后续 user 并排时触发 MissingToolResultsError。
  */
 import { convertToModelMessages, generateText } from 'ai'
 import { convertArrayToReadableStream, MockLanguageModelV3 } from 'ai/test'
 import { describe, expect, it } from 'vitest'
-import { repairDanglingImageGenerateToolParts } from '@lib/ai/repair-dangling-image-generate-parts'
 
 function mockLlm(): MockLanguageModelV3 {
     return new MockLanguageModelV3({

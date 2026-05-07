@@ -9,12 +9,12 @@ import * as os from 'node:os'
 import * as path from 'node:path'
 import { dbRowsToUiMessagesForHydrate } from '@lib/ai/db-rows-to-ui-messages'
 import { interleaveImageFetchVisionForModel } from '@lib/ai/interleave-image-fetch-vision-for-model'
-import { buildVisionInjectXml } from '@lib/ai/vision-inject-xml'
 import { hydrateApiImageFilePartsForModel } from '@lib/ai/normalize-user-image-parts'
+import { buildVisionInjectXml } from '@lib/ai/vision-inject-xml'
 import { createConversation } from '@lib/db/conversations'
 import { createImage } from '@lib/db/images'
-import { createUserMessageWithParts, listMessages } from '@lib/db/messages'
 import { toMessageRoleEnum } from '@lib/db/message-payload'
+import { createUserMessageWithParts, listMessages } from '@lib/db/messages'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { createTestDb } from '../helpers/db'
 
@@ -22,7 +22,7 @@ let prisma: PrismaClient
 let cleanup: () => Promise<void>
 let tmpDir: string
 
-const minimalGif = Buffer.from('GIF87a\x01\x00\x01\x00\x00\x00\x00!\xf9\x04\x00\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02', 'binary')
+const minimalGif = Buffer.from('GIF87a\x01\x00\x01\x00\x00\x00\x00!\xF9\x04\x00\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02', 'binary')
 
 beforeAll(async () => {
     ({ prisma, cleanup } = await createTestDb())

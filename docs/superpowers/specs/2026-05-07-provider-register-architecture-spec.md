@@ -21,15 +21,15 @@
 
 ## 2. 目标（目标态必须满足）
 
-| ID  | 陈述 |
-| --- | --- |
-| G1 | 存在 **静态 Registry**（单一聚合入口），可枚举每条 Register 的 **`registerId`、`modelType`（LLM \| IMAGE \| SEARCH）、展示用元数据**（标题、可选描述、排序）。 |
-| G2 | **设置页** 保持 **三个独立板块**（LLM、IMAGE、Search）；各板块内选择器 **仅列出 `modelType` 匹配的 Register**。用户选定 Register 后 **懒加载** 该 Register 的配置 UI（弹窗或等价），提交后 **写入 DB** 一条用户配置。 |
-| G3 | **`Model` 持久化**（或迁移后同义表）以 **`registerId` + `type` + `name`（用户可读标签）+ `config`（Json）** 为主；**不在 DB 中**维护「全量 Register 目录」。 |
-| G4 | **Register 职责**：解析/校验 `config`；为 **LLM** 产出 AI SDK **`LanguageModel`**；为 **IMAGE** 产出 **工具定义 + execute**（或等价可挂载到 `ToolLoopAgent` 的形态）；为 **SEARCH** 产出搜索工具或执行函数；**禁止** Register 间循环依赖。 |
-| G5 | **运行时错误**：优先以 **结构化 tool result** 返回给模型（**不得**在 result 中泄露 `apiKey`、完整授权头或未脱敏的原始 HTTP 体）；必要时辅以简短 `message` / `code` 供 LLM 调整策略或提示用户检查设置。设置页保存失败仍走 **HTTP 层校验错误**（非 tool result）。 |
-| G6 | **参考图**：若 Register 声明支持，工具入参可含 **`imageId`（及数量上限由 Register 定义）**；解析通过 **共享内核**（校验图像属于当前 `conversationId`，再转 bytes/URL/厂商所需形态）。不强制单独增加「仅给模型用的 fetch 工具」，除非后续产品明确要求两步显式化。 |
-| G7 | **DevTools**：开发环境下对 **传入 Agent 的 LLM** 使用 `wrapLanguageModel` + `devToolsMiddleware()`；**生产构建不得启用**（避免写 `.devtools/generations.json` 与额外开销）。 |
+| ID  | 陈述                                                                                                                                                                                                                                                             |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| G1  | 存在 **静态 Registry**（单一聚合入口），可枚举每条 Register 的 **`registerId`、`modelType`（LLM \| IMAGE \| SEARCH）、展示用元数据**（标题、可选描述、排序）。                                                                                                   |
+| G2  | **设置页** 保持 **三个独立板块**（LLM、IMAGE、Search）；各板块内选择器 **仅列出 `modelType` 匹配的 Register**。用户选定 Register 后 **懒加载** 该 Register 的配置 UI（弹窗或等价），提交后 **写入 DB** 一条用户配置。                                            |
+| G3  | **`Model` 持久化**（或迁移后同义表）以 **`registerId` + `type` + `name`（用户可读标签）+ `config`（Json）** 为主；**不在 DB 中**维护「全量 Register 目录」。                                                                                                     |
+| G4  | **Register 职责**：解析/校验 `config`；为 **LLM** 产出 AI SDK **`LanguageModel`**；为 **IMAGE** 产出 **工具定义 + execute**（或等价可挂载到 `ToolLoopAgent` 的形态）；为 **SEARCH** 产出搜索工具或执行函数；**禁止** Register 间循环依赖。                       |
+| G5  | **运行时错误**：优先以 **结构化 tool result** 返回给模型（**不得**在 result 中泄露 `apiKey`、完整授权头或未脱敏的原始 HTTP 体）；必要时辅以简短 `message` / `code` 供 LLM 调整策略或提示用户检查设置。设置页保存失败仍走 **HTTP 层校验错误**（非 tool result）。 |
+| G6  | **参考图**：若 Register 声明支持，工具入参可含 **`imageId`（及数量上限由 Register 定义）**；解析通过 **共享内核**（校验图像属于当前 `conversationId`，再转 bytes/URL/厂商所需形态）。不强制单独增加「仅给模型用的 fetch 工具」，除非后续产品明确要求两步显式化。 |
+| G7  | **DevTools**：开发环境下对 **传入 Agent 的 LLM** 使用 `wrapLanguageModel` + `devToolsMiddleware()`；**生产构建不得启用**（避免写 `.devtools/generations.json` 与额外开销）。                                                                                     |
 
 ---
 
