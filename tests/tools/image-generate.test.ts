@@ -46,9 +46,27 @@ function makeModel(overrides: Partial<{
 }
 
 describe('createImageGenerateTool - schema', () => {
-    it('only exposes prompt (no referenceImageIds)', () => {
+    it('dashscope wan with maxReferenceImages exposes optional capped referenceImageIds', () => {
+        const wan = createImageGenerateTool({
+            model: makeModel({ registerId: 'dashscope/wan-image', maxReferenceImages: 3 }),
+            params: { size: '2048x2048' },
+            role: 'PRIMARY',
+            conversationId: 'conv-1',
+        })
+        const sch = wan.inputSchema as z.ZodObject<z.ZodRawShape>
+        expect(sch.shape.referenceImageIds).toBeDefined()
+        expect(
+            sch.safeParse({ prompt: 'x', referenceImageIds: ['a', 'b', 'c', 'd'] }).success,
+        ).toBe(false)
+        expect(sch.safeParse({ prompt: 'x', referenceImageIds: ['a', 'b', 'c'] }).success).toBe(true)
+    })
+
+    it('seedream omits referenceImageIds even when maxReferenceImages positive', () => {
         const highRefModel = createImageGenerateTool({
-            model: makeModel({ maxReferenceImages: 14 }),
+            model: makeModel({
+                registerId: 'volcengine/seedream',
+                maxReferenceImages: 14,
+            }),
             params: { size: '2048x2048' },
             role: 'PRIMARY',
             conversationId: 'conv-1',
@@ -56,15 +74,19 @@ describe('createImageGenerateTool - schema', () => {
         const highSchema = highRefModel.inputSchema as z.ZodObject<z.ZodRawShape>
         expect(highSchema.shape.prompt).toBeDefined()
         expect(highSchema.shape.referenceImageIds).toBeUndefined()
+    })
 
+    it('dashscope wan with maxReferenceImages 0 hides reference ids', () => {
         const noRefTool = createImageGenerateTool({
-            model: makeModel({ maxReferenceImages: 0 }),
+            model: makeModel({
+                registerId: 'dashscope/wan-image',
+                maxReferenceImages: 0,
+            }),
             params: { size: '2048x2048' },
             role: 'PRIMARY',
             conversationId: 'conv-1',
         })
-        const noRefSchema = noRefTool.inputSchema as z.ZodObject<z.ZodRawShape>
-        expect(noRefSchema.shape.referenceImageIds).toBeUndefined()
+        expect((noRefTool.inputSchema as z.ZodObject<z.ZodRawShape>).shape.referenceImageIds).toBeUndefined()
     })
 
     it('requires prompt min length 1', () => {
@@ -162,5 +184,24 @@ describe('createImageGenerateTool - execute', () => {
             code: 'IMAGE_GEN_FAILED',
             message: 'Seedream 503',
         })
+    })
+
+    it('redacts api-key-looking substrings from error message', async () => {
+        const mod = await import('../../lib/image-provider-factory')
+        ;(mod.executeImageGeneration as MockedFunction<typeof ExecuteImageGenerationFn>).mockRejectedValueOnce(
+            new Error(`Bad gateway sk-${'a'.repeat(20)} end`),
+        )
+
+        const tool = createImageGenerateTool({
+            model: makeModel(),
+            params: { size: '2048x2048' },
+            role: 'PRIMARY',
+            conversationId: 'conv-1',
+        })
+
+        const out = await tool.execute!({ prompt: 'test' }, { abortSignal: new AbortController().signal } as Parameters<NonNullable<typeof tool.execute>>[1])
+        expect(out.ok).toBe(false)
+        expect((out as { message: string }).message).not.toContain('sk-aaaaaaaa')
+        expect((out as { message: string }).message).toContain('[redacted]')
     })
 })

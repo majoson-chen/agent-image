@@ -21,6 +21,8 @@ interface ExecuteImageGenerationInput {
     conversationId: string
     prisma: PrismaClient
     abortSignal?: AbortSignal
+    /** 仅万相多模态：已通过会话校验的参考图 */
+    referenceImages?: Array<{ mimeType: string, base64: string }>
 }
 
 export async function executeImageGeneration(input: ExecuteImageGenerationInput) {
@@ -130,15 +132,25 @@ function mapSizeToDashscopeParameter(size: string, modelName: string): string {
     return '2K'
 }
 
-async function executeDashscopeWanImage(input: ExecuteImageGenerationInput, config: DashscopeWanImageConfig) {
-    const { model, prompt, size, conversationId, prisma, abortSignal } = input
+async function executeDashscopeWanImage(
+    input: ExecuteImageGenerationInput,
+    config: DashscopeWanImageConfig,
+) {
+    const { model, prompt, size, conversationId, prisma, abortSignal, referenceImages } = input
 
     const timeoutSignal = AbortSignal.timeout(120_000)
     const combinedSignal = abortSignal
         ? AbortSignal.any([abortSignal, timeoutSignal])
         : timeoutSignal
 
-    const content: Array<{ text?: string, image?: string }> = [{ text: prompt }]
+    const content: Array<{ text?: string, image?: string }> = []
+
+    for (const ref of referenceImages ?? []) {
+        content.push({
+            image: `data:${ref.mimeType};base64,${ref.base64}`,
+        })
+    }
+    content.push({ text: prompt })
 
     const parameters: Record<string, unknown> = {
         size: mapSizeToDashscopeParameter(size, config.requestModel),

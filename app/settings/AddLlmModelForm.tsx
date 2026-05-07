@@ -3,11 +3,16 @@
 import { cn } from '@lib/cn'
 import { Plus } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+
+interface LlmRegisterOption {
+    registerId: string
+    title: string
+}
 
 type LlmRegisterId = 'openai/official' | 'openai-compatible/generic' | 'alibaba/dashscope-llm'
 
-function llmModelNamePlaceholder(registerId: LlmRegisterId): string {
+function llmApiModelPlaceholder(registerId: LlmRegisterId): string {
     if (registerId === 'alibaba/dashscope-llm')
         return '如 qwen-plus'
     if (registerId === 'openai-compatible/generic')
@@ -16,8 +21,11 @@ function llmModelNamePlaceholder(registerId: LlmRegisterId): string {
 }
 
 interface FormState {
-    name: string
+    /** 列表与侧栏展示用 */
+    displayName: string
     registerId: LlmRegisterId
+    /** 实际请求 LLM 时的 modelId */
+    modelId: string
     baseURL: string
     apiKey: string
     /** 阿里云百炼专用：勾选后写入 capabilities.supportsThinking */
@@ -25,8 +33,9 @@ interface FormState {
 }
 
 const initialState: FormState = {
-    name: '',
+    displayName: '',
     registerId: 'openai/official',
+    modelId: '',
     baseURL: '',
     apiKey: '',
     supportsThinking: false,
@@ -38,6 +47,21 @@ export function AddLlmModelForm() {
     const [error, setError] = useState<string | null>(null)
     const [loading, setLoading] = useState(false)
     const [open, setOpen] = useState(false)
+    const [registryOptions, setRegistryOptions] = useState<LlmRegisterOption[] | null>(null)
+
+    useEffect(() => {
+        if (!open || registryOptions)
+            return
+        void (async () => {
+            const res = await fetch('/api/register-metadata?type=LLM')
+            if (!res.ok) {
+                setRegistryOptions([])
+                return
+            }
+            const rows = await res.json() as Array<{ registerId: string, title: string }>
+            setRegistryOptions(rows.map(r => ({ registerId: r.registerId, title: r.title })))
+        })()
+    }, [open, registryOptions])
 
     function set(key: keyof FormState, value: string) {
         setForm(prev => ({ ...prev, [key]: value }))
@@ -50,10 +74,10 @@ export function AddLlmModelForm() {
 
         const payload: Record<string, unknown> = {
             type: 'LLM',
-            name: form.name.trim(),
+            name: form.displayName.trim(),
             registerId: form.registerId,
             config: {
-                modelId: form.name.trim(),
+                modelId: form.modelId.trim(),
                 apiKey: form.apiKey.trim(),
             },
         }
@@ -119,12 +143,12 @@ export function AddLlmModelForm() {
 
             <div className="grid gap-3">
                 <fieldset className="fieldset">
-                    <legend className="fieldset-legend">模型名称</legend>
+                    <legend className="fieldset-legend">显示名称</legend>
                     <input
                         className="input input-bordered w-full"
-                        placeholder={llmModelNamePlaceholder(form.registerId)}
-                        value={form.name}
-                        onChange={e => set('name', e.target.value)}
+                        placeholder="设置列表中的名称（如「我的 GPT-4o」）"
+                        value={form.displayName}
+                        onChange={e => set('displayName', e.target.value)}
                         required
                     />
                 </fieldset>
@@ -134,12 +158,34 @@ export function AddLlmModelForm() {
                     <select
                         className="select select-bordered w-full"
                         value={form.registerId}
-                        onChange={e => set('registerId', e.target.value as LlmRegisterId)}
+                        onChange={(e) => {
+                            const v = e.target.value as LlmRegisterId
+                            setForm(prev => ({ ...prev, registerId: v }))
+                        }}
                     >
-                        <option value="openai/official">OpenAI 官方</option>
-                        <option value="openai-compatible/generic">OpenAI 兼容（通用）</option>
-                        <option value="alibaba/dashscope-llm">阿里云百炼（DashScope）</option>
+                        {registryOptions?.length
+                            ? registryOptions.map(o => (
+                                    <option key={o.registerId} value={o.registerId}>{o.title}</option>
+                                ))
+                            : (
+                                    <>
+                                        <option value="openai/official">OpenAI 官方</option>
+                                        <option value="openai-compatible/generic">OpenAI 兼容（通用）</option>
+                                        <option value="alibaba/dashscope-llm">阿里云百炼（DashScope）</option>
+                                    </>
+                                )}
                     </select>
+                </fieldset>
+
+                <fieldset className="fieldset">
+                    <legend className="fieldset-legend">API 模型 ID</legend>
+                    <input
+                        className="input input-bordered w-full font-mono text-sm"
+                        placeholder={llmApiModelPlaceholder(form.registerId)}
+                        value={form.modelId}
+                        onChange={e => set('modelId', e.target.value)}
+                        required
+                    />
                 </fieldset>
 
                 {(form.registerId === 'openai-compatible/generic' || form.registerId === 'alibaba/dashscope-llm') && (
@@ -207,6 +253,7 @@ export function AddLlmModelForm() {
                         setOpen(false)
                         setError(null)
                         setForm(initialState)
+                        setRegistryOptions(null)
                     }}
                 >
                     取消

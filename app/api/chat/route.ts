@@ -14,6 +14,7 @@ import { repairDanglingImageGenerateToolParts } from '@lib/ai/repair-dangling-im
 import { appendStepToParts, patchToolResultsFromResponseMessages } from '@lib/ai/step-to-parts'
 import { buildSystemPrompt } from '@lib/ai/system-prompt'
 import { applyToolApprovalsToParts } from '@lib/ai/tool-approval-parts'
+import { wrapLlmWithDevToolsIfDev } from '@lib/ai/wrap-llm-devtools'
 import { parseMessagePayload } from '@lib/db/message-payload'
 import {
     createUserMessageWithParts,
@@ -67,7 +68,7 @@ export async function handleChatPost(req: Request, deps: ChatPostDeps = {}) {
     if (!modelRecord)
         return NextResponse.json({ error: 'LLM 模型不存在' }, { status: 404 })
 
-    const llmModel: LanguageModel = deps.model ?? buildLlmModel(modelRecord)
+    const llmModel: LanguageModel = deps.model ?? wrapLlmWithDevToolsIfDev(buildLlmModel(modelRecord))
     const providerOptions = deps.model
         ? undefined
         : computeLlmChatProviderOptions(modelRecord, selection.params)

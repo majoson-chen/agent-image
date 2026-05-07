@@ -15,7 +15,10 @@ interface FormState {
     vendor: ImageVendor
     seedreamPreset: SeedreamPresetKey
     wanPreset: WanImagePresetKey
-    name: string
+    /** DB `Model.name`：列表展示用 */
+    displayName: string
+    /** Seedream/Wan HTTP 请求里的 model 字段 */
+    requestModel: string
     baseURL: string
     apiKey: string
     supportedSizesInput: string
@@ -25,7 +28,8 @@ interface FormState {
 }
 
 const emptyCaps = {
-    name: '',
+    displayName: '',
+    requestModel: '',
     baseURL: '',
     apiKey: '',
     supportedSizesInput: '',
@@ -62,7 +66,8 @@ export function AddImageModelForm() {
         setForm(prev => ({
             ...prev,
             seedreamPreset: p,
-            name: def.modelId,
+            displayName: def.modelId,
+            requestModel: def.modelId,
             supportedSizes: [...def.capabilities.supportedSizes],
             maxReferenceImages: def.capabilities.maxReferenceImages,
             supportsSeed: def.capabilities.supportsSeed,
@@ -80,7 +85,8 @@ export function AddImageModelForm() {
         setForm(prev => ({
             ...prev,
             wanPreset: p,
-            name: def.modelId,
+            displayName: def.modelId,
+            requestModel: def.modelId,
             supportedSizes: [...def.capabilities.supportedSizes],
             maxReferenceImages: def.capabilities.maxReferenceImages,
             supportsSeed: def.capabilities.supportsSeed,
@@ -143,9 +149,9 @@ export function AddImageModelForm() {
         const body: Record<string, unknown> = {
             type: 'IMAGE',
             registerId,
-            name: form.name.trim(),
+            name: form.displayName.trim(),
             config: {
-                requestModel: form.name.trim(),
+                requestModel: form.requestModel.trim(),
                 apiKey: form.apiKey.trim(),
                 capabilities: {
                     supportedSizes: form.supportedSizes,
@@ -242,7 +248,18 @@ export function AddImageModelForm() {
                 </fieldset>
 
                 <fieldset className="fieldset">
-                    <legend className="fieldset-legend">模型 ID</legend>
+                    <legend className="fieldset-legend">显示名称</legend>
+                    <input
+                        className="input input-bordered w-full"
+                        placeholder="设置列表中的名称（可与下方模型 ID 相同）"
+                        value={form.displayName}
+                        onChange={e => set('displayName', e.target.value)}
+                        required
+                    />
+                </fieldset>
+
+                <fieldset className="fieldset">
+                    <legend className="fieldset-legend">请求模型 ID</legend>
                     <input
                         className="input input-bordered w-full font-mono text-sm"
                         placeholder={
@@ -250,8 +267,8 @@ export function AddImageModelForm() {
                                 ? '例如 doubao-seedream-4-5-251128'
                                 : '例如 wan2.7-image-pro'
                         }
-                        value={form.name}
-                        onChange={e => set('name', e.target.value)}
+                        value={form.requestModel}
+                        onChange={e => set('requestModel', e.target.value)}
                         required
                     />
                 </fieldset>
