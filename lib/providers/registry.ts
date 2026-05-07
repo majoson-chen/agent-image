@@ -4,13 +4,16 @@ import type {
     RegisterCatalogRow,
     SearchRegisterCatalogRow,
 } from '@lib/providers/register-catalog-types'
+import type { ExecuteImageGenerationInput, ImageGenerationExecutionResult } from '@lib/providers/registers/_shared/image-execution-types'
+import type { DashscopeWanImageConfig } from '@lib/providers/registers/dashscope-wan-image'
+import type { VolcengineSeedreamConfig } from '@lib/providers/registers/volcengine-seedream'
 /**
  * 静态 Provider 注册元数据目录（plan-01，无 DB）+ LLM 行挂载 `buildLanguageModel`。
  */
 import type { CreateImageGenerateToolOptions } from '@lib/tools/registers/image/image-generate-tool-types'
 import type { LanguageModel, Tool } from 'ai'
 import type { Model } from '~/generated/prisma/client'
-import { REGISTER_CONFIG_CATALOG } from '@lib/providers/register-config'
+import { parseModelConfig, REGISTER_CONFIG_CATALOG } from '@lib/providers/register-config'
 import { buildAlibabaDashscopeKimiK26LanguageModel } from '@lib/providers/registers/alibaba-dashscope-kimi-k2-6/llm-runtime.server'
 import {
     ALIBABA_DASHSCOPE_CHAT_OPTIONS_REGISTER_IDS,
@@ -19,8 +22,10 @@ import {
 import { buildAlibabaDashscopeLlmLanguageModel } from '@lib/providers/registers/alibaba-dashscope-llm/llm-runtime.server'
 import { buildAlibabaDashscopeQwen36PlusLanguageModel } from '@lib/providers/registers/alibaba-dashscope-qwen3-6-plus/llm-runtime.server'
 import { buildBraveSearchToolsForModel } from '@lib/providers/registers/brave-search/tools-from-model.server'
+import { executeDashscopeWanImageGeneration } from '@lib/providers/registers/dashscope-wan-image/execution.server'
 import { buildOpenAiCompatibleGenericLanguageModel } from '@lib/providers/registers/openai-compatible-generic/llm-runtime.server'
 import { buildOpenAiOfficialLanguageModel } from '@lib/providers/registers/openai-official/llm-runtime.server'
+import { executeVolcengineSeedreamImageGeneration } from '@lib/providers/registers/volcengine-seedream/execution.server'
 import { createDashscopeWanImageGenerateTool } from '@lib/tools/registers/image/dashscope-wan-generate-tool'
 import { createVolcengineSeedreamImageGenerateTool } from '@lib/tools/registers/image/volcengine-seedream-generate-tool'
 
@@ -52,6 +57,18 @@ const IMAGE_CREATE_IMAGE_GENERATE_TOOL_BY_REGISTER_ID: Record<string, (opts: Cre
     'dashscope/wan-image': createDashscopeWanImageGenerateTool,
 }
 
+/** IMAGE 行挂载 `executeImageGeneration`（Hook：image.execution） */
+const IMAGE_EXECUTE_IMAGE_GENERATION_BY_REGISTER_ID: Record<string, (input: ExecuteImageGenerationInput) => Promise<ImageGenerationExecutionResult>> = {
+    'volcengine/seedream': async (input) => {
+        const config = parseModelConfig(input.model.registerId, input.model.config) as VolcengineSeedreamConfig
+        return executeVolcengineSeedreamImageGeneration(input, config)
+    },
+    'dashscope/wan-image': async (input) => {
+        const config = parseModelConfig(input.model.registerId, input.model.config) as DashscopeWanImageConfig
+        return executeDashscopeWanImageGeneration(input, config)
+    },
+}
+
 /** SEARCH 行挂载 `buildSearchToolsForModel`（Hook：search.tools） */
 const SEARCH_BUILD_SEARCH_TOOLS_BY_REGISTER_ID: Record<string, (model: Model) => { webSearch: Tool, imageSearch: Tool }> = {
     'brave/search': buildBraveSearchToolsForModel,
@@ -62,7 +79,10 @@ const REGISTER_CATALOG: readonly RegisterCatalogRow[] = REGISTER_CONFIG_CATALOG.
         const createImageGenerateTool = IMAGE_CREATE_IMAGE_GENERATE_TOOL_BY_REGISTER_ID[row.registerId]
         if (!createImageGenerateTool)
             throw new Error(`Missing createImageGenerateTool for IMAGE register ${row.registerId}`)
-        return { ...row, createImageGenerateTool } as ImageRegisterCatalogRow
+        const executeImageGeneration = IMAGE_EXECUTE_IMAGE_GENERATION_BY_REGISTER_ID[row.registerId]
+        if (!executeImageGeneration)
+            throw new Error(`Missing executeImageGeneration for IMAGE register ${row.registerId}`)
+        return { ...row, createImageGenerateTool, executeImageGeneration } as ImageRegisterCatalogRow
     }
     if (row.modelType === 'SEARCH') {
         const buildSearchToolsForModel = SEARCH_BUILD_SEARCH_TOOLS_BY_REGISTER_ID[row.registerId]

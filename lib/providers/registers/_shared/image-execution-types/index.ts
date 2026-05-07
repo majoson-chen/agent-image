@@ -19,3 +19,10 @@ export interface ExecuteImageGenerationInput {
     /** 仅万相多模态：已通过会话校验的参考图 */
     referenceImages?: Array<{ mimeType: string, base64: string }>
 }
+
+/** 各 IMAGE Register 的 `image.execution` 成功返回值（落盘后的统一形状） */
+export interface ImageGenerationExecutionResult {
+    imageId: string
+    mimeType: string
+    sizeBytes: number
+}

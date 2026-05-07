@@ -11,8 +11,6 @@ import { Plus, X } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
-type ImageRegisterId = 'volcengine/seedream' | 'dashscope/wan-image'
-
 type ImageVendor = 'seedream' | 'wan'
 
 const imageRegisterFallbackRows = fallbackRegisterMetadataRows('IMAGE')
@@ -23,7 +21,7 @@ interface RegisterRow {
 }
 
 interface FormState {
-    registerId: ImageRegisterId
+    registerId: string
     seedreamPreset: SeedreamPresetKey
     wanPreset: WanImagePresetKey
     /** DB `Model.name`：列表展示用 */
@@ -50,7 +48,7 @@ const emptyCaps = {
 }
 
 const initialState: FormState = {
-    registerId: 'volcengine/seedream',
+    registerId: imageRegisterFallbackRows[0]?.registerId ?? '',
     seedreamPreset: 'custom',
     wanPreset: 'custom',
     ...emptyCaps,
@@ -81,10 +79,7 @@ export function AddImageModelForm() {
                 setRegisterRows([])
                 return
             }
-            const rows = (await res.json() as RegisterRow[]).filter(
-                (r): r is RegisterRow & { registerId: ImageRegisterId } =>
-                    r.registerId === 'volcengine/seedream' || r.registerId === 'dashscope/wan-image',
-            )
+            const rows = await res.json() as RegisterRow[]
             setRegisterRows(rows)
             const sole = rows.length === 1 ? rows[0] : undefined
             if (sole) {
@@ -138,7 +133,7 @@ export function AddImageModelForm() {
         }))
     }
 
-    function setImageRegister(registerId: ImageRegisterId) {
+    function setImageRegister(registerId: string) {
         if (registerId === form.registerId)
             return
         setForm({
@@ -181,6 +176,11 @@ export function AddImageModelForm() {
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault()
         setError(null)
+
+        if (!form.registerId) {
+            setError('请选择 Register')
+            return
+        }
 
         if (form.supportedSizes.length === 0) {
             setError('至少填写一项分辨率')
@@ -261,7 +261,7 @@ export function AddImageModelForm() {
                                     className="select select-bordered w-full"
                                     value={form.registerId}
                                     onChange={(e) => {
-                                        setImageRegister(e.target.value as ImageRegisterId)
+                                        setImageRegister(e.target.value)
                                     }}
                                 >
                                     {registerRows && registerRows.length > 1

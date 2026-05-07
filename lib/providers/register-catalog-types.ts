@@ -3,6 +3,10 @@
  * Kernel 仅依赖本模块与 registry 派发，不识别具体 registerId 列表。
  */
 import type { ProviderOptions } from '@ai-sdk/provider-utils'
+import type {
+    ExecuteImageGenerationInput,
+    ImageGenerationExecutionResult,
+} from '@lib/providers/registers/_shared/image-execution-types'
 import type { RegisterMetadata } from '@lib/providers/types'
 import type { CreateImageGenerateToolOptions } from '@lib/tools/registers/image/image-generate-tool-types'
 import type { LanguageModel, Tool } from 'ai'
@@ -25,6 +29,8 @@ export type ImageRegisterCatalogRow = RegisterCatalogRowBase & {
     modelType: 'IMAGE'
     /** Hook：image.tool */
     createImageGenerateTool: (opts: CreateImageGenerateToolOptions) => Tool
+    /** Hook：image.execution — HTTP/落盘；与 `createImageGenerateTool` 成对出现 */
+    executeImageGeneration: (input: ExecuteImageGenerationInput) => Promise<ImageGenerationExecutionResult>
 }
 
 export type SearchRegisterCatalogRow = RegisterCatalogRowBase & {

@@ -1,31 +1,23 @@
-import type { ExecuteImageGenerationInput } from '@lib/providers/registers/_shared/image-execution-types'
-
 /**
- * DEPRECATED surface：`executeImageGeneration` 门面仅供生图 tool 内部调用；
- * 新代码请直接引用各 Register 的 `*.execution` 模块。本文件仅保留 `registerId` + `parseModelConfig` 分发。
+ * 会话内生图：`executeImageGeneration` 仅从 Catalog IMAGE 行的 **image.execution** 钩子派发，
+ * 无 `switch(registerId)`。为避免 `registry` ↔ 各生图 tool 文件的静态循环依赖，此处对 registry 使用动态 import。
  */
-import type { DashscopeWanImageConfig } from '@lib/providers/registers/dashscope-wan-image'
-import type { VolcengineSeedreamConfig } from '@lib/providers/registers/volcengine-seedream'
-import { parseModelConfig } from '@lib/providers/register-config'
-import { executeDashscopeWanImageGeneration } from '@lib/providers/registers/dashscope-wan-image/execution.server'
-import { executeVolcengineSeedreamImageGeneration } from '@lib/providers/registers/volcengine-seedream/execution.server'
+import type {
+    ExecuteImageGenerationInput,
+    ImageGenerationExecutionResult,
+} from '@lib/providers/registers/_shared/image-execution-types'
+
 import 'server-only'
 
-export type { ExecuteImageGenerationInput } from '@lib/providers/registers/_shared/image-execution-types'
+export type {
+    ExecuteImageGenerationInput,
+    ImageGenerationExecutionResult,
+} from '@lib/providers/registers/_shared/image-execution-types'
 
-export async function executeImageGeneration(input: ExecuteImageGenerationInput) {
-    const { model } = input
-
-    switch (model.registerId) {
-        case 'volcengine/seedream': {
-            const config = parseModelConfig(model.registerId, model.config) as VolcengineSeedreamConfig
-            return executeVolcengineSeedreamImageGeneration(input, config)
-        }
-        case 'dashscope/wan-image': {
-            const config = parseModelConfig(model.registerId, model.config) as DashscopeWanImageConfig
-            return executeDashscopeWanImageGeneration(input, config)
-        }
-        default:
-            throw new Error(`unsupported image register: ${model.registerId}`)
-    }
+export async function executeImageGeneration(
+    input: ExecuteImageGenerationInput,
+): Promise<ImageGenerationExecutionResult> {
+    const { getImageCatalogRowStrict } = await import('@lib/providers/registry')
+    const row = getImageCatalogRowStrict(input.model.registerId)
+    return row.executeImageGeneration(input)
 }

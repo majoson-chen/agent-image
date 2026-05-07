@@ -450,6 +450,6 @@ describe('executeImageGeneration - error paths', () => {
             conversationId: conv.id,
             prisma,
             abortSignal: new AbortController().signal,
-        })).rejects.toThrow(/unsupported/)
+        })).rejects.toThrow(/unknown IMAGE registerId/)
     })
 })

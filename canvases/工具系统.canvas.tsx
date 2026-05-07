@@ -96,7 +96,7 @@ export default function ToolSystem() {
                     <CardHeader trailing={<Pill size="sm">选型驱动</Pill>}>image-generate-primary / secondary</CardHeader>
                     <CardBody>
                         <Stack gap={4}>
-                            <Text size="small">调用 `lib/image-provider-factory.ts` 的 `executeImageGeneration()` 生成图像并落盘，返回 `imageId`。`params.size` 在工具注册时从 `ConversationModelSelection.params` 读取，未配置则取 `capabilities.supportedSizes[0]`。</Text>
+                            <Text size="small">生图 tool 在 `execute` 中调用 `executeImageGeneration()`（`lib/image-provider-factory.ts` 等为兼容 re-export），实现上经 **Catalog IMAGE 行 `executeImageGeneration`（image.execution）** 派发至各 Register HTTP/落盘逻辑。返回 `imageId` 等。`params.size` 在工具注册时从 `ConversationModelSelection.params` 读取，未配置则取 `capabilities.supportedSizes[0]`。</Text>
                             <Text size="small" tone="secondary">入参：`prompt: string` · 出参：`imageId: string`</Text>
                         </Stack>
                     </CardBody>
