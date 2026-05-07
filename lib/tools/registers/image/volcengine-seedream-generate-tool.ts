@@ -1,9 +1,9 @@
 import type { CreateImageGenerateToolOptions } from '@lib/tools/registers/image/image-generate-tool-types'
+import prismaDefault from '@lib/prisma'
 /**
  * volcengine/seedream：生图 tool 绑定（prompt only，无参考图 input）。
  */
-import { executeImageGeneration } from '@lib/image-provider-factory'
-import prismaDefault from '@lib/prisma'
+import { executeImageGeneration } from '@lib/providers/registers/image-execute'
 import { redactSecretsInMessage } from '@lib/tools/_internals/redact-secrets-message'
 import { tool } from 'ai'
 import { z } from 'zod'
