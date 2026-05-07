@@ -18,7 +18,7 @@ import { buildAlibabaDashscopeLlmLanguageModel } from '@lib/providers/registers/
 import { buildAlibabaDashscopeQwen36PlusLanguageModel } from '@lib/providers/registers/alibaba-dashscope-qwen3-6-plus.llm-runtime'
 import { buildBraveSearchToolsForModel } from '@lib/providers/registers/brave-search.tools-from-model'
 import { buildOpenAiCompatibleGenericLanguageModel } from '@lib/providers/registers/openai-compatible-generic.llm-runtime'
-import { buildOpenAiOfficialLanguageModel } from '@lib/providers/registers/openai-official.llm-runtime'
+import { buildOpenAiOfficialLanguageModel } from '@lib/providers/registers/openai-official/llm-runtime.server'
 import { createDashscopeWanImageGenerateTool } from '@lib/tools/registers/image/dashscope-wan-generate-tool'
 import { createVolcengineSeedreamImageGenerateTool } from '@lib/tools/registers/image/volcengine-seedream-generate-tool'
 
