@@ -117,16 +117,16 @@ flowchart LR
 
 ## 8. 必读代码锚点
 
-| 主题                                                        | 路径                                            |
-| ----------------------------------------------------------- | ----------------------------------------------- |
-| 聚合 Catalog（schema + 元数据基础表）                       | `lib/providers/register-config.ts`              |
-| 元数据列表 + LLM `buildLanguageModel` 映射                  | `lib/providers/registry.ts`                     |
-| DB 校验 registerId 与 type                                  | `lib/db/models.ts`                              |
-| 读配置 API                                                  | `app/api/register-metadata/route.ts`            |
-| LLM 入口（Model 行 → LanguageModel）                        | `lib/providers/runtime/build-llm-from-model.ts` |
-| Register 源码目录（当前处于向「一户一地」迁移中的历史布局） | `lib/providers/registers/`                      |
-| 共享内核（非 SKU）                                          | `lib/providers/_internals/`                     |
-| 权威数据模型                                                | `prisma/schema.prisma` · `Model`                |
+| 主题                                                                                   | 路径                                                                                 |
+| -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| 聚合 Catalog（schema + 元数据基础表）                                                  | `lib/providers/register-config.ts`                                                   |
+| 元数据列表 + LLM `buildLanguageModel` 映射                                             | `lib/providers/registry.ts`                                                          |
+| DB 校验 registerId 与 type                                                             | `lib/db/models.ts`                                                                   |
+| 读配置 API                                                                             | `app/api/register-metadata/route.ts`                                                 |
+| LLM 入口（Model 行 → LanguageModel）                                                   | `lib/providers/runtime/build-llm-from-model.ts`                                      |
+| Register 源码目录（`lib/providers/registers/` 已按 SKU 分目录；共享模块在 `_shared/`） | `lib/providers/register-metadata.ts`（客户端安全元数据）、各 SKU 目录见 `registers/` |
+| 共享内核（非 SKU）                                                                     | `lib/providers/_internals/`                                                          |
+| 权威数据模型                                                                           | `prisma/schema.prisma` · `Model`                                                     |
 
 ---
 
@@ -157,7 +157,7 @@ flowchart LR
 
 ## 修订记录
 
-| 日期       | 说明                                                               |
-| ---------- | ------------------------------------------------------------------ |
-| 2026-05-08 | 初版：面向 Agent 的 Register 系统说明与开发清单                    |
-| 2026-05-08 | 增补 §5 Hook 系统、延伸阅读与编号调整；对齐 Hook 系统设计 SPEC     |
+| 日期       | 说明                                                           |
+| ---------- | -------------------------------------------------------------- |
+| 2026-05-08 | 初版：面向 Agent 的 Register 系统说明与开发清单                |
+| 2026-05-08 | 增补 §5 Hook 系统、延伸阅读与编号调整；对齐 Hook 系统设计 SPEC |
