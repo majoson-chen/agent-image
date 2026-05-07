@@ -1,4 +1,4 @@
-import { parseModelConfig } from '@lib/providers/registry'
+import { parseModelConfig } from '@lib/providers/register-metadata'
 /**
  * U2 — Brave Search register config zod 校验测试
  */

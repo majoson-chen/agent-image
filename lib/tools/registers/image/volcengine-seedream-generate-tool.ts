@@ -3,7 +3,7 @@ import prismaDefault from '@lib/prisma'
 /**
  * volcengine/seedream：生图 tool 绑定（prompt only，无参考图 input）。
  */
-import { executeImageGeneration } from '@lib/providers/registers/image-execute'
+import { executeImageGeneration } from '@lib/providers/registers/_shared/image-execute/execute.server'
 import { redactSecretsInMessage } from '@lib/tools/_internals/redact-secrets-message'
 import { tool } from 'ai'
 import { z } from 'zod'

@@ -1,11 +1,11 @@
-import 'server-only'
-
 import type { AlibabaDashscopeConnection } from '@lib/providers/registers/_shared/alibaba-dashscope-shared'
+
 import type { LanguageModel } from 'ai'
 import type { Model } from '~/generated/prisma/client'
 import { alibabaDashscopeCompatLanguageModel } from '@lib/providers/_internals/alibaba-dashscope-language-model'
 import { parseModelConfig } from '@lib/providers/register-config'
 import { DASHSCOPE_KIMI_K26_DOC } from '@lib/providers/registers/_shared/alibaba-dashscope-shared'
+import 'server-only'
 
 export function buildAlibabaDashscopeKimiK26LanguageModel(record: Model): LanguageModel {
     const config = parseModelConfig(record.registerId, record.config) as AlibabaDashscopeConnection

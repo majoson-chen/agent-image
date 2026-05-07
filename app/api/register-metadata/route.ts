@@ -1,7 +1,7 @@
 /**
  * GET /api/register-metadata?type=LLM|IMAGE|SEARCH — 静态 Register 目录（可读元数据）。
  */
-import { listRegisterMetadata } from '@lib/providers/registry'
+import { listRegisterMetadata } from '@lib/providers/register-metadata'
 import { NextResponse } from 'next/server'
 
 export async function handleRegisterMetadataGet(searchParams: URLSearchParams) {

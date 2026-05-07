@@ -1,4 +1,4 @@
-import { listRegisterMetadata, parseModelConfig, REGISTER_IDS } from '@lib/providers/registry'
+import { listRegisterMetadata, parseModelConfig, REGISTER_IDS } from '@lib/providers/register-metadata'
 import { describe, expect, it } from 'vitest'
 
 describe('registry metadata', () => {

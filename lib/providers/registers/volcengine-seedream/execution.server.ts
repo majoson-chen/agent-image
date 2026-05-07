@@ -1,7 +1,8 @@
-import type { ExecuteImageGenerationInput } from '@lib/providers/registers/image-execution-types'
 /**
  * volcengine/seedream：HTTP 请求、响应解析与落盘（Hook：image.execution）。
  */
+import type { ExecuteImageGenerationInput } from '@lib/providers/registers/_shared/image-execution-types'
+
 import type { VolcengineSeedreamConfig } from '@lib/providers/registers/volcengine-seedream'
 import { createImage } from '@lib/db/images'
 import { SEEDREAM_DEFAULT_API_BASE_URL } from '@lib/image/seedream-presets'

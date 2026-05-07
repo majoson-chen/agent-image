@@ -6,7 +6,7 @@ import type { CreateImageGenerateToolOptions } from '@lib/tools/registers/image/
 import prismaDefault from '@lib/prisma'
 import { loadConversationImageBuffer } from '@lib/providers/_internals/load-conversation-image'
 import { parseModelConfig } from '@lib/providers/register-config'
-import { executeImageGeneration } from '@lib/providers/registers/image-execute'
+import { executeImageGeneration } from '@lib/providers/registers/_shared/image-execute/execute.server'
 import { redactSecretsInMessage } from '@lib/tools/_internals/redact-secrets-message'
 import { tool } from 'ai'
 import { z } from 'zod'

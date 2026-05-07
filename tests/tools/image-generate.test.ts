@@ -1,4 +1,4 @@
-import type { executeImageGeneration as ExecuteImageGenerationFn } from '@lib/providers/registers/image-execute'
+import type { executeImageGeneration as ExecuteImageGenerationFn } from '@lib/providers/registers/_shared/image-execute/execute.server'
 import type { MockedFunction } from 'vitest'
 import type { z } from 'zod'
 import { createImageGenerateTool } from '@lib/tools/image-generate'
@@ -9,7 +9,7 @@ import { createImageGenerateTool } from '@lib/tools/image-generate'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 
 // mock executeImageGeneration（与 volcengine / dashscope 生图 tool 的 import 路径一致）
-vi.mock('../../lib/providers/registers/image-execute', () => ({
+vi.mock('@lib/providers/registers/_shared/image-execute/execute.server', () => ({
     executeImageGeneration: vi.fn().mockResolvedValue({
         imageId: 'img-001',
         mimeType: 'image/png',
@@ -146,7 +146,7 @@ describe('createImageGenerateTool - execute', () => {
     })
 
     it('calls executeImageGeneration with correct params including size from params', async () => {
-        const { executeImageGeneration } = await import('../../lib/providers/registers/image-execute')
+        const { executeImageGeneration } = await import('@lib/providers/registers/_shared/image-execute/execute.server')
         const model = makeModel()
         const tool = createImageGenerateTool({
             model,
@@ -167,7 +167,7 @@ describe('createImageGenerateTool - execute', () => {
     })
 
     it('returns structured error from executeImageGeneration', async () => {
-        const mod = await import('../../lib/providers/registers/image-execute')
+        const mod = await import('@lib/providers/registers/_shared/image-execute/execute.server')
         ;(mod.executeImageGeneration as MockedFunction<typeof ExecuteImageGenerationFn>).mockRejectedValueOnce(new Error('Seedream 503'))
 
         const tool = createImageGenerateTool({
@@ -187,7 +187,7 @@ describe('createImageGenerateTool - execute', () => {
     })
 
     it('redacts api-key-looking substrings from error message', async () => {
-        const mod = await import('../../lib/providers/registers/image-execute')
+        const mod = await import('@lib/providers/registers/_shared/image-execute/execute.server')
         ;(mod.executeImageGeneration as MockedFunction<typeof ExecuteImageGenerationFn>).mockRejectedValueOnce(
             new Error(`Bad gateway sk-${'a'.repeat(20)} end`),
         )

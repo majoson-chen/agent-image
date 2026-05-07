@@ -1,6 +1,6 @@
 import type { ModelCreateBody, ModelPatchBody } from '@lib/validation/model-upsert-schema'
 import type { Model, ModelType, Prisma, PrismaClient } from '~/generated/prisma/client'
-import { getRegisterMetadata, parseModelConfig } from '@lib/providers/registry'
+import { getRegisterMetadata, parseModelConfig } from '@lib/providers/register-metadata'
 import {
 
     modelCreateBodySchema,

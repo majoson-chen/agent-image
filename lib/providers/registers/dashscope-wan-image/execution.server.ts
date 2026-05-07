@@ -1,8 +1,9 @@
+import type { ExecuteImageGenerationInput } from '@lib/providers/registers/_shared/image-execution-types'
+
 /**
  * dashscope/wan-image：HTTP 请求、响应解析与落盘（Hook：image.execution）。
  */
 import type { DashscopeWanImageConfig } from '@lib/providers/registers/dashscope-wan-image'
-import type { ExecuteImageGenerationInput } from '@lib/providers/registers/image-execution-types'
 import { createImage } from '@lib/db/images'
 import { WAN_IMAGE_DEFAULT_API_URL } from '@lib/image/wan-image-presets'
 import { detectMime } from '@lib/images/mime'

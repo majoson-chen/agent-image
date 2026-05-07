@@ -1,6 +1,6 @@
 import { listModels } from '@lib/db/models'
 import prisma from '@lib/prisma'
-import { getRegisterMetadata } from '@lib/providers/registry'
+import { getRegisterMetadata } from '@lib/providers/register-metadata'
 import { AddLlmModelForm } from './AddLlmModelForm'
 import { LlmModelActions } from './LlmModelActions'
 

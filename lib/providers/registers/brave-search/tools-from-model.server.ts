@@ -1,9 +1,8 @@
-import 'server-only'
-
 /**
  * brave/search：由 Model 行构造 web / image 搜索工具（Kernel 零 Brave 字面量）。
  */
 import type { BraveSearchConfig } from '@lib/providers/registers/brave-search'
+
 import type { Tool } from 'ai'
 import type { Model } from '~/generated/prisma/client'
 import { parseModelConfig } from '@lib/providers/register-config'
@@ -11,6 +10,7 @@ import {
     createBraveImageSearchTool,
     createBraveWebSearchTool,
 } from '@lib/tools/registers/search/brave-search-tools'
+import 'server-only'
 
 export function buildBraveSearchToolsForModel(model: Model): { webSearch: Tool, imageSearch: Tool } {
     if (model.type !== 'SEARCH' || model.registerId !== 'brave/search')

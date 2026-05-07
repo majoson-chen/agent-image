@@ -1,4 +1,4 @@
-import { parseModelConfig } from '@lib/providers/registry'
+import { parseModelConfig } from '@lib/providers/register-metadata'
 import { describe, expect, it } from 'vitest'
 
 describe('LLM register config schemas', () => {

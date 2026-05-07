@@ -3,8 +3,8 @@
  * 由 Catalog 行挂载 `computeAlibabaDashscopeChatProviderOptions`；Kernel 经 `lib/llm-chat-provider-options` 转发。
  */
 import type { ProviderOptions } from '@ai-sdk/provider-utils'
-import type { AlibabaDashscopeLlmConfig } from '@lib/providers/registers/alibaba-dashscope-llm'
 import type { AlibabaDashscopeConnection } from '@lib/providers/registers/_shared/alibaba-dashscope-shared'
+import type { AlibabaDashscopeLlmConfig } from '@lib/providers/registers/alibaba-dashscope-llm'
 import type { Model } from '~/generated/prisma/client'
 import { parseModelConfig } from '@lib/providers/register-config'
 

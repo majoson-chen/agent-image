@@ -1,4 +1,5 @@
-import { getCatalogRow, getLlmCatalogRowStrict, listRegisterMetadata } from '@lib/providers/registry'
+import { listRegisterMetadata } from '@lib/providers/register-metadata'
+import { getCatalogRow, getLlmCatalogRowStrict } from '@lib/providers/registry'
 import { describe, expect, it } from 'vitest'
 
 describe('Register catalog', () => {
