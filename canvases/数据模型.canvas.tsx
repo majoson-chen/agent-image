@@ -31,14 +31,14 @@ export default function DataModel() {
                 <CardBody>
                     <Stack gap={8}>
                         <Text size="small">
-                            全局模型配置表，存储 LLM、图像、搜索三类连接信息。运行时以 **`registerId`** 在工厂链中分发，`config` 为 JSON，经 **`parseModelConfig(registerId, config)`** 与各 Register 的 Zod schema 对齐。删除 Model 时，关联 `ConversationModelSelection` 与 `SearchToolBinding` 级联删除；历史 `Message` / `Image` 外键 SetNull。**`name` 仅列表展示**，LLM / 图像实际请求模型名分别在 `config.modelId` / **`config.requestModel`**。
+                            全局模型配置表，存储 LLM、图像、搜索三类连接信息。运行时以 **`registerId`** 解析 **`lib/providers/registry.ts` Catalog 行**（LLM `buildLanguageModel` / 可选 `computeLlmChatProviderOptions`，IMAGE `createImageGenerateTool`）；**Kernel 不持有厂商 SKU 枚举名单，仅以 Catalog 为真源**。`config` 为 JSON，经 **`parseModelConfig(registerId, config)`** 与各 Register 的 Zod schema 对齐。详见 **`docs/guides/register-system.md`**。删除 Model 时，关联 `ConversationModelSelection` 与 `SearchToolBinding` 级联删除；历史 `Message` / `Image` 外键 SetNull。**`name` 仅列表展示**，LLM / 图像实际请求模型名分别在 `config.modelId` / **`config.requestModel`**。
                         </Text>
                         <Table
                             headers={['字段', '类型', '说明']}
                             rows={[
                                 ['id', 'String cuid', '主键'],
                                 ['type', 'ModelType', 'LLM / IMAGE / SEARCH'],
-                                ['registerId', 'String', '静态目录 SKU（与 lib/providers/registry 一致），取代旧枚举 providerType'],
+                                ['registerId', 'String', 'Catalog SKU；元数据列表来自 Register 目录 / `GET /api/register-metadata`'],
                                 ['name', 'String', '用户可读标签；不参与下游 HTTP body 的 model 字段'],
                                 ['config', 'Json', 'Register 专有：含 apiKey、modelId/requestModel、baseURL?、capabilities? 等'],
                                 ['createdAt / updatedAt', 'DateTime', '时间戳'],
@@ -177,7 +177,7 @@ export default function DataModel() {
                     <Table
                         headers={['值', '驱动行为']}
                         rows={[
-                            ['LLM', '推理模型，buildLlmModel() 实例化后传给 ToolLoopAgent'],
+                            ['LLM', '推理模型，`buildLlmLanguageModel()`（Catalog `buildLanguageModel`）后传给 ToolLoopAgent'],
                             ['IMAGE_PRIMARY', '暴露 image-generate-primary 工具'],
                             ['IMAGE_SECONDARY', '暴露 image-generate-secondary 工具'],
                         ]}
@@ -186,7 +186,7 @@ export default function DataModel() {
                 <Stack gap={6}>
                     <Text weight="semibold">registerId（节选）</Text>
                     <Text size="small" tone="secondary">
-                        完整列表由 **`listRegisterMetadata(type)`** 提供；设置页打开表单时 **`GET /api/register-metadata?type=LLM|IMAGE|SEARCH`** 拉取标题与 sortOrder。
+                        **可绑定的 SKU 以 Catalog 为准**；展示用完整列表由 **`listRegisterMetadata(type)`** 提供，设置页打开表单时 **`GET /api/register-metadata?type=LLM|IMAGE|SEARCH`** 拉取标题与 sortOrder。
                     </Text>
                     <Table
                         headers={['registerId', 'type', '工厂 / 工具']}
