@@ -1,12 +1,11 @@
 import type { BraveSearchConfig } from '@lib/providers/registers/brave-search'
-import type { DashscopeWanImageConfig } from '@lib/providers/registers/dashscope-wan-image'
-import type { VolcengineSeedreamConfig } from '@lib/providers/registers/volcengine-seedream'
+import type { ImageRegisterCatalogRow } from '@lib/providers/registry'
 import type { ToolSet } from 'ai'
 import type { Model, PrismaClient } from '~/generated/prisma/client'
 import { getModel } from '@lib/db/models'
 import { getAllBindings } from '@lib/db/search-tool-bindings'
 import { getSelection } from '@lib/db/selections'
-import { parseModelConfig } from '@lib/providers/registry'
+import { getImageCatalogRowStrict, parseModelConfig } from '@lib/providers/registry'
 import { createBraveImageSearchTool, createBraveWebSearchTool } from '@lib/tools/registers/search/brave-search-tools'
 import { createConversationRenameTool } from './conversation-rename'
 import { createImageFetchTool } from './image-fetch'
@@ -20,19 +19,25 @@ interface AvailableTools {
     descriptors: string[]
 }
 
-type ImageRegisterConfig = DashscopeWanImageConfig | VolcengineSeedreamConfig
+/** 与现网一致：从已解析 IMAGE config 取 supportedSizes */
+interface ImageToolSelectionConfig {
+    capabilities: { supportedSizes: string[] }
+}
+
+function getImageCatalogRowOrNull(model: Model): ImageRegisterCatalogRow | null {
+    if (model.type !== 'IMAGE')
+        return null
+    try {
+        return getImageCatalogRowStrict(model.registerId)
+    }
+    catch {
+        return null
+    }
+}
 
 function getBraveApiKey(model: Model): string {
     const config = parseModelConfig('brave/search', model.config) as BraveSearchConfig
     return config.apiKey
-}
-
-function getImageRegisterConfig(model: Model): ImageRegisterConfig | null {
-    if (model.type !== 'IMAGE')
-        return null
-    if (model.registerId !== 'volcengine/seedream' && model.registerId !== 'dashscope/wan-image')
-        return null
-    return parseModelConfig(model.registerId, model.config) as ImageRegisterConfig
 }
 
 export async function buildAvailableTools(prisma: PrismaClient, conversationId: string): Promise<AvailableTools> {
@@ -63,8 +68,9 @@ export async function buildAvailableTools(prisma: PrismaClient, conversationId: 
     const primarySel = await getSelection(prisma, conversationId, 'IMAGE_PRIMARY')
     if (primarySel) {
         const model = await getModel(prisma, primarySel.modelId)
-        const config = model ? getImageRegisterConfig(model) : null
-        if (model && config) {
+        const imageRow = model ? getImageCatalogRowOrNull(model) : null
+        if (model && imageRow) {
+            const config = parseModelConfig(model.registerId, model.config) as ImageToolSelectionConfig
             const defaultSize = config.capabilities.supportedSizes[0] ?? '1024x1024'
             const selParams = primarySel.params as { size?: string } | null
             tools['image-generate-primary'] = createImageGenerateTool({
@@ -79,8 +85,9 @@ export async function buildAvailableTools(prisma: PrismaClient, conversationId: 
     const secondarySel = await getSelection(prisma, conversationId, 'IMAGE_SECONDARY')
     if (secondarySel) {
         const model = await getModel(prisma, secondarySel.modelId)
-        const config = model ? getImageRegisterConfig(model) : null
-        if (model && config) {
+        const imageRow = model ? getImageCatalogRowOrNull(model) : null
+        if (model && imageRow) {
+            const config = parseModelConfig(model.registerId, model.config) as ImageToolSelectionConfig
             const defaultSize = config.capabilities.supportedSizes[0] ?? '1024x1024'
             const selParams = secondarySel.params as { size?: string } | null
             tools['image-generate-secondary'] = createImageGenerateTool({
