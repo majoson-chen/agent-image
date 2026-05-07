@@ -14,4 +14,4 @@ export {
     dashScopeThinkingEnabledFromConfig,
     dashScopeThinkingSkuRegisterId,
     llmSupportsThinking,
-} from '@lib/providers/registers/alibaba-dashscope-chat-options'
+} from '@lib/providers/registers/alibaba-dashscope-llm/chat-options'
