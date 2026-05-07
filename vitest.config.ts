@@ -2,7 +2,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import react from '@vitejs/plugin-react'
 import tsconfigPaths from 'vite-tsconfig-paths'
-import { defineConfig } from 'vitest/config'
+import { defaultExclude, defineConfig } from 'vitest/config'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -20,5 +20,7 @@ export default defineConfig({
     },
     test: {
         environment: 'jsdom',
+        // 根目录下可能存在的 git worktree 嵌套副本，避免重复跑同套测试
+        exclude: [...defaultExclude, '**/.worktrees/**'],
     },
 })
