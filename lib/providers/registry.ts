@@ -6,6 +6,7 @@ import type { RegisterId, RegisterMetadata } from '@lib/providers/types'
 import type { LanguageModel } from 'ai'
 import type { Model, ModelType } from '~/generated/prisma/client'
 import { REGISTER_CONFIG_CATALOG } from '@lib/providers/register-config'
+import { computeAlibabaDashscopeChatProviderOptions } from '@lib/providers/registers/alibaba-dashscope-chat-options'
 import { buildAlibabaDashscopeKimiK26LanguageModel } from '@lib/providers/registers/alibaba-dashscope-kimi-k2-6.llm-runtime'
 import { buildAlibabaDashscopeLlmLanguageModel } from '@lib/providers/registers/alibaba-dashscope-llm.llm-runtime'
 import { buildAlibabaDashscopeQwen36PlusLanguageModel } from '@lib/providers/registers/alibaba-dashscope-qwen3-6-plus.llm-runtime'
@@ -29,13 +30,23 @@ const LLM_BUILD_LANGUAGE_MODEL_BY_REGISTER_ID: Record<string, (record: Model) =>
     'alibaba/dashscope-llm': buildAlibabaDashscopeLlmLanguageModel,
 }
 
+/** Catalog 组装：哪些 LLM 行挂载 Alibaba DashScope `computeLlmChatProviderOptions`（与 `alibaba-dashscope-chat-options` 内解析列表一致） */
+const LLM_COMPUTE_CHAT_PROVIDER_OPTIONS_REGISTER_IDS = new Set<string>([
+    'alibaba/dashscope-llm',
+    'alibaba/dashscope-kimi-k2-6',
+    'alibaba/dashscope-qwen3-6-plus',
+])
+
 const REGISTER_CATALOG: readonly RegisterCatalogRow[] = REGISTER_CONFIG_CATALOG.map((row): RegisterCatalogRow => {
     if (row.modelType !== 'LLM')
         return { ...row }
     const buildLanguageModel = LLM_BUILD_LANGUAGE_MODEL_BY_REGISTER_ID[row.registerId]
     if (!buildLanguageModel)
         throw new Error(`Missing buildLanguageModel for LLM register ${row.registerId}`)
-    return { ...row, buildLanguageModel }
+    const computeLlmChatProviderOptions = LLM_COMPUTE_CHAT_PROVIDER_OPTIONS_REGISTER_IDS.has(row.registerId)
+        ? computeAlibabaDashscopeChatProviderOptions
+        : undefined
+    return { ...row, buildLanguageModel, computeLlmChatProviderOptions }
 })
 
 export function getCatalogRow(registerId: string): RegisterCatalogRow | undefined {
@@ -45,7 +56,12 @@ export function getCatalogRow(registerId: string): RegisterCatalogRow | undefine
 function rowToMetadata(row: RegisterCatalogRow): RegisterMetadata {
     switch (row.modelType) {
         case 'LLM': {
-            const { schema: _schema, buildLanguageModel: _buildLanguageModel, ...meta } = row
+            const {
+                schema: _schema,
+                buildLanguageModel: _buildLanguageModel,
+                computeLlmChatProviderOptions: _computeLlmChatProviderOptions,
+                ...meta
+            } = row
             return meta
         }
         case 'IMAGE':
