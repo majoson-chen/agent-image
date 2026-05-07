@@ -1,73 +1,16 @@
+/**
+ * LLM 会话层 ProviderOptions：Alibaba DashScope 逻辑见 `alibaba-dashscope-chat-options`（Catalog 挂载见后续 registry 变更）。
+ */
 import type { ProviderOptions } from '@ai-sdk/provider-utils'
-import type { AlibabaDashscopeLlmConfig } from '@lib/providers/registers/alibaba-dashscope-llm'
-import type { AlibabaDashscopeConnection } from '@lib/providers/registers/alibaba-dashscope-shared'
 import type { Model } from '~/generated/prisma/client'
-import { parseModelConfig } from '@lib/providers/register-config'
+import { computeAlibabaDashscopeChatProviderOptions } from '@lib/providers/registers/alibaba-dashscope-chat-options'
 
-const DASHSCOPE_LLM_REGISTER_IDS = new Set<string>([
-    'alibaba/dashscope-llm',
-    'alibaba/dashscope-kimi-k2-6',
-    'alibaba/dashscope-qwen3-6-plus',
-])
-
-const DASHSCOPE_THINKING_SKU_IDS = new Set<string>([
-    'alibaba/dashscope-kimi-k2-6',
-    'alibaba/dashscope-qwen3-6-plus',
-])
-
-function parseDashScopeConfig(model: Pick<Model, 'registerId' | 'config'>): AlibabaParsedLlmConfig | null {
-    if (!DASHSCOPE_LLM_REGISTER_IDS.has(model.registerId))
-        return null
-    return parseModelConfig(model.registerId, model.config) as AlibabaParsedLlmConfig
-}
-
-type AlibabaParsedLlmConfig = AlibabaDashscopeLlmConfig | AlibabaDashscopeConnection
-
-/** 是否在 API 请求中挂载 thinking 相关 Alibaba ProviderOptions（由设置里的 config.capabilities 决定） */
-export function dashScopeThinkingEnabledFromConfig(meta: Pick<Model, 'registerId'>, config: AlibabaParsedLlmConfig): boolean {
-    if (DASHSCOPE_THINKING_SKU_IDS.has(meta.registerId))
-        return config.capabilities?.supportsThinking !== false
-
-    const gen = config as AlibabaDashscopeLlmConfig
-    return gen.capabilities?.supportsThinking === true
-}
-
-export function dashScopeThinkingSkuRegisterId(registerId: string): boolean {
-    return DASHSCOPE_THINKING_SKU_IDS.has(registerId)
-}
-
-/**
- *「模型是否能在 UI/设置里挂上思考配置」语义（SKU 默认可配；通用须显式 supportsThinking）。
- * 会话内不再切换；实际发请求仍以 {@link dashScopeThinkingEnabledFromConfig} 为准。
- */
-export function llmSupportsThinking(meta: Pick<Model, 'registerId' | 'config'>): boolean {
-    const cfg = parseDashScopeConfig(meta)
-    return cfg !== null && dashScopeThinkingEnabledFromConfig(meta, cfg)
-}
-
-/**
- * 按模型配置拼装 Alibaba ProviderOptions（`enableThinking` / `thinkingBudget` 等）。
- * 是否与百炼对齐见设置页与各 Register schema；不传会话 params。
- *
- * @see https://www.npmjs.com/package/@ai-sdk/alibaba README 「Thinking Mode Example」
- */
 export function computeLlmChatProviderOptions(model: Model): ProviderOptions | undefined {
-    const config = parseDashScopeConfig(model)
-    if (!config || !dashScopeThinkingEnabledFromConfig(model, config))
-        return undefined
-
-    const budget = config.capabilities?.thinkingBudget
-    const parallel = config.parallelToolCalls
-
-    const out: { enableThinking: boolean, thinkingBudget?: number, parallelToolCalls?: boolean } = {
-        enableThinking: true,
-    }
-
-    if (budget != null)
-        out.thinkingBudget = budget
-
-    if (parallel !== undefined)
-        out.parallelToolCalls = parallel
-
-    return { alibaba: out }
+    return computeAlibabaDashscopeChatProviderOptions(model)
 }
+
+export {
+    dashScopeThinkingEnabledFromConfig,
+    dashScopeThinkingSkuRegisterId,
+    llmSupportsThinking,
+} from '@lib/providers/registers/alibaba-dashscope-chat-options'
