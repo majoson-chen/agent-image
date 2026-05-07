@@ -224,7 +224,6 @@ interface Props {
     hasLlm: boolean
     llmModels?: ComposerLlmModelOption[]
     llmModelId?: string | null
-    llmThinkingEnabled?: boolean
     contextWindow?: number
     imageModels?: ImageModelInfo[]
     primaryImageModelId?: string | null
@@ -313,7 +312,6 @@ export function ChatPage({
     hasLlm,
     llmModels = [],
     llmModelId = null,
-    llmThinkingEnabled = false,
     contextWindow,
     imageModels = [],
     primaryImageModelId = null,
@@ -551,7 +549,6 @@ export function ChatPage({
                         <ComposerLlmSlot
                             conversationId={conversationId}
                             currentModelId={llmModelId}
-                            thinkingEnabled={llmThinkingEnabled}
                             models={llmModels}
                         />
                         <ComposerImageSlot

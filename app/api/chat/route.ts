@@ -71,7 +71,7 @@ export async function handleChatPost(req: Request, deps: ChatPostDeps = {}) {
     const llmModel: LanguageModel = deps.model ?? wrapLlmWithDevToolsIfDev(buildLlmLanguageModel(modelRecord))
     const providerOptions = deps.model
         ? undefined
-        : computeLlmChatProviderOptions(modelRecord, selection.params)
+        : computeLlmChatProviderOptions(modelRecord)
 
     let uiMessages: Array<{ id: string, role: 'user' | 'assistant', parts: object[] }>
     let runId: string

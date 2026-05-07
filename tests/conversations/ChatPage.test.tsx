@@ -61,8 +61,12 @@ function renderChatPage(overrides: Partial<React.ComponentProps<typeof ChatPage>
         conversationId: 'conv-1',
         initialMessages: [],
         hasLlm: true,
-        llmModels: [{ id: 'm1', name: 'test-llm', capabilities: null }],
-        llmThinkingEnabled: false,
+        llmModels: [{
+            id: 'm1',
+            name: 'test-llm',
+            registerId: 'openai/official',
+            config: { modelId: 'gpt-4o', apiKey: 'k' },
+        }],
         llmModelId: 'm1',
         ...overrides,
     }
