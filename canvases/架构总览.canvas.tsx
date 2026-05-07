@@ -76,8 +76,8 @@ export default function ArchitectureOverview() {
                     <CardHeader trailing={<Pill size="sm">lib/tools/</Pill>}>工具系统</CardHeader>
                     <CardBody>
                         <Stack gap={4}>
-                            <Text size="small">动态工具注册，按会话选型和全局绑定决定 Agent 持有的工具集。</Text>
-                            <Text size="small" tone="secondary">`tool-registry.ts` · conversation-rename · web-fetch · image-fetch · web-search · image-search · image-generate</Text>
+                            <Text size="small">动态工具注册，按会话选型和全局绑定决定 Agent 持有的工具集；**生图工具**经 **`lib/tools/image-generate.ts`** 按 Catalog **`createImageGenerateTool`** 派发。</Text>
+                            <Text size="small" tone="secondary">`tool-registry.ts`（调用 Catalog 钩子）· conversation-rename · web-fetch · image-fetch · web-search · image-search · image-generate</Text>
                         </Stack>
                     </CardBody>
                 </Card>
@@ -85,8 +85,8 @@ export default function ArchitectureOverview() {
                     <CardHeader trailing={<Pill size="sm">lib/</Pill>}>Provider 工厂</CardHeader>
                     <CardBody>
                         <Stack gap={4}>
-                            <Text size="small">将 DB `Model` 记录转换为可执行实例。LLM 工厂返回 AI SDK `LanguageModel`；图像工厂直接执行生成并落盘。</Text>
-                            <Text size="small" tone="secondary">`llm-provider-factory.ts` · `image-provider-factory.ts`</Text>
+                            <Text size="small">将 DB `Model` 转为 `LanguageModel`（**`build-llm-from-model`** → Catalog **`buildLanguageModel`**）与生图工具（**`image-generate.ts`** → Catalog **`createImageGenerateTool`**）；HTTP 在 Register 侧。</Text>
+                            <Text size="small" tone="secondary">`lib/providers/runtime/build-llm-from-model.ts` · `lib/tools/image-generate.ts` · `lib/llm-chat-provider-options.ts`</Text>
                         </Stack>
                     </CardBody>
                 </Card>
@@ -130,7 +130,7 @@ export default function ArchitectureOverview() {
                 rows={[
                     ['1', '前端 useChat', '提交消息 POST /api/chat，携带 conversationId 与 messages；可先经 Composer POST /api/images 落库 USER_UPLOAD，再在 user parts 中带 `/api/images/{id}` 的 file part'],
                     ['2', 'app/api/chat/route.ts', '校验请求体（chatPostBodySchema），读取 LLM ConversationModelSelection'],
-                    ['3', 'lib/tools/tool-registry.ts', 'buildAvailableTools()：按 selection + binding 组装 ToolSet + descriptors'],
+                    ['3', 'lib/tools/tool-registry.ts', 'buildAvailableTools()：按 selection + binding 组装 ToolSet + descriptors；生图经 Catalog `createImageGenerateTool`'],
                     ['4', 'lib/ai/system-prompt.ts', 'buildSystemPrompt(descriptors)：生成含工具声明的 system prompt'],
                     ['5', 'lib/ai/build-agent.ts', 'buildAgent()：创建 ToolLoopAgent，注入 model / tools / instructions'],
                     ['6', 'AI SDK ToolLoopAgent', '多步循环推理，每步结束触发 onStepFinish'],
@@ -149,7 +149,7 @@ export default function ArchitectureOverview() {
                 headers={['画布', '覆盖内容']}
                 rows={[
                     ['数据模型', 'Prisma · Model 使用 registerId + Json config · Register 目录 · Settings 与表字段映射'],
-                    ['Provider 工厂', '按 registerId 分发 · LLM / 图像工厂链 · Presets · computeLlmChatProviderOptions'],
+                    ['Provider 工厂', 'Catalog：`buildLanguageModel` · `createImageGenerateTool` · `computeLlmChatProviderOptions(model)` · Presets'],
                     ['工具系统', 'buildAvailableTools() · 三类暴露条件 · 各工具入参出参 · SSRF 防护'],
                     ['Agent 运行时与消息 Parts', 'handleChatPost() 主流程 · ToolLoopAgent · parts 结构 · continuation · usage'],
                     ['视觉上下文注入', 'prepareStep 路径 · onStepFinish DB 路径 · 两个去重 Set · 失败处理'],

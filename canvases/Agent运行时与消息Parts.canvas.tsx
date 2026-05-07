@@ -55,11 +55,11 @@ export default function AgentRuntimeAndParts() {
             <Table
                 headers={['参数', '来源', '说明']}
                 rows={[
-                    ['model', 'buildLlmModel(modelRecord)', 'AI SDK LanguageModel 实例'],
+                    ['model', 'buildLlmLanguageModel(modelRecord)', '`build-llm-from-model.ts` → Catalog `buildLanguageModel`'],
                     ['tools', 'buildAvailableTools()', '当前请求的 ToolSet'],
                     ['instructions', 'buildSystemPrompt(descriptors)', 'system prompt 字符串，含工具声明'],
                     ['onStepFinish', 'chat route 内联定义', '每步结束：追加 parts、累加 usage、upsert assistant、image-fetch 合成 user 落库'],
-                    ['providerOptions', 'computeLlmChatProviderOptions()', '可选，provider 级附加参数（如 thinking mode）'],
+                    ['providerOptions', 'computeLlmChatProviderOptions(model)', '`llm-chat-provider-options.ts` → Catalog 行钩子 `computeLlmChatProviderOptions`（可选）'],
                 ]}
                 striped
             />
