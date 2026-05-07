@@ -43,13 +43,13 @@ related_components:
 ## Solution
 
 1. **`lib/ai/step-to-parts.ts` — `appendStepToParts`**
-   - 对 `step.content` 中 `type === 'reasoning'` 且 `text` 已定义的分支，追加 UI part：`{ type: 'reasoning', text }`，与 `text` / `tool-*` 同级进入累积数组，随 `upsertAssistantMessage` 落库。
+    - 对 `step.content` 中 `type === 'reasoning'` 且 `text` 已定义的分支，追加 UI part：`{ type: 'reasoning', text }`，与 `text` / `tool-*` 同级进入累积数组，随 `upsertAssistantMessage` 落库。
 
 2. **`app/conversations/[id]/ChatPage.tsx`**
-   - 在助手 `parts.map` 中增加 `part.type === 'reasoning'` 分支，使用语义色容器与原生 `<details>` / `<summary>` 展示 **「推理过程（思维链）」**，正文用等宽小号字预格式化，避免硬编码调色板。
+    - 在助手 `parts.map` 中增加 `part.type === 'reasoning'` 分支，使用语义色容器与原生 `<details>` / `<summary>` 展示 **「推理过程（思维链）」**，正文用等宽小号字预格式化，避免硬编码调色板。
 
 3. **`tests/ai/step-to-parts.test.ts`**
-   - 将原「非 text/tool 即忽略」用例改为 **`preserves reasoning before text`**，固定期望数组含 `step-start`、`reasoning`、`text`。
+    - 将原「非 text/tool 即忽略」用例改为 **`preserves reasoning before text`**，固定期望数组含 `step-start`、`reasoning`、`text`。
 
 提交语义（仓库历史）：`fix(chat): persist and render reasoning parts for thinking-capable models`（session history）。
 
