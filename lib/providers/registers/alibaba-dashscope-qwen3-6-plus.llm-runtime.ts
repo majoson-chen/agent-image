@@ -2,8 +2,8 @@ import type { AlibabaDashscopeConnection } from '@lib/providers/registers/alibab
 import type { LanguageModel } from 'ai'
 import type { Model } from '~/generated/prisma/client'
 import { alibabaDashscopeCompatLanguageModel } from '@lib/providers/_internals/alibaba-dashscope-language-model'
+import { parseModelConfig } from '@lib/providers/register-config'
 import { DASHSCOPE_QWEN36_PLUS_DOC } from '@lib/providers/registers/alibaba-dashscope-shared'
-import { parseModelConfig } from '@lib/providers/registry'
 import 'server-only'
 
 export function buildAlibabaDashscopeQwen36PlusLanguageModel(record: Model): LanguageModel {

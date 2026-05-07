@@ -2,7 +2,7 @@ import type { OpenaiCompatibleGenericConfig } from '@lib/providers/registers/ope
 import type { LanguageModel } from 'ai'
 import type { Model } from '~/generated/prisma/client'
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
-import { parseModelConfig } from '@lib/providers/registry'
+import { parseModelConfig } from '@lib/providers/register-config'
 import 'server-only'
 
 export function buildOpenAiCompatibleGenericLanguageModel(record: Model): LanguageModel {

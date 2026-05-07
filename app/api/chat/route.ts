@@ -27,8 +27,8 @@ import {
 import { getModel } from '@lib/db/models'
 import { getSelection } from '@lib/db/selections'
 import { computeLlmChatProviderOptions } from '@lib/llm-chat-provider-options'
-import { buildLlmModel } from '@lib/llm-provider-factory'
 import prismaDefault from '@lib/prisma'
+import { buildLlmLanguageModel } from '@lib/providers/runtime/build-llm-from-model'
 import { buildAvailableTools } from '@lib/tools/tool-registry'
 import { chatPostBodySchema } from '@lib/validation/chat-post-schema'
 import { createAgentUIStreamResponse } from 'ai'
@@ -68,7 +68,7 @@ export async function handleChatPost(req: Request, deps: ChatPostDeps = {}) {
     if (!modelRecord)
         return NextResponse.json({ error: 'LLM 模型不存在' }, { status: 404 })
 
-    const llmModel: LanguageModel = deps.model ?? wrapLlmWithDevToolsIfDev(buildLlmModel(modelRecord))
+    const llmModel: LanguageModel = deps.model ?? wrapLlmWithDevToolsIfDev(buildLlmLanguageModel(modelRecord))
     const providerOptions = deps.model
         ? undefined
         : computeLlmChatProviderOptions(modelRecord, selection.params)

@@ -1,79 +1,56 @@
-/**
- * 静态 Provider 注册元数据目录（plan-01，无 DB）。
- */
 import type { RegisterId, RegisterMetadata } from '@lib/providers/types'
+/**
+ * 静态 Provider 注册元数据目录（plan-01，无 DB）+ LLM 行挂载 `buildLanguageModel`。
+ */
+import type { LanguageModel } from 'ai'
 import type { z } from 'zod'
-import type { ModelType } from '~/generated/prisma/client'
-import { alibabaDashscopeLlmConfigSchema } from '@lib/providers/registers/alibaba-dashscope-llm'
-import { braveSearchConfigSchema } from '@lib/providers/registers/brave-search'
-import { dashscopeWanImageConfigSchema } from '@lib/providers/registers/dashscope-wan-image'
-import { openaiCompatibleGenericConfigSchema } from '@lib/providers/registers/openai-compatible-generic'
-import { openaiOfficialConfigSchema } from '@lib/providers/registers/openai-official'
-import { volcengineSeedreamConfigSchema } from '@lib/providers/registers/volcengine-seedream'
+import type { Model, ModelType } from '~/generated/prisma/client'
+import { REGISTER_CONFIG_CATALOG } from '@lib/providers/register-config'
+import { buildAlibabaDashscopeKimiK26LanguageModel } from '@lib/providers/registers/alibaba-dashscope-kimi-k2-6.llm-runtime'
+import { buildAlibabaDashscopeLlmLanguageModel } from '@lib/providers/registers/alibaba-dashscope-llm.llm-runtime'
+import { buildAlibabaDashscopeQwen36PlusLanguageModel } from '@lib/providers/registers/alibaba-dashscope-qwen3-6-plus.llm-runtime'
+import { buildOpenAiCompatibleGenericLanguageModel } from '@lib/providers/registers/openai-compatible-generic.llm-runtime'
+import { buildOpenAiOfficialLanguageModel } from '@lib/providers/registers/openai-official.llm-runtime'
 
-function asRegisterId(id: string): RegisterId {
-    return id as RegisterId
+export { parseModelConfig } from './register-config'
+
+/** 目录行：`RegisterMetadata` + schema + （仅 LLM）`buildLanguageModel`。 */
+export type RegisterCatalogRow = RegisterMetadata & {
+    schema: z.ZodType<unknown>
+    buildLanguageModel?: (record: Model) => LanguageModel
 }
 
-/** 单条目录：元数据 + 解析 schema，避免 registerId 与 schema 映射分叉。 */
-type RegisterCatalogRow = RegisterMetadata & { schema: z.ZodType<unknown> }
+const LLM_BUILD_LANGUAGE_MODEL_BY_REGISTER_ID: Record<string, (record: Model) => LanguageModel> = {
+    'openai/official': buildOpenAiOfficialLanguageModel,
+    'openai-compatible/generic': buildOpenAiCompatibleGenericLanguageModel,
+    'alibaba/dashscope-kimi-k2-6': buildAlibabaDashscopeKimiK26LanguageModel,
+    'alibaba/dashscope-qwen3-6-plus': buildAlibabaDashscopeQwen36PlusLanguageModel,
+    'alibaba/dashscope-llm': buildAlibabaDashscopeLlmLanguageModel,
+}
 
-const REGISTER_CATALOG: readonly RegisterCatalogRow[] = [
-    {
-        registerId: asRegisterId('openai/official'),
-        modelType: 'LLM',
-        title: 'OpenAI 官方',
-        sortOrder: 10,
-        schema: openaiOfficialConfigSchema,
-    },
-    {
-        registerId: asRegisterId('openai-compatible/generic'),
-        modelType: 'LLM',
-        title: 'OpenAI 兼容（通用）',
-        sortOrder: 20,
-        schema: openaiCompatibleGenericConfigSchema,
-    },
-    {
-        registerId: asRegisterId('alibaba/dashscope-llm'),
-        modelType: 'LLM',
-        title: '阿里云 DashScope LLM',
-        sortOrder: 30,
-        schema: alibabaDashscopeLlmConfigSchema,
-    },
-    {
-        registerId: asRegisterId('brave/search'),
-        modelType: 'SEARCH',
-        title: 'Brave Web/Image Search',
-        sortOrder: 10,
-        schema: braveSearchConfigSchema,
-    },
-    {
-        registerId: asRegisterId('volcengine/seedream'),
-        modelType: 'IMAGE',
-        title: '火山方舟 Seedream',
-        sortOrder: 10,
-        schema: volcengineSeedreamConfigSchema,
-    },
-    {
-        registerId: asRegisterId('dashscope/wan-image'),
-        modelType: 'IMAGE',
-        title: 'DashScope 万相图像',
-        sortOrder: 20,
-        schema: dashscopeWanImageConfigSchema,
-    },
-]
+const REGISTER_CATALOG: readonly RegisterCatalogRow[] = REGISTER_CONFIG_CATALOG.map((row): RegisterCatalogRow => {
+    if (row.modelType !== 'LLM')
+        return { ...row }
+    const buildLanguageModel = LLM_BUILD_LANGUAGE_MODEL_BY_REGISTER_ID[row.registerId]
+    if (!buildLanguageModel)
+        throw new Error(`Missing buildLanguageModel for LLM register ${row.registerId}`)
+    return { ...row, buildLanguageModel }
+})
 
-function rowToMetadata({ schema: _schema, ...meta }: RegisterCatalogRow): RegisterMetadata {
+function rowToMetadata({ schema: _schema, buildLanguageModel: _buildLanguageModel, ...meta }: RegisterCatalogRow): RegisterMetadata {
     return meta
 }
 
 export const REGISTER_IDS: RegisterId[] = REGISTER_CATALOG.map(row => row.registerId)
 
-export function parseModelConfig(registerId: string, raw: unknown): unknown {
+export function getLlmCatalogRowStrict(registerId: string) {
     const row = REGISTER_CATALOG.find(r => r.registerId === registerId)
-    if (!row)
-        throw new Error(`unknown registerId: ${registerId}`)
-    return row.schema.parse(raw)
+    if (!row || row.modelType !== 'LLM')
+        throw new Error(`unknown LLM registerId: ${registerId}`)
+    const b = row.buildLanguageModel
+    if (!b)
+        throw new Error(`Register ${registerId} 缺少 buildLanguageModel`)
+    return { ...row, buildLanguageModel: b }
 }
 
 export function listRegisterMetadata(modelType: ModelType): RegisterMetadata[] {
