@@ -1,3 +1,4 @@
+import type { LlmRegisterCatalogRow, RegisterCatalogRow } from '@lib/providers/register-catalog-types'
 import type { RegisterId, RegisterMetadata } from '@lib/providers/types'
 /**
  * 静态 Provider 注册元数据目录（plan-01，无 DB）+ LLM 行挂载 `buildLanguageModel`。
@@ -5,14 +6,11 @@ import type { RegisterId, RegisterMetadata } from '@lib/providers/types'
 import type { LanguageModel } from 'ai'
 import type { Model, ModelType } from '~/generated/prisma/client'
 import { REGISTER_CONFIG_CATALOG } from '@lib/providers/register-config'
-import type { LlmRegisterCatalogRow, RegisterCatalogRow } from '@lib/providers/register-catalog-types'
 import { buildAlibabaDashscopeKimiK26LanguageModel } from '@lib/providers/registers/alibaba-dashscope-kimi-k2-6.llm-runtime'
 import { buildAlibabaDashscopeLlmLanguageModel } from '@lib/providers/registers/alibaba-dashscope-llm.llm-runtime'
 import { buildAlibabaDashscopeQwen36PlusLanguageModel } from '@lib/providers/registers/alibaba-dashscope-qwen3-6-plus.llm-runtime'
 import { buildOpenAiCompatibleGenericLanguageModel } from '@lib/providers/registers/openai-compatible-generic.llm-runtime'
 import { buildOpenAiOfficialLanguageModel } from '@lib/providers/registers/openai-official.llm-runtime'
-
-export { parseModelConfig } from './register-config'
 
 export type {
     ImageRegisterCatalogRow,
@@ -20,6 +18,8 @@ export type {
     RegisterCatalogRow,
     SearchRegisterCatalogRow,
 } from './register-catalog-types'
+
+export { parseModelConfig } from './register-config'
 
 const LLM_BUILD_LANGUAGE_MODEL_BY_REGISTER_ID: Record<string, (record: Model) => LanguageModel> = {
     'openai/official': buildOpenAiOfficialLanguageModel,
