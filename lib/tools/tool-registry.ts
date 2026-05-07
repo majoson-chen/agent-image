@@ -7,12 +7,11 @@ import { getModel } from '@lib/db/models'
 import { getAllBindings } from '@lib/db/search-tool-bindings'
 import { getSelection } from '@lib/db/selections'
 import { parseModelConfig } from '@lib/providers/registry'
+import { createBraveImageSearchTool, createBraveWebSearchTool } from '@lib/tools/registers/search/brave-search-tools'
 import { createConversationRenameTool } from './conversation-rename'
 import { createImageFetchTool } from './image-fetch'
 import { createImageGenerateTool } from './image-generate'
-import { createImageSearchTool } from './image-search'
 import { createWebFetchTool } from './web-fetch'
-import { createWebSearchTool } from './web-search'
 import 'server-only'
 
 interface AvailableTools {
@@ -46,14 +45,14 @@ export async function buildAvailableTools(prisma: PrismaClient, conversationId: 
         const model = await getModel(prisma, bindings.WEB_SEARCH)
         if (!model)
             throw new Error(`Search model not found: ${bindings.WEB_SEARCH}`)
-        tools['web-search'] = createWebSearchTool(getBraveApiKey(model))
+        tools['web-search'] = createBraveWebSearchTool(getBraveApiKey(model))
     }
 
     if (bindings.IMAGE_SEARCH) {
         const model = await getModel(prisma, bindings.IMAGE_SEARCH)
         if (!model)
             throw new Error(`Search model not found: ${bindings.IMAGE_SEARCH}`)
-        tools['image-search'] = createImageSearchTool(getBraveApiKey(model))
+        tools['image-search'] = createBraveImageSearchTool(getBraveApiKey(model))
     }
 
     // web-fetch / image-fetch 始终可用，无绑定语义

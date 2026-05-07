@@ -6,6 +6,11 @@ import type { PrismaClient } from '~/generated/prisma/client'
 import { createModel } from '@lib/db/models'
 import { clearBinding, setBinding } from '@lib/db/search-tool-bindings'
 import { clearSelection, setSelection } from '@lib/db/selections'
+import { createVolcengineSeedreamImageGenerateTool } from '@lib/tools/registers/image/volcengine-seedream-generate-tool'
+import {
+    createBraveImageSearchTool,
+    createBraveWebSearchTool,
+} from '@lib/tools/registers/search/brave-search-tools'
 import { buildAvailableTools } from '@lib/tools/tool-registry'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { createTestDb } from '../helpers/db'
@@ -38,6 +43,25 @@ beforeAll(async () => {
     ({ prisma, cleanup } = await createTestDb())
 })
 afterAll(() => cleanup())
+
+describe('register tool factories（SPEC Phase C dispatch）', () => {
+    it('Brave SEARCH Register 导出 web / image 工具工厂', () => {
+        expect(createBraveWebSearchTool('k')).toBeDefined()
+        expect(createBraveImageSearchTool('k')).toBeDefined()
+    })
+
+    it('IMAGE volcengine/seedream Register 导出生图工具工厂', async () => {
+        const conv = await createConversation(prisma)
+        const model = await createSeedreamModel(prisma)
+        const t = createVolcengineSeedreamImageGenerateTool({
+            model,
+            params: { size: '1024x1024' },
+            role: 'PRIMARY',
+            conversationId: conv.id,
+        })
+        expect(t.needsApproval).toBe(true)
+    })
+})
 
 describe('buildAvailableTools', () => {
     it('with no bindings → only web-fetch', async () => {
