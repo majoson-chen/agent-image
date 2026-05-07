@@ -8,8 +8,8 @@ import type { AlibabaDashscopeLlmConfig } from '@lib/providers/registers/alibaba
 import type { Model } from '~/generated/prisma/client'
 import { parseModelConfig } from '@lib/providers/register-config'
 
-/** 使用 Alibaba DashScope LLM config 解析路径的 registerId（与 Catalog 中挂载 chat options 钩子的行一致） */
-const ALIBABA_DASHSCOPE_LLM_REGISTER_IDS: readonly string[] = [
+/** 使用 Alibaba DashScope LLM config 解析路径且挂载 `computeLlmChatProviderOptions` 的 registerId（唯一真源：`registry.ts` 只读此处） */
+export const ALIBABA_DASHSCOPE_CHAT_OPTIONS_REGISTER_IDS: readonly string[] = [
     'alibaba/dashscope-llm',
     'alibaba/dashscope-kimi-k2-6',
     'alibaba/dashscope-qwen3-6-plus',
@@ -21,7 +21,7 @@ const DASHSCOPE_THINKING_SKU_REGISTER_IDS: readonly string[] = [
 ]
 
 function parseDashScopeConfig(model: Pick<Model, 'registerId' | 'config'>): AlibabaParsedLlmConfig | null {
-    if (!ALIBABA_DASHSCOPE_LLM_REGISTER_IDS.includes(model.registerId))
+    if (!ALIBABA_DASHSCOPE_CHAT_OPTIONS_REGISTER_IDS.includes(model.registerId))
         return null
     return parseModelConfig(model.registerId, model.config) as AlibabaParsedLlmConfig
 }

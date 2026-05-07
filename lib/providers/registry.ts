@@ -12,7 +12,10 @@ import type { LanguageModel, Tool } from 'ai'
 import type { Model } from '~/generated/prisma/client'
 import { REGISTER_CONFIG_CATALOG } from '@lib/providers/register-config'
 import { buildAlibabaDashscopeKimiK26LanguageModel } from '@lib/providers/registers/alibaba-dashscope-kimi-k2-6/llm-runtime.server'
-import { computeAlibabaDashscopeChatProviderOptions } from '@lib/providers/registers/alibaba-dashscope-llm/chat-options'
+import {
+    ALIBABA_DASHSCOPE_CHAT_OPTIONS_REGISTER_IDS,
+    computeAlibabaDashscopeChatProviderOptions,
+} from '@lib/providers/registers/alibaba-dashscope-llm/chat-options'
 import { buildAlibabaDashscopeLlmLanguageModel } from '@lib/providers/registers/alibaba-dashscope-llm/llm-runtime.server'
 import { buildAlibabaDashscopeQwen36PlusLanguageModel } from '@lib/providers/registers/alibaba-dashscope-qwen3-6-plus/llm-runtime.server'
 import { buildBraveSearchToolsForModel } from '@lib/providers/registers/brave-search/tools-from-model.server'
@@ -43,13 +46,6 @@ const LLM_BUILD_LANGUAGE_MODEL_BY_REGISTER_ID: Record<string, (record: Model) =>
     'alibaba/dashscope-llm': buildAlibabaDashscopeLlmLanguageModel,
 }
 
-/** Catalog 组装：哪些 LLM 行挂载 Alibaba DashScope `computeLlmChatProviderOptions`（与 `alibaba-dashscope-chat-options` 内解析列表一致） */
-const LLM_COMPUTE_CHAT_PROVIDER_OPTIONS_REGISTER_IDS = new Set<string>([
-    'alibaba/dashscope-llm',
-    'alibaba/dashscope-kimi-k2-6',
-    'alibaba/dashscope-qwen3-6-plus',
-])
-
 /** IMAGE 行挂载 `createImageGenerateTool`（Hook：image.tool） */
 const IMAGE_CREATE_IMAGE_GENERATE_TOOL_BY_REGISTER_ID: Record<string, (opts: CreateImageGenerateToolOptions) => Tool> = {
     'volcengine/seedream': createVolcengineSeedreamImageGenerateTool,
@@ -77,7 +73,7 @@ const REGISTER_CATALOG: readonly RegisterCatalogRow[] = REGISTER_CONFIG_CATALOG.
     const buildLanguageModel = LLM_BUILD_LANGUAGE_MODEL_BY_REGISTER_ID[row.registerId]
     if (!buildLanguageModel)
         throw new Error(`Missing buildLanguageModel for LLM register ${row.registerId}`)
-    const computeLlmChatProviderOptions = LLM_COMPUTE_CHAT_PROVIDER_OPTIONS_REGISTER_IDS.has(row.registerId)
+    const computeLlmChatProviderOptions = ALIBABA_DASHSCOPE_CHAT_OPTIONS_REGISTER_IDS.includes(row.registerId)
         ? computeAlibabaDashscopeChatProviderOptions
         : undefined
     return { ...row, buildLanguageModel, computeLlmChatProviderOptions } as LlmRegisterCatalogRow
