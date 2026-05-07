@@ -101,7 +101,7 @@
 
 ## 6. 与「妥协」路线的边界
 
-本文档定义的 Hook 系统是 **完整性目标**：最终态下，**不应**再在 `lib/tools/image-generate.ts`、`lib/tools/tool-registry.ts`、`lib/image-provider-factory.ts`、`lib/llm-chat-provider-options.ts` 等位置保留 **`registerId` 特化分支**；过渡期可在实施计划中列出 **允许的临时薄转发层**，但必须标注 **DEPRECATED-by-hook** 与移除条件。
+本文档定义的 Hook 系统是 **完整性目标**：最终态下，**不应**再在 `lib/tools/image-generate.ts`、`lib/tools/tool-registry.ts`、`lib/llm-chat-provider-options.ts` 或 **共享派发层**中以 **`switch (registerId)`** 等形式保留 **`registerId` 特化分支**。（生图派发入口 `lib/providers/registers/_shared/image-execute/execute.server.ts` 仅允许 **Catalog 派发**，不得再含厂商枚举。）
 
 ---
 

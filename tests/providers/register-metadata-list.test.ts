@@ -1,7 +1,7 @@
 import { listRegisterMetadata, parseModelConfig, REGISTER_IDS } from '@lib/providers/register-metadata'
 import { describe, expect, it } from 'vitest'
 
-describe('registry metadata', () => {
+describe('register-metadata list + ids', () => {
     it('lists only LLM registers for LLM', () => {
         const ids = listRegisterMetadata('LLM').map(m => m.registerId)
         expect(ids).toContain('openai/official')

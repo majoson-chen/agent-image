@@ -4,7 +4,8 @@ import type { Model, PrismaClient } from '~/generated/prisma/client'
 import { getModel } from '@lib/db/models'
 import { getAllBindings } from '@lib/db/search-tool-bindings'
 import { getSelection } from '@lib/db/selections'
-import { getImageCatalogRowStrict, getSearchCatalogRowStrict, parseModelConfig } from '@lib/providers/registry'
+import { parseModelConfig } from '@lib/providers/register-config'
+import { getCatalogRow, getSearchCatalogRowStrict } from '@lib/providers/registry'
 import { createConversationRenameTool } from './conversation-rename'
 import { createImageFetchTool } from './image-fetch'
 import { createImageGenerateTool } from './image-generate'
@@ -25,12 +26,8 @@ interface ImageToolSelectionConfig {
 function getImageCatalogRowOrNull(model: Model): ImageRegisterCatalogRow | null {
     if (model.type !== 'IMAGE')
         return null
-    try {
-        return getImageCatalogRowStrict(model.registerId)
-    }
-    catch {
-        return null
-    }
+    const row = getCatalogRow(model.registerId)
+    return row?.modelType === 'IMAGE' ? row : null
 }
 
 export async function buildAvailableTools(prisma: PrismaClient, conversationId: string): Promise<AvailableTools> {

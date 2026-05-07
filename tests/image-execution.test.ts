@@ -45,7 +45,7 @@ async function createSeedreamModel(overrides: Record<string, unknown> = {}) {
 }
 
 async function getFactory() {
-    const mod = await import('../lib/image-provider-factory')
+    const mod = await import('@lib/providers/registers/_shared/image-execute/execute.server')
     return mod.executeImageGeneration
 }
 

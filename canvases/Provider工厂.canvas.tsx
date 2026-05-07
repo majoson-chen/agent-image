@@ -57,7 +57,7 @@ export default function ProviderFactory() {
                 `lib/tools/image-generate.ts` · **`createImageGenerateTool(opts)`** → **`getImageCatalogRowStrict`** → Catalog 行钩子 **`createImageGenerateTool`**
             </Text>
             <Text>
-                `lib/tools/tool-registry.ts` 在组装 ToolSet 时调用上述入口。**HTTP、超时、响应解析与落库路径**由各 IMAGE Register 的工具实现负责（可经共享 `executeImageGeneration` 等）；**`model` 请求字段来自 `config.requestModel`**，非 DB **`name`**。`lib/image-provider-factory.ts` 若仍存在，多为兼容 re-export，叙述以 **`image-generate.ts` + Catalog** 为准。
+                `lib/tools/tool-registry.ts` 在组装 ToolSet 时调用上述入口。**HTTP、超时、响应解析与落库路径**由各 IMAGE Register 的工具实现负责；`execute` 内可调 **`executeImageGeneration`**（`lib/providers/registers/_shared/image-execute/execute.server.ts`，经 Catalog **image.execution** 派发）。**`model` 请求字段来自 `config.requestModel`**，非 DB **`name`**。
             </Text>
 
             <Card>

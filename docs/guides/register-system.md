@@ -141,7 +141,7 @@ flowchart LR
 5. 在 **`registry.ts`**（及必要的 runtime）登记 **LLM 的 `buildLanguageModel`** 或其它类型钩子（随类型而定）。
 6. **设置 UI**：`Add*ModelForm` / 懒加载表单与 `register-metadata` 对齐；**不要**在 UI 里手写第二套 config 形状。
 7. **测试**：至少覆盖 `parseModelConfig`、以及该 Register 关键工厂或执行路径（视类型而定）。
-8. **Kernel**：若发现必须改 `tool-registry` / `image-provider-factory` 才支持新 `registerId`，优先评估是否应 **把分支下沉为 Register 钩子**，避免堆积新的 `if (registerId === '…')`。（正式能力 ID 见 [Hook 系统设计](../superpowers/specs/2026-05-08-register-hook-system-design.md)。）
+8. **Kernel**：若发现必须改 `tool-registry` 或手写第二套 **`registerId`** 派发才支持新 SKU，优先评估是否应 **把分支下沉为 Register 钩子（含 `executeImageGeneration`／`createImageGenerateTool` 等）**，避免堆积新的 `if (registerId === '…')`。（正式能力 ID 见 [Hook 系统设计](../superpowers/specs/2026-05-08-register-hook-system-design.md)。）
 
 ---
 
