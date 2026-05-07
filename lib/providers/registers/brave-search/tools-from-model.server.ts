@@ -1,3 +1,5 @@
+import 'server-only'
+
 /**
  * brave/search：由 Model 行构造 web / image 搜索工具（Kernel 零 Brave 字面量）。
  */
@@ -9,7 +11,6 @@ import {
     createBraveImageSearchTool,
     createBraveWebSearchTool,
 } from '@lib/tools/registers/search/brave-search-tools'
-import 'server-only'
 
 export function buildBraveSearchToolsForModel(model: Model): { webSearch: Tool, imageSearch: Tool } {
     if (model.type !== 'SEARCH' || model.registerId !== 'brave/search')
