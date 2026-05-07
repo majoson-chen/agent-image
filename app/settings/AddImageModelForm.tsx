@@ -6,6 +6,7 @@ import { cn } from '@lib/cn'
 import { getSeedreamPreset, SEEDREAM_PRESETS } from '@lib/image/seedream-presets'
 import { getWanImagePreset, WAN_IMAGE_PRESETS } from '@lib/image/wan-image-presets'
 import { fallbackRegisterMetadataRows } from '@lib/providers/register-metadata-fallback'
+import { getRegisterMetadata } from '@lib/providers/registry'
 import { Plus, X } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
@@ -15,10 +16,6 @@ type ImageRegisterId = 'volcengine/seedream' | 'dashscope/wan-image'
 type ImageVendor = 'seedream' | 'wan'
 
 const imageRegisterFallbackRows = fallbackRegisterMetadataRows('IMAGE')
-
-function imageVendorFromRegister(registerId: ImageRegisterId): ImageVendor {
-    return registerId === 'dashscope/wan-image' ? 'wan' : 'seedream'
-}
 
 interface RegisterRow {
     registerId: string
@@ -67,7 +64,7 @@ export function AddImageModelForm() {
     const [open, setOpen] = useState(false)
     const [registerRows, setRegisterRows] = useState<RegisterRow[] | null>(null)
 
-    const vendor = imageVendorFromRegister(form.registerId)
+    const vendor: ImageVendor = getRegisterMetadata(form.registerId)?.imagePresetKind ?? 'seedream'
     /** 与服务端 IMAGE 目录一致时才展示为多选；单行则固定；加载/失败时退回静态两项 */
     const showRegisterSelect = !(registerRows && registerRows.length === 1)
     const registerTitle
