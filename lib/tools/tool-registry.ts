@@ -1,12 +1,10 @@
-import type { BraveSearchConfig } from '@lib/providers/registers/brave-search'
 import type { ImageRegisterCatalogRow } from '@lib/providers/registry'
 import type { ToolSet } from 'ai'
 import type { Model, PrismaClient } from '~/generated/prisma/client'
 import { getModel } from '@lib/db/models'
 import { getAllBindings } from '@lib/db/search-tool-bindings'
 import { getSelection } from '@lib/db/selections'
-import { getImageCatalogRowStrict, parseModelConfig } from '@lib/providers/registry'
-import { createBraveImageSearchTool, createBraveWebSearchTool } from '@lib/tools/registers/search/brave-search-tools'
+import { getImageCatalogRowStrict, getSearchCatalogRowStrict, parseModelConfig } from '@lib/providers/registry'
 import { createConversationRenameTool } from './conversation-rename'
 import { createImageFetchTool } from './image-fetch'
 import { createImageGenerateTool } from './image-generate'
@@ -35,11 +33,6 @@ function getImageCatalogRowOrNull(model: Model): ImageRegisterCatalogRow | null 
     }
 }
 
-function getBraveApiKey(model: Model): string {
-    const config = parseModelConfig('brave/search', model.config) as BraveSearchConfig
-    return config.apiKey
-}
-
 export async function buildAvailableTools(prisma: PrismaClient, conversationId: string): Promise<AvailableTools> {
     const bindings = await getAllBindings(prisma)
     const tools = {} as ToolSet
@@ -50,14 +43,18 @@ export async function buildAvailableTools(prisma: PrismaClient, conversationId: 
         const model = await getModel(prisma, bindings.WEB_SEARCH)
         if (!model)
             throw new Error(`Search model not found: ${bindings.WEB_SEARCH}`)
-        tools['web-search'] = createBraveWebSearchTool(getBraveApiKey(model))
+        const searchRow = getSearchCatalogRowStrict(model.registerId)
+        const { webSearch } = searchRow.buildSearchToolsForModel(model)
+        tools['web-search'] = webSearch
     }
 
     if (bindings.IMAGE_SEARCH) {
         const model = await getModel(prisma, bindings.IMAGE_SEARCH)
         if (!model)
             throw new Error(`Search model not found: ${bindings.IMAGE_SEARCH}`)
-        tools['image-search'] = createBraveImageSearchTool(getBraveApiKey(model))
+        const searchRow = getSearchCatalogRowStrict(model.registerId)
+        const { imageSearch } = searchRow.buildSearchToolsForModel(model)
+        tools['image-search'] = imageSearch
     }
 
     // web-fetch / image-fetch 始终可用，无绑定语义
