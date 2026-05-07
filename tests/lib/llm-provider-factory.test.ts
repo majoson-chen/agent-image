@@ -65,6 +65,24 @@ describe('buildLlmModel', () => {
         expect(model.modelId).toBe('qwen-plus')
     })
 
+    it('uses fixed modelId for Kimi K2.6 SKU', () => {
+        const model = buildLlmModel({
+            ...ALIBABA_MODEL,
+            registerId: 'alibaba/dashscope-kimi-k2-6',
+            config: { apiKey: 'sk-test' },
+        })
+        expect(model.modelId).toBe('kimi-k2.6')
+    })
+
+    it('uses fixed modelId for Qwen 3.6 Plus SKU', () => {
+        const model = buildLlmModel({
+            ...ALIBABA_MODEL,
+            registerId: 'alibaba/dashscope-qwen3-6-plus',
+            config: { apiKey: 'sk-test' },
+        })
+        expect(model.modelId).toBe('qwen3.6-plus')
+    })
+
     it('throws when openai-compatible/generic has no baseURL', () => {
         expect(() => buildLlmModel({ ...COMPATIBLE_MODEL, config: { modelId: 'x', apiKey: 'k' } })).toThrow()
     })

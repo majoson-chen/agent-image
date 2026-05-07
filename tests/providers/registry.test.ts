@@ -5,6 +5,8 @@ describe('registry metadata', () => {
     it('lists only LLM registers for LLM', () => {
         const ids = listRegisterMetadata('LLM').map(m => m.registerId)
         expect(ids).toContain('openai/official')
+        expect(ids).toContain('alibaba/dashscope-kimi-k2-6')
+        expect(ids).toContain('alibaba/dashscope-qwen3-6-plus')
         expect(ids.every(x => REGISTER_IDS.includes(x))).toBe(true)
         expect(ids).not.toContain('brave/search')
     })

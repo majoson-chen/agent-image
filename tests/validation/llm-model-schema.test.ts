@@ -24,6 +24,29 @@ describe('LLM register config schemas', () => {
         })).toMatchObject({ modelId: 'qwen-plus' })
     })
 
+    it('accepts SKU registers with apiKey only', () => {
+        expect(parseModelConfig('alibaba/dashscope-kimi-k2-6', {
+            apiKey: 'sk',
+        })).toMatchObject({ apiKey: 'sk' })
+        expect(parseModelConfig('alibaba/dashscope-qwen3-6-plus', {
+            apiKey: 'sk',
+        })).toMatchObject({ apiKey: 'sk' })
+    })
+
+    it('accepts SKU with thinkingBudget', () => {
+        expect(parseModelConfig('alibaba/dashscope-kimi-k2-6', {
+            apiKey: 'sk',
+            capabilities: { thinkingBudget: 5000 },
+        })).toMatchObject({ capabilities: { thinkingBudget: 5000 } })
+    })
+
+    it('accepts SKU with explicit supportsThinking true', () => {
+        expect(parseModelConfig('alibaba/dashscope-kimi-k2-6', {
+            apiKey: 'sk',
+            capabilities: { supportsThinking: true },
+        })).toMatchObject({ capabilities: { supportsThinking: true } })
+    })
+
     it('accepts valid Alibaba config with baseURL and capabilities', () => {
         expect(parseModelConfig('alibaba/dashscope-llm', {
             modelId: 'qwen-plus',

@@ -28,7 +28,7 @@ export const alibabaDashscopeConnectionSchema = z.object({
     parallelToolCalls: z.boolean().optional(),
     capabilities: z
         .object({
-            /** 仅当为 false 时关闭会话内「思考模式」勾选（SKU 默认为支持思考） */
+            /** false 时不向百炼下发思考能力；SKU 表单默认写入 true，与「启用思考」一致 */
             supportsThinking: z.boolean().optional(),
             /** enable_thinking 为真时发往 API（未设则不传 thinking_budget） */
             thinkingBudget: z.number().positive().optional(),

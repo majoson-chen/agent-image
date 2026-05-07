@@ -11,7 +11,10 @@ import { postCreateLlmModel } from '@lib/settings/post-create-llm-model'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 
-import { DashScopeConnectionFields } from './DashScopeConnectionFields'
+import {
+    DashScopeBaseUrlFields,
+    DashScopeThinkingBudgetFields,
+} from './DashScopeConnectionFields'
 
 const REGISTER_ID = 'alibaba/dashscope-kimi-k2-6' as const
 
@@ -20,7 +23,8 @@ export default function AlibabaDashscopeKimiK26ModelForm(props: LlmRegisterFormP
     const [displayName, setDisplayName] = useState('')
     const [baseURL, setBaseURL] = useState('')
     const [thinkingBudget, setThinkingBudget] = useState('')
-    const [skuDisableThinkingUx, setSkuDisableThinkingUx] = useState(false)
+    /** 默认开启思考；写入 config.capabilities.supportsThinking，由服务端拼装 providerOptions */
+    const [enableThinking, setEnableThinking] = useState(true)
     const [apiKey, setApiKey] = useState('')
     const [error, setError] = useState<string | null>(null)
     const [loading, setLoading] = useState(false)
@@ -46,13 +50,11 @@ export default function AlibabaDashscopeKimiK26ModelForm(props: LlmRegisterFormP
             config.baseURL = b
 
         const capabilities: Record<string, unknown> = {}
+        capabilities.supportsThinking = enableThinking
         if (budgetTrim !== '')
             capabilities.thinkingBudget = Number.parseInt(budgetTrim, 10)
-        if (skuDisableThinkingUx)
-            capabilities.supportsThinking = false
 
-        if (Object.keys(capabilities).length > 0)
-            config.capabilities = capabilities
+        config.capabilities = capabilities
 
         const payload = {
             type: 'LLM',
@@ -119,22 +121,34 @@ export default function AlibabaDashscopeKimiK26ModelForm(props: LlmRegisterFormP
                 。
             </p>
 
-            <DashScopeConnectionFields
-                baseURL={baseURL}
-                setBaseURL={setBaseURL}
+            <DashScopeBaseUrlFields baseURL={baseURL} setBaseURL={setBaseURL} />
+
+            <fieldset className="fieldset">
+                <legend className="fieldset-legend">思考模式（百炼）</legend>
+                <p className="mb-3 text-xs text-base-content/65">
+                    是否在请求中启用思考由此处决定（对话页不再切换）。开关对应 API 侧的
+                    {' '}
+                    <code className="font-mono text-[11px]">enable_thinking</code>
+                    ；下方可选填写
+                    {' '}
+                    <code className="font-mono text-[11px]">thinking_budget</code>
+                    。
+                </p>
+                <label className="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-base-300 bg-base-200/40 px-3 py-2">
+                    <span className="text-sm text-base-content">启用思考模式</span>
+                    <input
+                        type="checkbox"
+                        className="toggle toggle-primary toggle-sm"
+                        checked={enableThinking}
+                        onChange={e => setEnableThinking(e.target.checked)}
+                    />
+                </label>
+            </fieldset>
+
+            <DashScopeThinkingBudgetFields
                 thinkingBudget={thinkingBudget}
                 setThinkingBudget={setThinkingBudget}
             />
-
-            <label className="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-base-300 bg-base-200/40 px-3 py-2">
-                <span className="text-sm text-base-content">禁用思考模式（隐藏会话内开关）</span>
-                <input
-                    type="checkbox"
-                    className="toggle toggle-primary toggle-sm"
-                    checked={skuDisableThinkingUx}
-                    onChange={e => setSkuDisableThinkingUx(e.target.checked)}
-                />
-            </label>
 
             <fieldset className="fieldset">
                 <legend className="fieldset-legend">API Key</legend>
