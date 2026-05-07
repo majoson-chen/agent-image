@@ -1,6 +1,6 @@
 # Provider Register 多阶段计划总览
 
-本文档说明 **4 份串行 Implementation Plan** 的执行顺序、与 [SPEC：Provider（Model）Register 架构与数据模型](../specs/2026-05-07-provider-register-architecture-spec.md) 的对应关系，以及跨计划依赖。
+本文档说明 **5 份串行 Implementation Plan** 的执行顺序、与 [SPEC：Provider（Model）Register 架构与数据模型](../specs/2026-05-07-provider-register-architecture-spec.md) 的对应关系，以及跨计划依赖。
 
 ---
 
@@ -12,6 +12,7 @@
 | 2 | [plan-02-runtime-dispatch.md](./2026-05-07-provider-register-plan-02-runtime-dispatch.md) | G4（LLM/IMAGE/SEARCH 运行时）、§7、G5 局部 | Chat/工具链按 `registerId` 分发；移除对 `ProviderType` 列的运行时依赖 |
 | 3 | [plan-03-settings-api-ui.md](./2026-05-07-provider-register-plan-03-settings-api-ui.md) | G2、§6 | 设置页三区 + Register 元数据列表 API + 动态配置 UI + 入库 |
 | 4 | [plan-04-reference-errors-devtools.md](./2026-05-07-provider-register-plan-04-reference-errors-devtools.md) | G5 补全、G6、G8（§8）→ G7 | `resolveConversationImage`、可选参考图入参、结构化 tool 错误、`devToolsMiddleware` 开发门控 |
+| 5 | [2026-05-08-register-spec-phase-c-llm-runtime-settings.md](./2026-05-08-register-spec-phase-c-llm-runtime-settings.md) | G4 LLM Phase C（Register 产出 LanguageModel、Catalog `buildLanguageModel`）、G2 / §6 LLM 设置表单按 Register 懒加载 | `register-config` 拆分、`buildLlmLanguageModel`、`llm-register-form-loaders`、五个 `register-forms/llm/*` 组件 |
 
 ---
 
@@ -37,11 +38,12 @@
 | SPEC 目标 | 覆盖计划 |
 | --- | --- |
 | G1 静态 Registry | Plan 01 |
-| G2 设置页三区 + 懒加载 UI | Plan 03 |
+| G2 设置页三区 + 懒加载 UI | Plan 03；LLM 设置表单按 Register 懒加载见 Plan 05 |
 | G3 `registerId` + `config` | Plan 01 |
 | G4 Register 产出 LLM/工具/搜索 | Plan 02（+ Plan 04 补 image 参考） |
+| G4 LLM Catalog 挂载 runtime（Phase C） | Plan 05 |
 | G5 结构化 tool 错误 | Plan 02 起式；Plan 04 收敛 |
 | G6 参考图 + 内核 | Plan 04 |
 | G7 DevTools | Plan 04 |
 
-**非目标**（远程目录、config 加密等）四份计划均 **不** 引入新范围。
+**非目标**（远程目录、config 加密等）五份计划均 **不** 引入新范围。
