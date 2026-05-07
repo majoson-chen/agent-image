@@ -79,6 +79,7 @@
 
 - **Agent 面向总览（工作逻辑 + 开发清单）**：[`docs/guides/register-system.md`](../../guides/register-system.md)
 - 主 SPEC：[2026-05-07-provider-register-architecture-spec.md](./2026-05-07-provider-register-architecture-spec.md)
+- **Hook 系统设计（术语与能力 ID）**：[`2026-05-08-register-hook-system-design.md`](./2026-05-08-register-hook-system-design.md)
 - Plan 总览：[2026-05-07-provider-register-plans-overview.md](../plans/2026-05-07-provider-register-plans-overview.md)
 - Compound 简述：[docs/solutions/architecture-patterns/model-registerid-config-register-metadata-2026-05-07.md](../../solutions/architecture-patterns/model-registerid-config-register-metadata-2026-05-07.md)
 
@@ -89,3 +90,4 @@
 | 日期       | 说明                                               |
 | ---------- | -------------------------------------------------- |
 | 2026-05-08 | 初稿：插件定性、契约面、共享边界、一户一地目录约定 |
+| 2026-05-08 | Related 增加 Hook 系统设计链接                     |

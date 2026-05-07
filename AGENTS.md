@@ -8,7 +8,7 @@
 
 权威需求说明见：`docs/brainstorms/2026-04-23-agent-image-requirements.md`。
 推荐性 Agent 工作流与能力要点（供 Prompt 对照）：`docs/brainstorms/2026-04-23-agent-image-agent-playbook.md`。
-**Register 系统（模型 SKU 插件、Catalog、Kernel 边界）开发备忘录**：`docs/guides/register-system.md`（实施前建议通读；规范细节另见 `docs/superpowers/specs/` 下 Register 相关 SPEC）。
+**Register 系统（模型 SKU 插件、Catalog、Kernel 边界）开发备忘录**：`docs/guides/register-system.md`（实施前建议通读；规范细节另见 `docs/superpowers/specs/` 下 Register 相关 SPEC；**Hook 术语与能力表**：`docs/superpowers/specs/2026-05-08-register-hook-system-design.md`）。
 界面布局参考（如有）：`design/`（例如 `design/layout.pen`）。
 **设计语言与主题（须先于设置页/业务组件落地）：** [daisyUI 5](https://daisyui.com/) + `docs/design-language.md`。`app/globals.css` **暂仅** `@plugin "daisyui"`，使用内置 **`light` / `dark`**（与官方默认：`light --default`，`dark --prefersdark`）；界面使用 **语义色**（`bg-base-100`、`text-base-content`、`btn-primary` 等），**禁止**在组件中硬编码 `#hex` 或滥用 `bg-green-500` 等非语义调色板。设计稿（Pencil）填色对照 `docs/plans/2026-04-23-001-feat-chat-ui-shell-plan.md` 中的 **设计稿用色** 表；该文件为 **设计交付规格**，工程实现任务不在其内。
 
