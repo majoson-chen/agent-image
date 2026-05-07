@@ -5,7 +5,7 @@
 
 import type { LlmRegisterFormProps } from '@lib/settings/llm-register-form-loaders'
 import { cn } from '@lib/cn'
-import { DASHSCOPE_KIMI_K26_DOC } from '@lib/providers/registers/alibaba-dashscope-shared'
+import { DASHSCOPE_KIMI_K26_DOC } from '@lib/providers/registers/_shared/alibaba-dashscope-shared'
 import { validateThinkingBudgetOrEmpty } from '@lib/settings/llm-register-form-helpers'
 import { postCreateLlmModel } from '@lib/settings/post-create-llm-model'
 import { useRouter } from 'next/navigation'

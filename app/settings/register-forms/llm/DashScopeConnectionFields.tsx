@@ -4,7 +4,7 @@
  */
 'use client'
 
-import { DASHSCOPE_COMPAT_BASE_MAINLAND } from '@lib/providers/registers/alibaba-dashscope-shared'
+import { DASHSCOPE_COMPAT_BASE_MAINLAND } from '@lib/providers/registers/_shared/alibaba-dashscope-shared'
 
 interface BaseUrlProps {
     baseURL: string

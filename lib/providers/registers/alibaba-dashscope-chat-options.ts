@@ -4,7 +4,7 @@
  */
 import type { ProviderOptions } from '@ai-sdk/provider-utils'
 import type { AlibabaDashscopeLlmConfig } from '@lib/providers/registers/alibaba-dashscope-llm'
-import type { AlibabaDashscopeConnection } from '@lib/providers/registers/alibaba-dashscope-shared'
+import type { AlibabaDashscopeConnection } from '@lib/providers/registers/_shared/alibaba-dashscope-shared'
 import type { Model } from '~/generated/prisma/client'
 import { parseModelConfig } from '@lib/providers/register-config'
 
