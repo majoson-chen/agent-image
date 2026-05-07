@@ -1,5 +1,6 @@
 'use client'
 
+import type { Model } from '~/generated/prisma/client'
 import { cn } from '@lib/cn'
 import { llmSupportsThinking } from '@lib/llm-chat-provider-options'
 import { Cpu, ExternalLink } from 'lucide-react'
@@ -8,11 +9,7 @@ import { useRouter } from 'next/navigation'
 import { useRef, useState, useTransition } from 'react'
 import { setLlmSelectionAction } from './llmSelectionActions'
 
-export interface ComposerLlmModelOption {
-    id: string
-    name: string
-    config: unknown
-}
+export type ComposerLlmModelOption = Pick<Model, 'id' | 'name' | 'registerId' | 'config'>
 
 interface Props {
     conversationId: string
@@ -29,7 +26,7 @@ export function ComposerLlmSlot({ conversationId, currentModelId, thinkingEnable
     const [pending, startTransition] = useTransition()
 
     const selected = models.find(m => m.id === currentModelId)
-    const thinkingAllowed = selected ? llmSupportsThinking(selected.config) : false
+    const thinkingAllowed = selected ? llmSupportsThinking(selected) : false
 
     function openDialog() {
         setDraftModelId(currentModelId ?? '')
@@ -38,7 +35,7 @@ export function ComposerLlmSlot({ conversationId, currentModelId, thinkingEnable
     }
 
     const draftSelected = models.find(m => m.id === draftModelId)
-    const draftThinkingAllowed = draftSelected ? llmSupportsThinking(draftSelected.config) : false
+    const draftThinkingAllowed = draftSelected ? llmSupportsThinking(draftSelected) : false
 
     function save() {
         startTransition(() => {
@@ -110,7 +107,7 @@ export function ComposerLlmSlot({ conversationId, currentModelId, thinkingEnable
                                     const v = e.target.value
                                     setDraftModelId(v)
                                     const m = models.find(x => x.id === v)
-                                    if (!m || !llmSupportsThinking(m.config))
+                                    if (!m || !llmSupportsThinking(m))
                                         setDraftThinking(false)
                                 }}
                                 disabled={pending}

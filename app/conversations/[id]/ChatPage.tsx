@@ -4,6 +4,7 @@
 
 import type { ImageModelCapabilities } from '@lib/validation/image-model-schema'
 import type { UIMessage } from 'ai'
+import type { ComposerLlmModelOption } from './ComposerLlmSlot'
 import { useChat } from '@ai-sdk/react'
 import { buildUserAttachXml, isUserAttachInjectText } from '@lib/ai/user-attach-xml'
 import { isImageFetchVisionPersistParts } from '@lib/ai/vision-inject-xml'
@@ -217,17 +218,11 @@ interface ImageModelInfo {
     capabilities: ImageModelCapabilities | null
 }
 
-interface LlmModelInfo {
-    id: string
-    name: string
-    config: unknown
-}
-
 interface Props {
     conversationId: string
     initialMessages: UIMessage<MessageMetadata>[]
     hasLlm: boolean
-    llmModels?: LlmModelInfo[]
+    llmModels?: ComposerLlmModelOption[]
     llmModelId?: string | null
     llmThinkingEnabled?: boolean
     contextWindow?: number

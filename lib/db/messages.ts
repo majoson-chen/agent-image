@@ -1,6 +1,10 @@
 import type { MessagePayload } from '@lib/db/message-payload'
-import type { PrismaClient } from '~/generated/prisma/client'
+import type { Prisma, PrismaClient } from '~/generated/prisma/client'
 import { parseMessagePayload, toMessageRoleEnum } from '@lib/db/message-payload'
+
+function messagePayloadJson(payload: MessagePayload): Prisma.InputJsonValue {
+    return payload as unknown as Prisma.InputJsonValue
+}
 
 /** 同一 message id 已绑定其他会话（不得静默改写 conversationId） */
 export class MessageConversationMismatchError extends Error {
@@ -90,7 +94,7 @@ export async function appendUserMessage(
         data: {
             conversationId,
             role: toMessageRoleEnum('user'),
-            payload,
+            payload: messagePayloadJson(payload),
         },
     })
 }
@@ -107,7 +111,7 @@ export async function createUserMessageWithParts(
             id: crypto.randomUUID(),
             conversationId,
             role: toMessageRoleEnum('user'),
-            payload,
+            payload: messagePayloadJson(payload),
         },
     })
 }
@@ -133,11 +137,11 @@ export async function upsertUserMessageParts(
             id: input.id,
             conversationId,
             role: toMessageRoleEnum('user'),
-            payload,
+            payload: messagePayloadJson(payload),
         },
         update: {
             role: toMessageRoleEnum('user'),
-            payload,
+            payload: messagePayloadJson(payload),
         },
     })
 }
@@ -155,7 +159,7 @@ export async function appendAssistantMessage(
         data: {
             conversationId,
             role: toMessageRoleEnum('assistant'),
-            payload,
+            payload: messagePayloadJson(payload),
         },
     })
 }
@@ -183,10 +187,10 @@ export async function upsertAssistantMessage(
             id: input.id,
             conversationId: input.conversationId,
             role: toMessageRoleEnum('assistant'),
-            payload,
+            payload: messagePayloadJson(payload),
         },
         update: {
-            payload,
+            payload: messagePayloadJson(payload),
         },
     })
 }

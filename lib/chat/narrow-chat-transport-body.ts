@@ -55,11 +55,13 @@ export function buildNarrowChatPostBody(o: NarrowBodyOptions): NarrowChatPostBod
     if (!last)
         throw new Error('无消息可发送')
 
+    const assistantMessageId = o.messageId
+
     const assistantApprovalRound
         = o.trigger === 'submit-message'
-            && o.messageId != null
+            && assistantMessageId != null
             && last.role === 'assistant'
-            && last.id === o.messageId
+            && last.id === assistantMessageId
 
     if (assistantApprovalRound) {
         const approvals = collectApprovalsFromAssistantMessage(last)
@@ -68,7 +70,7 @@ export function buildNarrowChatPostBody(o: NarrowBodyOptions): NarrowChatPostBod
         return {
             kind: 'tool-approval',
             conversationId: o.conversationId,
-            assistantMessageId: o.messageId,
+            assistantMessageId,
             approvals,
         }
     }

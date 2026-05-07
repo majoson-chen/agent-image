@@ -87,10 +87,11 @@ export function AddImageModelForm() {
                     r.registerId === 'volcengine/seedream' || r.registerId === 'dashscope/wan-image',
             )
             setRegisterRows(rows)
-            if (rows.length === 1) {
+            const sole = rows.length === 1 ? rows[0] : undefined
+            if (sole) {
                 setForm(prev => ({
                     ...prev,
-                    registerId: rows[0].registerId,
+                    registerId: sole.registerId,
                 }))
             }
         })()
