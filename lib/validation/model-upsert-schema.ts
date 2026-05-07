@@ -1,9 +1,10 @@
 /**
  * Agent GPT-5.5: Models API 的统一创建/更新载荷入口。
  *
- * 只校验 HTTP/DB helper 的外层形状；registerId 与 config 的语义校验由 provider registry 负责。
+ * 创建：`superRefine` 与 `parseModelConfig` 同源校验 config；更新仍由 `updateModel` 内解析。
  */
-import { z } from 'zod'
+import { parseModelConfig } from '@lib/providers/register-config'
+import { z, ZodError } from 'zod'
 
 const base = z.object({
     name: z.string().min(1, '名称不能为空'),
@@ -15,7 +16,28 @@ export const modelCreateBodySchema = z.discriminatedUnion('type', [
     base.extend({ type: z.literal('LLM') }),
     base.extend({ type: z.literal('IMAGE') }),
     base.extend({ type: z.literal('SEARCH') }),
-])
+]).superRefine((data, ctx) => {
+    try {
+        parseModelConfig(data.registerId, data.config)
+    }
+    catch (e) {
+        if (e instanceof ZodError) {
+            for (const issue of e.issues) {
+                ctx.addIssue({
+                    ...issue,
+                    path: ['config', ...(issue.path ?? [])],
+                })
+            }
+        }
+        else {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: e instanceof Error ? e.message : String(e),
+                path: ['config'],
+            })
+        }
+    }
+})
 
 export const modelPatchBodySchema = z.object({
     name: z.string().min(1, '名称不能为空').optional(),

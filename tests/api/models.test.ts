@@ -45,6 +45,18 @@ describe('pOST /api/models', () => {
         expect(body.name).toBe('gpt-4o')
     })
 
+    it('returns 422 when config is invalid for registerId (parseModelConfig)', async () => {
+        const res = await handleModelsPost(makeRequest('POST', {
+            type: 'LLM',
+            name: 'ok-name',
+            registerId: 'openai/official',
+            config: { modelId: 'gpt-4o', apiKey: '' },
+        }), { prisma })
+        expect(res.status).toBe(422)
+        const body = await res.json() as { errors?: Array<{ path?: unknown[] }> }
+        expect(body.errors?.some(e => Array.isArray(e.path) && e.path[0] === 'config')).toBe(true)
+    })
+
     it('returns 422 on validation failure', async () => {
         const res = await handleModelsPost(makeRequest('POST', {
             type: 'LLM',

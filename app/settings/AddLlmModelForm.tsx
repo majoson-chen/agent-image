@@ -4,8 +4,8 @@
 'use client'
 
 import type { LlmRegisterFormProps } from '@lib/settings/llm-register-form-loaders'
-import { loadLlmRegisterFormModule } from '@lib/settings/llm-register-form-loaders'
 import { fallbackRegisterMetadataRows } from '@lib/providers/register-metadata-fallback'
+import { loadLlmRegisterFormModule } from '@lib/settings/llm-register-form-loaders'
 import { Plus } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import { useEffect, useMemo, useState } from 'react'
