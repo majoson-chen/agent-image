@@ -1,9 +1,10 @@
-import type { LlmRegisterCatalogRow, RegisterCatalogRow } from '@lib/providers/register-catalog-types'
+import type { ImageRegisterCatalogRow, LlmRegisterCatalogRow, RegisterCatalogRow } from '@lib/providers/register-catalog-types'
 import type { RegisterId, RegisterMetadata } from '@lib/providers/types'
 /**
  * 静态 Provider 注册元数据目录（plan-01，无 DB）+ LLM 行挂载 `buildLanguageModel`。
  */
-import type { LanguageModel } from 'ai'
+import type { CreateImageGenerateToolOptions } from '@lib/tools/registers/image/image-generate-tool-types'
+import type { LanguageModel, Tool } from 'ai'
 import type { Model, ModelType } from '~/generated/prisma/client'
 import { REGISTER_CONFIG_CATALOG } from '@lib/providers/register-config'
 import { computeAlibabaDashscopeChatProviderOptions } from '@lib/providers/registers/alibaba-dashscope-chat-options'
@@ -12,6 +13,8 @@ import { buildAlibabaDashscopeLlmLanguageModel } from '@lib/providers/registers/
 import { buildAlibabaDashscopeQwen36PlusLanguageModel } from '@lib/providers/registers/alibaba-dashscope-qwen3-6-plus.llm-runtime'
 import { buildOpenAiCompatibleGenericLanguageModel } from '@lib/providers/registers/openai-compatible-generic.llm-runtime'
 import { buildOpenAiOfficialLanguageModel } from '@lib/providers/registers/openai-official.llm-runtime'
+import { createDashscopeWanImageGenerateTool } from '@lib/tools/registers/image/dashscope-wan-generate-tool'
+import { createVolcengineSeedreamImageGenerateTool } from '@lib/tools/registers/image/volcengine-seedream-generate-tool'
 
 export type {
     ImageRegisterCatalogRow,
@@ -37,7 +40,19 @@ const LLM_COMPUTE_CHAT_PROVIDER_OPTIONS_REGISTER_IDS = new Set<string>([
     'alibaba/dashscope-qwen3-6-plus',
 ])
 
+/** IMAGE 行挂载 `createImageGenerateTool`（Hook：image.tool） */
+const IMAGE_CREATE_IMAGE_GENERATE_TOOL_BY_REGISTER_ID: Record<string, (opts: CreateImageGenerateToolOptions) => Tool> = {
+    'volcengine/seedream': createVolcengineSeedreamImageGenerateTool,
+    'dashscope/wan-image': createDashscopeWanImageGenerateTool,
+}
+
 const REGISTER_CATALOG: readonly RegisterCatalogRow[] = REGISTER_CONFIG_CATALOG.map((row): RegisterCatalogRow => {
+    if (row.modelType === 'IMAGE') {
+        const createImageGenerateTool = IMAGE_CREATE_IMAGE_GENERATE_TOOL_BY_REGISTER_ID[row.registerId]
+        if (!createImageGenerateTool)
+            throw new Error(`Missing createImageGenerateTool for IMAGE register ${row.registerId}`)
+        return { ...row, createImageGenerateTool }
+    }
     if (row.modelType !== 'LLM')
         return { ...row }
     const buildLanguageModel = LLM_BUILD_LANGUAGE_MODEL_BY_REGISTER_ID[row.registerId]
@@ -64,7 +79,10 @@ function rowToMetadata(row: RegisterCatalogRow): RegisterMetadata {
             } = row
             return meta
         }
-        case 'IMAGE':
+        case 'IMAGE': {
+            const { schema: _schema, createImageGenerateTool: _createImageGenerateTool, ...meta } = row
+            return meta
+        }
         case 'SEARCH': {
             const { schema: _schema, ...meta } = row
             return meta
@@ -78,6 +96,13 @@ export function getLlmCatalogRowStrict(registerId: string): LlmRegisterCatalogRo
     const row = REGISTER_CATALOG.find(r => r.registerId === registerId)
     if (!row || row.modelType !== 'LLM')
         throw new Error(`unknown LLM registerId: ${registerId}`)
+    return row
+}
+
+export function getImageCatalogRowStrict(registerId: string): ImageRegisterCatalogRow {
+    const row = REGISTER_CATALOG.find(r => r.registerId === registerId)
+    if (!row || row.modelType !== 'IMAGE')
+        throw new Error(`unknown IMAGE registerId: ${registerId}`)
     return row
 }
 

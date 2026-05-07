@@ -4,7 +4,8 @@
  */
 import type { ProviderOptions } from '@ai-sdk/provider-utils'
 import type { RegisterMetadata } from '@lib/providers/types'
-import type { LanguageModel } from 'ai'
+import type { CreateImageGenerateToolOptions } from '@lib/tools/registers/image/image-generate-tool-types'
+import type { LanguageModel, Tool } from 'ai'
 import type { z } from 'zod'
 import type { Model } from '~/generated/prisma/client'
 
@@ -22,6 +23,8 @@ export type LlmRegisterCatalogRow = RegisterCatalogRowBase & {
 
 export type ImageRegisterCatalogRow = RegisterCatalogRowBase & {
     modelType: 'IMAGE'
+    /** Hook：image.tool */
+    createImageGenerateTool: (opts: CreateImageGenerateToolOptions) => Tool
 }
 
 export type SearchRegisterCatalogRow = RegisterCatalogRowBase & {

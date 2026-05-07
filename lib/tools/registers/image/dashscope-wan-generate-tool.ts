@@ -1,12 +1,12 @@
-import type { DashscopeWanImageConfig } from '@lib/providers/registers/dashscope-wan-image'
-import type { CreateImageGenerateToolOptions } from '@lib/tools/registers/image/image-generate-tool-types'
 /**
  * dashscope/wan-image：生图 tool；含可选 referenceImageIds（受 Register capabilities 限制）。
  */
-import { executeImageGeneration } from '@lib/image-provider-factory'
+import type { DashscopeWanImageConfig } from '@lib/providers/registers/dashscope-wan-image'
+import type { CreateImageGenerateToolOptions } from '@lib/tools/registers/image/image-generate-tool-types'
 import prismaDefault from '@lib/prisma'
 import { loadConversationImageBuffer } from '@lib/providers/_internals/load-conversation-image'
-import { parseModelConfig } from '@lib/providers/registry'
+import { parseModelConfig } from '@lib/providers/register-config'
+import { executeImageGeneration } from '@lib/image-provider-factory'
 import { redactSecretsInMessage } from '@lib/tools/_internals/redact-secrets-message'
 import { tool } from 'ai'
 import { z } from 'zod'
