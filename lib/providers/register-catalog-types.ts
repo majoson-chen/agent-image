@@ -29,6 +29,8 @@ export type ImageRegisterCatalogRow = RegisterCatalogRowBase & {
 
 export type SearchRegisterCatalogRow = RegisterCatalogRowBase & {
     modelType: 'SEARCH'
+    /** Hook：search.tools — 绑定行的 Model 须 type===SEARCH 且 registerId 与本行一致 */
+    buildSearchToolsForModel: (model: Model) => { webSearch: Tool, imageSearch: Tool }
 }
 
 export type RegisterCatalogRow = LlmRegisterCatalogRow | ImageRegisterCatalogRow | SearchRegisterCatalogRow

@@ -1,4 +1,9 @@
-import type { ImageRegisterCatalogRow, LlmRegisterCatalogRow, RegisterCatalogRow } from '@lib/providers/register-catalog-types'
+import type {
+    ImageRegisterCatalogRow,
+    LlmRegisterCatalogRow,
+    RegisterCatalogRow,
+    SearchRegisterCatalogRow,
+} from '@lib/providers/register-catalog-types'
 import type { RegisterId, RegisterMetadata } from '@lib/providers/types'
 /**
  * 静态 Provider 注册元数据目录（plan-01，无 DB）+ LLM 行挂载 `buildLanguageModel`。
@@ -11,6 +16,7 @@ import { computeAlibabaDashscopeChatProviderOptions } from '@lib/providers/regis
 import { buildAlibabaDashscopeKimiK26LanguageModel } from '@lib/providers/registers/alibaba-dashscope-kimi-k2-6.llm-runtime'
 import { buildAlibabaDashscopeLlmLanguageModel } from '@lib/providers/registers/alibaba-dashscope-llm.llm-runtime'
 import { buildAlibabaDashscopeQwen36PlusLanguageModel } from '@lib/providers/registers/alibaba-dashscope-qwen3-6-plus.llm-runtime'
+import { buildBraveSearchToolsForModel } from '@lib/providers/registers/brave-search.tools-from-model'
 import { buildOpenAiCompatibleGenericLanguageModel } from '@lib/providers/registers/openai-compatible-generic.llm-runtime'
 import { buildOpenAiOfficialLanguageModel } from '@lib/providers/registers/openai-official.llm-runtime'
 import { createDashscopeWanImageGenerateTool } from '@lib/tools/registers/image/dashscope-wan-generate-tool'
@@ -46,12 +52,23 @@ const IMAGE_CREATE_IMAGE_GENERATE_TOOL_BY_REGISTER_ID: Record<string, (opts: Cre
     'dashscope/wan-image': createDashscopeWanImageGenerateTool,
 }
 
+/** SEARCH 行挂载 `buildSearchToolsForModel`（Hook：search.tools） */
+const SEARCH_BUILD_SEARCH_TOOLS_BY_REGISTER_ID: Record<string, (model: Model) => { webSearch: Tool, imageSearch: Tool }> = {
+    'brave/search': buildBraveSearchToolsForModel,
+}
+
 const REGISTER_CATALOG: readonly RegisterCatalogRow[] = REGISTER_CONFIG_CATALOG.map((row): RegisterCatalogRow => {
     if (row.modelType === 'IMAGE') {
         const createImageGenerateTool = IMAGE_CREATE_IMAGE_GENERATE_TOOL_BY_REGISTER_ID[row.registerId]
         if (!createImageGenerateTool)
             throw new Error(`Missing createImageGenerateTool for IMAGE register ${row.registerId}`)
         return { ...row, createImageGenerateTool }
+    }
+    if (row.modelType === 'SEARCH') {
+        const buildSearchToolsForModel = SEARCH_BUILD_SEARCH_TOOLS_BY_REGISTER_ID[row.registerId]
+        if (!buildSearchToolsForModel)
+            throw new Error(`Missing buildSearchToolsForModel for SEARCH register ${row.registerId}`)
+        return { ...row, buildSearchToolsForModel }
     }
     if (row.modelType !== 'LLM')
         return { ...row }
@@ -84,7 +101,7 @@ function rowToMetadata(row: RegisterCatalogRow): RegisterMetadata {
             return meta
         }
         case 'SEARCH': {
-            const { schema: _schema, ...meta } = row
+            const { schema: _schema, buildSearchToolsForModel: _buildSearchToolsForModel, ...meta } = row
             return meta
         }
     }
@@ -103,6 +120,13 @@ export function getImageCatalogRowStrict(registerId: string): ImageRegisterCatal
     const row = REGISTER_CATALOG.find(r => r.registerId === registerId)
     if (!row || row.modelType !== 'IMAGE')
         throw new Error(`unknown IMAGE registerId: ${registerId}`)
+    return row
+}
+
+export function getSearchCatalogRowStrict(registerId: string): SearchRegisterCatalogRow {
+    const row = REGISTER_CATALOG.find(r => r.registerId === registerId)
+    if (!row || row.modelType !== 'SEARCH')
+        throw new Error(`unknown SEARCH registerId: ${registerId}`)
     return row
 }
 
