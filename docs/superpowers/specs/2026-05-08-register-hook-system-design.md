@@ -14,18 +14,18 @@
 
 在本设计中，**Register Hook** 指：某条 SKU（`registerId`）在 **静态 Catalog 行**上声明的、**类型化、可选的扩展点函数**。Kernel **只**通过 Catalog 按 `registerId` 取得该行并 **调用已声明的钩子**；**禁止**在 Kernel 内再写 `switch (registerId)` 或维护「某能力仅适用于哪几个 id」的平行名单。
 
-**记忆句**：*Hook 是 Register 对 Kernel 的 **能力出口**；Catalog 是 **唯一索引**；Kernel 是 **无厂商知识的调度器**。*
+**记忆句**：_Hook 是 Register 对 Kernel 的 **能力出口**；Catalog 是 **唯一索引**；Kernel 是 **无厂商知识的调度器**。_
 
 ---
 
 ## 2. 设计目标
 
-| ID | 陈述 |
-| --- | --- |
-| H1 | 凡 **厂商 / SKU 特有** 的行为（请求体形态、响应解析、工具入参 schema、AI SDK `providerOptions`、搜索 HTTP 等），**必须**可通过某条 Catalog 行上的 Hook 表达或委托给该行关联的 Register 模块。 |
-| H2 | Kernel **不得**维护与具体 `registerId` 列表耦合的分支逻辑（含 `Set<string>` 白名单）；若需「谁支持某能力」，由 **schema + Catalog 上是否挂载对应 Hook** 推导。 |
-| H3 | Hook **按能力命名、按类型约束**：LLM / IMAGE / SEARCH 各自可见的子集不同；未实现的 Hook 视为 **不支持该能力**。 |
-| H4 | Register **SKU 模块之间不互相依赖**；Hook 实现可复用 **vendor-shared**、**`_internals`** 或 **中立子模块**，规则同现有 SPEC。 |
+| ID  | 陈述                                                                                                                                                                                          |
+| --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| H1  | 凡 **厂商 / SKU 特有** 的行为（请求体形态、响应解析、工具入参 schema、AI SDK `providerOptions`、搜索 HTTP 等），**必须**可通过某条 Catalog 行上的 Hook 表达或委托给该行关联的 Register 模块。 |
+| H2  | Kernel **不得**维护与具体 `registerId` 列表耦合的分支逻辑（含 `Set<string>` 白名单）；若需「谁支持某能力」，由 **schema + Catalog 上是否挂载对应 Hook** 推导。                                |
+| H3  | Hook **按能力命名、按类型约束**：LLM / IMAGE / SEARCH 各自可见的子集不同；未实现的 Hook 视为 **不支持该能力**。                                                                               |
+| H4  | Register **SKU 模块之间不互相依赖**；Hook 实现可复用 **vendor-shared**、**`_internals`** 或 **中立子模块**，规则同现有 SPEC。                                                                 |
 
 ---
 
@@ -49,28 +49,28 @@
 
 ### 4.2 LLM 类 Hook（`modelType === LLM`）
 
-| 能力 ID | 含义 | 典型产出 | 必填性 |
-| --- | --- | --- | --- |
-| `llm.languageModel` | 由 `Model` 行构造 AI SDK **`LanguageModel`** | `LanguageModel` | **必填**（LLM SKU 必选） |
-| `llm.chatProviderOptions` | 由 `Model` 行构造单次对话 / Agent 步骤可用的 **`ProviderOptions`**（如 `@ai-sdk/alibaba` thinking） | `ProviderOptions \| undefined` | **可选**；缺省表示不注入 |
-| （预留）`llm.ui.supportsThinkingIndicator` | 是否允许设置页展示「思考」相关控件 | boolean 或等价 | 可选 |
+| 能力 ID                                    | 含义                                                                                                | 典型产出                       | 必填性                   |
+| ------------------------------------------ | --------------------------------------------------------------------------------------------------- | ------------------------------ | ------------------------ |
+| `llm.languageModel`                        | 由 `Model` 行构造 AI SDK **`LanguageModel`**                                                        | `LanguageModel`                | **必填**（LLM SKU 必选） |
+| `llm.chatProviderOptions`                  | 由 `Model` 行构造单次对话 / Agent 步骤可用的 **`ProviderOptions`**（如 `@ai-sdk/alibaba` thinking） | `ProviderOptions \| undefined` | **可选**；缺省表示不注入 |
+| （预留）`llm.ui.supportsThinkingIndicator` | 是否允许设置页展示「思考」相关控件                                                                  | boolean 或等价                 | 可选                     |
 
 **说明**：与 AI SDK 一致，`providerOptions` 归属 **请求 / Agent** 路径，不要求塞进 `createXxx()` Provider 工厂；由本 Hook **计算**再在 `buildAgent` / stream 边界传入。
 
 ### 4.3 IMAGE 类 Hook（`modelType === IMAGE`）
 
-| 能力 ID | 含义 | 典型产出 | 必填性 |
-| --- | --- | --- | --- |
-| `image.tool` | 构造挂载到 ToolLoopAgent 的 **单条生图工具**（含 **inputSchema、execute、描述、needsApproval** 等） | AI SDK `Tool` | **必填**（参与 Agent 的生图 SKU） |
-| `image.execution` | 封装 **单次生图远程调用**：HTTP、响应拆解、超时、与 `conversationId`/参考图参数的衔接 | Promise\<结构化成功/失败\> | **建议与 `image.tool` 同 Register 共用实现**；是否拆成两个 Hook 由实现选型，但若拆分，二者须 **同属一条 Catalog 行**，Kernel 不累加第三个分支文件 |
-| （可选）`image.defaultToolParams` | 由 `ConversationModelSelection.params` + config 推导 **默认 size** 等工具级默认 | 小号值对象 | 可选，避免 `tool-registry` 读 capability |
+| 能力 ID                           | 含义                                                                                                | 典型产出                   | 必填性                                                                                                                                            |
+| --------------------------------- | --------------------------------------------------------------------------------------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `image.tool`                      | 构造挂载到 ToolLoopAgent 的 **单条生图工具**（含 **inputSchema、execute、描述、needsApproval** 等） | AI SDK `Tool`              | **必填**（参与 Agent 的生图 SKU）                                                                                                                 |
+| `image.execution`                 | 封装 **单次生图远程调用**：HTTP、响应拆解、超时、与 `conversationId`/参考图参数的衔接               | Promise\<结构化成功/失败\> | **建议与 `image.tool` 同 Register 共用实现**；是否拆成两个 Hook 由实现选型，但若拆分，二者须 **同属一条 Catalog 行**，Kernel 不累加第三个分支文件 |
+| （可选）`image.defaultToolParams` | 由 `ConversationModelSelection.params` + config 推导 **默认 size** 等工具级默认                     | 小号值对象                 | 可选，避免 `tool-registry` 读 capability                                                                                                          |
 
 **说明**：参考图、`imageId` 上限仍以 **工具的 inputSchema** 表达为主；图像归属校验保持在 **Kernel 共享内核**（主 SPEC G6）。
 
 ### 4.4 SEARCH 类 Hook（`modelType === SEARCH`）
 
-| 能力 ID | 含义 | 典型产出 | 必填性 |
-| --- | --- | --- | --- |
+| 能力 ID        | 含义                                                                                | 典型产出                            | 必填性                                           |
+| -------------- | ----------------------------------------------------------------------------------- | ----------------------------------- | ------------------------------------------------ |
 | `search.tools` | 由绑定到会话的 SEARCH `Model` 构造 **可被 Agent 挂载的 ToolSet（子集）** 或等价工厂 | `Record<string, Tool>` 或可合并结构 | **必填**（若该产品路径仍通过 Search Model 绑定） |
 
 **说明**：若未来存在「单次 Register 产出 web + image 双工具」，由该 Hook **一次返回多块**；Kernel 只做挂载，不拆分 Brave 专有 URL。
@@ -115,6 +115,6 @@
 
 ## 修订记录
 
-| 日期 | 说明 |
-| --- | --- |
+| 日期       | 说明                                                         |
+| ---------- | ------------------------------------------------------------ |
 | 2026-05-08 | 初稿：Hook 定义、命名能力表、Kernel 语义流程、与非 Hook 分界 |
