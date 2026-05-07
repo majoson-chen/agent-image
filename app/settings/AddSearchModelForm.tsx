@@ -1,6 +1,7 @@
 'use client'
 
 import { cn } from '@lib/cn'
+import { fallbackRegisterMetadataRows } from '@lib/providers/register-metadata-fallback'
 import { Plus } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
@@ -84,7 +85,12 @@ export function AddSearchModelForm() {
         router.refresh()
     }
 
-    const titleLabel = registerRows?.find(r => r.registerId === form.registerId)?.title ?? 'Search'
+    const searchFallback = fallbackRegisterMetadataRows('SEARCH')
+    const titleLabel
+        = registerRows?.find(r => r.registerId === form.registerId)?.title
+            ?? searchFallback.find(r => r.registerId === form.registerId)?.title
+            ?? searchFallback[0]?.title
+            ?? 'Search'
 
     if (!open) {
         return (

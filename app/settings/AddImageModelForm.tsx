@@ -5,6 +5,7 @@ import type { WanImagePresetKey } from '@lib/image/wan-image-presets'
 import { cn } from '@lib/cn'
 import { getSeedreamPreset, SEEDREAM_PRESETS } from '@lib/image/seedream-presets'
 import { getWanImagePreset, WAN_IMAGE_PRESETS } from '@lib/image/wan-image-presets'
+import { fallbackRegisterMetadataRows } from '@lib/providers/register-metadata-fallback'
 import { Plus, X } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
@@ -12,6 +13,8 @@ import { useEffect, useState } from 'react'
 type ImageRegisterId = 'volcengine/seedream' | 'dashscope/wan-image'
 
 type ImageVendor = 'seedream' | 'wan'
+
+const imageRegisterFallbackRows = fallbackRegisterMetadataRows('IMAGE')
 
 function imageVendorFromRegister(registerId: ImageRegisterId): ImageVendor {
     return registerId === 'dashscope/wan-image' ? 'wan' : 'seedream'
@@ -69,9 +72,8 @@ export function AddImageModelForm() {
     const showRegisterSelect = !(registerRows && registerRows.length === 1)
     const registerTitle
         = registerRows?.find(r => r.registerId === form.registerId)?.title
-            ?? (form.registerId === 'dashscope/wan-image'
-                ? '阿里云 · 百炼万相图像（DashScope）'
-                : '火山引擎 · 方舟 Seedream')
+            ?? imageRegisterFallbackRows.find(r => r.registerId === form.registerId)?.title
+            ?? form.registerId
 
     useEffect(() => {
         if (!open || registerRows)
@@ -270,10 +272,9 @@ export function AddImageModelForm() {
                                                 <option key={r.registerId} value={r.registerId}>{r.title}</option>
                                             ))
                                         : (
-                                                <>
-                                                    <option value="volcengine/seedream">火山引擎 · 方舟 Seedream</option>
-                                                    <option value="dashscope/wan-image">阿里云 · 百炼万相图像（DashScope）</option>
-                                                </>
+                                                imageRegisterFallbackRows.map(r => (
+                                                    <option key={r.registerId} value={r.registerId}>{r.title}</option>
+                                                ))
                                             )}
                                 </select>
                                 <p className="fieldset-label mt-1 text-xs text-base-content/50">

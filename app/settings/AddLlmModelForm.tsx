@@ -5,6 +5,7 @@
 
 import type { LlmRegisterFormProps } from '@lib/settings/llm-register-form-loaders'
 import { loadLlmRegisterFormModule } from '@lib/settings/llm-register-form-loaders'
+import { fallbackRegisterMetadataRows } from '@lib/providers/register-metadata-fallback'
 import { Plus } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import { useEffect, useMemo, useState } from 'react'
@@ -12,23 +13,6 @@ import { useEffect, useMemo, useState } from 'react'
 interface LlmRegisterOption {
     registerId: string
     title: string
-}
-
-/** API 不可用时的备选（与先前硬编码下拉一致）。 */
-function fallbackLlmRegisterOptions(): LlmRegisterOption[] {
-    return [
-        { registerId: 'openai/official', title: 'OpenAI 官方' },
-        { registerId: 'openai-compatible/generic', title: 'OpenAI 兼容（通用）' },
-        {
-            registerId: 'alibaba/dashscope-kimi-k2-6',
-            title: 'Kimi K2.6 · DashScope SKU',
-        },
-        {
-            registerId: 'alibaba/dashscope-qwen3-6-plus',
-            title: 'Qwen 3.6 Plus · DashScope SKU',
-        },
-        { registerId: 'alibaba/dashscope-llm', title: '阿里云 DashScope（自填模型）' },
-    ]
 }
 
 function LlmRegisterDynamicForm({
@@ -67,7 +51,7 @@ export function AddLlmModelForm() {
 
     const options
         = registryOptions === null || registryOptions.length === 0
-            ? fallbackLlmRegisterOptions()
+            ? fallbackRegisterMetadataRows('LLM')
             : registryOptions
 
     function handleDismiss() {
