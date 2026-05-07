@@ -38,6 +38,10 @@ const REGISTER_CATALOG: readonly RegisterCatalogRow[] = REGISTER_CONFIG_CATALOG.
     return { ...row, buildLanguageModel }
 })
 
+export function getCatalogRow(registerId: string): RegisterCatalogRow | undefined {
+    return REGISTER_CATALOG.find(r => r.registerId === registerId)
+}
+
 function rowToMetadata(row: RegisterCatalogRow): RegisterMetadata {
     switch (row.modelType) {
         case 'LLM': {
