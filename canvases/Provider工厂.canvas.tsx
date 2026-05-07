@@ -17,45 +17,51 @@ export default function ProviderFactory() {
             <Stack gap={6}>
                 <H1>Provider 工厂</H1>
                 <Text tone="secondary">
-                    负责将 DB 中的 Model 记录转换为可执行对象。LLM 工厂和图像工厂在职责上有本质区别：LLM 工厂返回一个 AI SDK LanguageModel 实例供 Agent 持有并反复使用；图像工厂则在每次工具调用时直接执行生成、下载图像并落盘，返回落盘结果。
+                    负责将 DB 中的 Model 记录转换为可执行对象。LLM 经 Catalog 行上的 **`buildLanguageModel`** 得到 AI SDK `LanguageModel`，供 Agent 反复使用；生图经 Catalog **`createImageGenerateTool`** 装配工具，**HTTP 与各厂商解析在 Register 侧**执行，Kernel / chat route **不做 registerId 分支枚举**。
                 </Text>
             </Stack>
 
             <Divider />
 
             <H2>LLM 工厂链</H2>
-            <Text tone="secondary" size="small">lib/llm-provider-factory.ts · buildLlmModel(model: Model): LanguageModel</Text>
+            <Text tone="secondary" size="small">
+                入口：`lib/providers/runtime/build-llm-from-model.ts` · **`buildLlmLanguageModel(record)`** → **`getLlmCatalogRowStrict(registerId)`**（`lib/providers/registry.ts`）→ Catalog 行钩子 **`buildLanguageModel(record)`**
+            </Text>
             <Text>
-                接收一条 ModelType = LLM 的 Model 记录，根据 **`model.registerId`** 分支选择 AI SDK provider 包；**`config` 经 `parseModelConfig` 解析**，其中 **`modelId` 为实际请求模型名**（`name` 仅为 DB 展示标签）。实例传入 buildAgent() 供 ToolLoopAgent 使用。
+                接收一条 ModelType = LLM 的 Model 记录。**`config` 经各 Register 的 `parseModelConfig` 解析**；**`modelId` 为实际请求模型名**（`name` 仅为 DB 展示标签）。实例传入 `buildAgent()` 供 ToolLoopAgent 使用。具体使用哪个 AI SDK provider 包由 **Catalog 挂载的 Register 模块**决定，而非 Kernel 内三分支工厂。
             </Text>
             <Table
-                headers={['registerId', '使用包', 'config 要点', '可选']}
+                headers={['环节', '符号 / 模块', '说明']}
                 rows={[
-                    ['openai/official', '@ai-sdk/openai · createOpenAI()', 'modelId · apiKey', '—'],
-                    ['openai-compatible/generic', '@ai-sdk/openai-compatible', 'modelId · apiKey · baseURL', 'extraHeaders'],
-                    ['alibaba/dashscope-llm', '@ai-sdk/alibaba · createAlibaba()', 'modelId · apiKey', 'baseURL · capabilities.supportsThinking'],
+                    ['1', 'buildLlmLanguageModel', '`build-llm-from-model.ts`：校验 type = LLM'],
+                    ['2', 'getLlmCatalogRowStrict', '`registry.ts`：按 `registerId` 解析 LLM Catalog 行'],
+                    ['3', 'buildLanguageModel(record)', 'Catalog 行钩子：组装 LanguageModel（厂商逻辑在 Register）'],
                 ]}
                 striped
             />
 
             <Divider />
 
-            <H2>LLM 附加选项</H2>
-            <Text tone="secondary" size="small">lib/llm-chat-provider-options.ts · computeLlmChatProviderOptions(model, params): ProviderOptions | undefined</Text>
+            <H2>LLM 附加选项（ProviderOptions）</H2>
+            <Text tone="secondary" size="small">
+                `lib/llm-chat-provider-options.ts` · **`computeLlmChatProviderOptions(model): ProviderOptions | undefined`**
+            </Text>
             <Text>
-                在 chat route 中与 buildLlmModel() 并行调用，返回一个 AI SDK ProviderOptions 对象，经由 buildAgent() 的 providerOptions 参数注入 ToolLoopAgent。当前主要用于控制 thinking mode 等模型级参数。当 deps.model 存在（测试注入路径）时，此函数被跳过。
+                在 chat route 中与 **`buildLlmLanguageModel`** 并行调用，内部 **`getLlmCatalogRowStrict`** 后调用 Catalog 行可选钩子 **`computeLlmChatProviderOptions`**，得到 AI SDK `ProviderOptions`，经 `buildAgent()` 的 `providerOptions` 注入 ToolLoopAgent。**不是** Kernel 内_SET 或厂商名单分支；无钩子则返回 `undefined`。当 deps.model 存在（测试注入路径）时，此函数可被跳过。
             </Text>
 
             <Divider />
 
-            <H2>图像工厂链</H2>
-            <Text tone="secondary" size="small">lib/image-provider-factory.ts · executeImageGeneration(input): Promise&lt;imageId, mimeType, sizeBytes&gt;</Text>
+            <H2>图像工具链（Catalog → Register 执行）</H2>
+            <Text tone="secondary" size="small">
+                `lib/tools/image-generate.ts` · **`createImageGenerateTool(opts)`** → **`getImageCatalogRowStrict`** → Catalog 行钩子 **`createImageGenerateTool`**
+            </Text>
             <Text>
-                由 lib/tools/image-generate.ts 在工具执行时调用，入参含 model、prompt、size、conversationId、prisma。根据 **`model.registerId`**（`volcengine/seedream` / `dashscope/wan-image`）分支；HTTP 请求的 **model** 字段来自 **`config.requestModel`**，非 DB **`name`**。路径均以「HTTP → 下载 / 解码 → detectMime → createImage 落库」结束。
+                `lib/tools/tool-registry.ts` 在组装 ToolSet 时调用上述入口。**HTTP、超时、响应解析与落库路径**由各 IMAGE Register 的工具实现负责（可经共享 `executeImageGeneration` 等）；**`model` 请求字段来自 `config.requestModel`**，非 DB **`name`**。`lib/image-provider-factory.ts` 若仍存在，多为兼容 re-export，叙述以 **`image-generate.ts` + Catalog** 为准。
             </Text>
 
             <Card>
-                <CardHeader trailing={<Pill size="sm">volcengine/seedream</Pill>}>Seedream 路径</CardHeader>
+                <CardHeader trailing={<Pill size="sm">volcengine/seedream</Pill>}>Seedream 路径（Register 实现示例）</CardHeader>
                 <CardBody>
                     <Stack gap={6}>
                         <Text size="small">
@@ -69,7 +75,7 @@ export default function ProviderFactory() {
             </Card>
 
             <Card>
-                <CardHeader trailing={<Pill size="sm">dashscope/wan-image</Pill>}>DashScope 万相图像路径</CardHeader>
+                <CardHeader trailing={<Pill size="sm">dashscope/wan-image</Pill>}>DashScope 万相图像路径（Register 实现示例）</CardHeader>
                 <CardBody>
                     <Stack gap={6}>
                         <Text size="small">
@@ -85,7 +91,7 @@ export default function ProviderFactory() {
             <Divider />
 
             <H2>Presets 文件</H2>
-            <Text>两个 presets 文件集中管理各图像 Provider 的默认 API 地址和参数规范，避免散落在工厂函数内。</Text>
+            <Text>各图像 Register 可依赖下列 presets 集中默认 API 地址与参数映射，避免散落在执行代码内。</Text>
             <Table
                 headers={['文件', '导出内容', '用途']}
                 rows={[
