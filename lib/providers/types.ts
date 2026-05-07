@@ -11,4 +11,6 @@ export interface RegisterMetadata {
     title: string
     description?: string
     sortOrder: number
+    /** 仅 IMAGE：设置页选用何种预设组件；未设则表单用通用字段 */
+    imagePresetKind?: 'wan' | 'seedream'
 }

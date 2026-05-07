@@ -70,6 +70,7 @@ export const REGISTER_CONFIG_CATALOG: readonly RegisterConfigCatalogRow[] = [
         modelType: 'IMAGE',
         title: '火山方舟 Seedream',
         sortOrder: 10,
+        imagePresetKind: 'seedream',
         schema: volcengineSeedreamConfigSchema,
     },
     {
@@ -77,6 +78,7 @@ export const REGISTER_CONFIG_CATALOG: readonly RegisterConfigCatalogRow[] = [
         modelType: 'IMAGE',
         title: 'DashScope 万相图像',
         sortOrder: 20,
+        imagePresetKind: 'wan',
         schema: dashscopeWanImageConfigSchema,
     },
 ]
