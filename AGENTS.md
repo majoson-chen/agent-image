@@ -117,3 +117,14 @@ import SomeComponent from '~/xxx'
 
 - 【重要】所有的画布（Canvas 文件）存放在仓库根目录 **`canvases/`**（`*.canvas.tsx`）而非 Cursor 托管的 `canvases/`。
 - 【重要】修改和创建时请直接在仓库内编辑，不要写入 Cursor 托管的 `canvases/`。
+
+## Cursor Cloud specific instructions
+
+- **Bun** 为包管理器和脚本运行器（`bun install`、`bun dev`、`bun run lint`）。Cloud VM 预装后可直接使用。
+- **Node.js 22** 也需安装（`apt-get install -y nodejs`）：Vitest 的 shebang 为 `#!/usr/bin/env node`，且 `better-sqlite3` 原生模块仅在 Node.js 下正常加载。安装 Node.js 后需 `npm rebuild better-sqlite3` 使原生模块兼容 Node ABI。
+- **数据库初始化**：首次运行 `bun --bun run prisma migrate dev` 创建 `data.db`（SQLite）。无需外部数据库服务。
+- **运行测试**：`npx vitest run`（通过 Node.js 执行）或 `bun run test -- run`（依赖 Node.js 在 PATH 中）。Vitest 配置见 `vitest.config.ts`。**注意**：`bun run test` 实际仍经由 Node.js 执行 vitest，因此 Node.js 必须可用。
+- **启动开发服务器**：`bun dev`（即 `next dev`），默认 `http://localhost:3000`。
+- **Lint**：`bun run lint`（ESLint）；自动修复 `bun run lint:fix`。
+- **无需 `.env` 文件**：所有 API 密钥通过设置页面存入 SQLite，无全局环境变量依赖。`DATABASE_URL` 缺省值见 `prisma.config.ts`。
+- **已知 pre-existing lint 错误**：仓库当前 `main` 分支存在若干 style/format lint 错误（`docs/solutions/` 下的 markdown 和部分 `.tsx` 文件），非环境问题。
